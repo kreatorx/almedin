@@ -23,7 +23,7 @@
             display: grid; 
             grid-template-columns: 120px 300px 220px; 
             align-items: center; 
-            row-gap: 40px; 
+            row-gap: 20px; 
             column-gap: 20px; 
             border: 1px solid #eee; 
             padding: 20px; 
@@ -120,8 +120,8 @@
         @media (max-width: 768px) {
             .grid-tabela {
                 grid-template-columns: 1fr; /* Prebacivanje u samo JEDNU kolonu */
-                row-gap: 30px;
-                padding: 15px;
+                row-gap: 20px;
+                padding: 10px;
                 width: 100%;
                 max-width: 340px;
                 box-sizing: border-box;
@@ -144,12 +144,14 @@
                 text-align: center !important;
                 font-size: 13px;
                 width: 100%;
-                margin-top: 10px;
-                margin-bottom: 5px; /* Pravi jasan odmak iznad crvene oznake sile */
+                margin-top: 0px;
+                margin-bottom: 0px; /* Pravi jasan odmak iznad crvene oznake sile */
+                padding-bottom: -50px;
             }
 
             .crtez-kontejner {
                 justify-content: center !important;
+                margin-top: -20px;
             }
 
             .kontrolni-panel {
@@ -175,8 +177,6 @@
 
 <div class="main-container">
 
-    <h3 style="margin-top: 0; margin-bottom: 30px; color: #333; font-size: 18px; text-align: center;">Parametarski Solver sa Logaritamskom Normalizacijom</h3>
-
     <div class="grid-tabela">
         
         <div class="tabela-header">Statika</div>
@@ -187,7 +187,7 @@
 
         <div class="naziv-grede">1. Prosta greda</div>
         <div class="crtez-kontejner">
-            <svg width="300" height="135" style="display: block; overflow: visible;">
+            <svg width="300" height="120" style="display: block; overflow: visible;">
                 <g id="teret">
                     <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
                     <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
@@ -197,7 +197,7 @@
                 <polygon points="15,36 7,50 23,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
                 <polygon points="285,36 277,50 293,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
                 <line x1="272" y1="54" x2="298" y2="54" stroke="black" stroke-width="1.5" />
-                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
                 <path id="momenatPlot" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
                 <path id="transverzalnaPlot" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
                 <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
@@ -216,7 +216,7 @@
 
         <div class="naziv-grede">2. Sa prepustima</div>
         <div class="crtez-kontejner">
-            <svg width="300" height="135" style="display: block; overflow: visible;">
+            <svg width="300" height="120" style="display: block; overflow: visible;">
                 <g id="teretPrepust">
                     <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
                     <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
@@ -228,7 +228,7 @@
                     <polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
                     <line x1="-13" y1="54" x2="13" y2="54" stroke="black" stroke-width="1.5" />
                 </g>
-                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
                 <path id="momenatPlotPrepust" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
                 <path id="transverzalnaPlotPrepust" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
                 <text id="momenatTekstPrepust" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
@@ -247,21 +247,21 @@
 
         <div class="naziv-grede">3. Konzola</div>
         <div class="crtez-kontejner">
-            <svg width="300" height="135" style="display: block; overflow: visible;">
+            <svg width="300" height="120" style="display: block; overflow: visible;">
                 <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
                 <line x1="15" y1="22" x2="15" y2="44" stroke="black" stroke-width="2.5" />
                 <line x1="15" y1="24" x2="11" y2="28" stroke="black" stroke-width="1" />
                 <line x1="15" y1="29" x2="11" y2="33" stroke="black" stroke-width="1" />
                 <line x1="15" y1="34" x2="11" y2="38" stroke="black" stroke-width="1" />
                 <line x1="15" y1="39" x2="11" y2="43" stroke="black" stroke-width="1" />
-                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
                 <path id="momenatPlotKonzola" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
                 <path id="transverzalnaPlotKonzola" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
                 <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
                 <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
                 
-                <text id="svgR3" x="15" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">R=0.0</text>
-                <text id="svgM3" x="15" y="77" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="middle">Mu=0.0</text>
+                <text id="svgR3" x="15" y="60" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">R=0.0</text>
+                <text id="svgM3" x="15" y="70" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="middle">Mu=0.0</text>
                 
                 <g id="teretKonzola">
                     <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -297,22 +297,22 @@
 
         <div class="panel-red" style="font-weight: 500;">
             <div class="input-grupa">
-                <label>Ukupno L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
-            </div>
+                <label>L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
+            
             <div class="separator"></div>
-            <div class="input-grupa">
-                <span style="color: #e67e22;">Prepusti:</span>
+            
+               
                 <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
                 <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
             </div>
             <div class="separator"></div>
             <div class="input-grupa">
-                <label style="color: #2980b9;">na a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
-            </div>
+                <label style="color: #2980b9;">a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
+            
             <div class="separator"></div>
-            <div class="input-grupa">
+            
                 <label style="color: red;">F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
-            </div>
+            </div><br>
         </div>
     </div>
 
@@ -322,7 +322,7 @@
 const GEOMETRIJA = {
     pocetakX: 15, krajX: 285, duzinaX: 270,
     oslonacB_PrepustX: 215,
-    nulaY: 85, 
+    nulaY: 105, 
     maxPikselaDopusteno: 120,
     skalaM_baza: 22,
     skalaT_baza: 15
