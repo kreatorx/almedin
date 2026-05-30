@@ -16,6 +16,7 @@
             background-color: #ffffff; 
             padding: 20px 20px 180px 20px; 
             box-sizing: border-box;
+            width: 100%;
         }
 
         .grid-tabela {
@@ -36,6 +37,18 @@
             color: #555; 
             border-bottom: 2px solid #ddd; 
             padding-bottom: 10px;
+        }
+
+        .naziv-grede {
+            font-weight: bold; 
+            color: #2c3e50; 
+            font-size: 13px;
+        }
+
+        .crtez-kontejner {
+            display: flex; 
+            justify-content: center;
+            width: 100%;
         }
 
         .desni-tekst-blok {
@@ -94,22 +107,30 @@
         /* STILOVI PRILAGOĐENI ZA MOBITEL (Ekran užeg profila) */
         @media (max-width: 768px) {
             .grid-tabela {
-                grid-template-columns: 100px 300px; /* Smanjujemo na 2 kolone (Naziv i Crtež) */
-                row-gap: 30px;
-                padding: 10px;
+                grid-template-columns: 1fr; /* Tabela postaje isključivo JEDNA vertikalna kolona */
+                row-gap: 25px;
+                padding: 15px;
                 width: 100%;
-                max-width: 420px;
+                max-width: 340px; /* Savršeno centrirano i prilagođeno širini telefona */
                 box-sizing: border-box;
             }
 
-            /* SAKRIVAMO desni blok sa formulama na mobitelu jer su reakcije unutar crteža */
-            .desni-tekst-blok, .tabela-header:last-child {
+            /* Sakrivamo desktop zaglavlje i desni blok sa računom */
+            .tabela-header, .desni-tekst-blok {
                 display: none !important; 
             }
 
-            .tabela-header {
-                font-size: 11px;
-                padding-bottom: 5px;
+            /* Nazivi greda na mobitelu postaju centrirani naslovi iznad svakog crteža */
+            .naziv-grede {
+                text-align: center !important;
+                background: #fdfdfd;
+                padding: 6px;
+                border-bottom: 1px dashed #ddd;
+                margin-bottom: -10px; /* Približava naslov svom crtežu */
+            }
+
+            .crtez-kontejner {
+                justify-content: center !important;
             }
 
             .kontrolni-panel {
@@ -139,12 +160,14 @@
 
     <div class="grid-tabela">
         
+        <!-- ZAGLAVLJE (Vidljivo samo na računaru) -->
         <div class="tabela-header">Statika</div>
         <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
         <div class="tabela-header">Jednačine i Reakcije</div>
 
-        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">1. Prosta greda</div>
-        <div style="display: flex; justify-content: center;">
+        <!-- ================= RED 1: PROSTA GREDA ================= -->
+        <div class="naziv-grede">1. Prosta greda</div>
+        <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teret">
                     <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -172,8 +195,9 @@
             <div id="f_Reakcije" style="color:#27ae60;"></div>
         </div>
 
-        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">2. Sa prepustima</div>
-        <div style="display: flex; justify-content: center;">
+        <!-- ================= RED 2: SA PREPUSTIMA ================= -->
+        <div class="naziv-grede">2. Sa prepustima</div>
+        <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teretPrepust">
                     <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -203,8 +227,9 @@
             <div id="f_PrepustR" style="color:#27ae60;"></div>
         </div>
 
-        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">3. Konzola</div>
-        <div style="display: flex; justify-content: center;">
+        <!-- ================= RED 3: KONZOLA ================= -->
+        <div class="naziv-grede">3. Konzola</div>
+        <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teretKonzola">
                     <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -235,6 +260,7 @@
 
     </div>
 
+    <!-- RESPONSIVNI FIXED PANEL -->
     <div class="kontrolni-panel">
         <div class="panel-red">
             <div class="input-grupa">
@@ -299,7 +325,6 @@ const elementi = {
     tTekstPrepust1: document.getElementById('tTekstPrepust1'), tTekstPrepust2: document.getElementById('tTekstPrepust2'),
     teretKonzola: document.getElementById('teretKonzola'), momenatPlotKonzola: document.getElementById('momenatPlotKonzola'), momenatTekstKonzola: document.getElementById('momenatTekstKonzola'), transverzalnaPlotKonzola: document.getElementById('transverzalnaPlotKonzola'),
     tTekstKonzola: document.getElementById('tTekstKonzola'),
-    // Novi elementi za dinamičke tekstove na samom crtežu
     svgRa1: document.getElementById('svgRa1'), svgRb1: document.getElementById('svgRb1'),
     svgRa2: document.getElementById('svgRa2'), svgRb2: document.getElementById('svgRb2'),
     svgR3: document.getElementById('svgR3'), svgM3: document.getElementById('svgM3')
@@ -391,7 +416,6 @@ function azurirajSVE(izvor) {
         elementi.tTekstDesno.setAttribute('y', GEOMETRIJA.nulaY - tdPx1 + 10);
     } else { elementi.tTekstDesno.textContent = ""; }
 
-    // Ispis reakcija na crtežu proste grede
     elementi.svgRa1.textContent = "Ra=" + Tl1.toFixed(1) + "kN";
     elementi.svgRb1.textContent = "Rb=" + Math.abs(Td1).toFixed(1) + "kN";
 
@@ -404,7 +428,6 @@ function azurirajSVE(izvor) {
     elementi.oslonacA_Prepust.setAttribute('transform', `translate(${apsOslonacAX}, 0)`);
     elementi.oslonacB_Prepust.setAttribute('transform', `translate(${apsOslonacBX}, 0)`);
 
-    // Pomicanje tekstualnih oznaka reakcija skupa sa osloncima
     elementi.svgRa2.setAttribute('x', apsOslonacAX);
     elementi.svgRb2.setAttribute('x', apsOslonacBX);
 
@@ -497,11 +520,8 @@ function azurirajSVE(izvor) {
         formule.prepustR.innerHTML = `Ra = <b>${Tl2.toFixed(1)} kN</b> | Rb = <b>${Td2.toFixed(1)} kN</b>`;
     }
 
-    // Ispis reakcija na crtežu za gredu sa prepustima (Ra uzima Tl2, Rb uzima Td2 u zavisnosti od statike)
-    let ispisRa2 = (a < L1) ? Tl2 : Tl2;
-    let ispisRb2 = (a > L - L2) ? Td2 : Math.abs(Td2);
-    // Ako je sila na prepustu, prava vrijednost Rb je razlika ukupne sile i Ra
-    if (a < L1) ispisRb2 = Td2; 
+    let ispisRa2 = Tl2;
+    let ispisRb2 = (a < L1) ? Td2 : Math.abs(Td2);
     elementi.svgRa2.textContent = "Ra=" + ispisRa2.toFixed(1) + "kN";
     elementi.svgRb2.textContent = "Rb=" + ispisRb2.toFixed(1) + "kN";
 
@@ -524,7 +544,6 @@ function azurirajSVE(izvor) {
         elementi.tTekstKonzola.textContent = "";
     }
 
-    // Ispis vrijednosti reakcija u samom uklještenju
     elementi.svgR3.textContent = "R=" + F.toFixed(1) + "kN";
     elementi.svgM3.textContent = "Mu=" + Math.abs(M_uklj).toFixed(1) + "kNm";
 
