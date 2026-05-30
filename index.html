@@ -48,6 +48,7 @@
         .crtez-kontejner {
             display: flex; 
             justify-content: center;
+            align-items: center;
             width: 100%;
         }
 
@@ -104,33 +105,47 @@
             height: 16px;
         }
 
-        /* STILOVI PRILAGOĐENI ZA MOBITEL (Ekran užeg profila) */
+        /* STILOVI PRILAGOĐENI ZA MOBITEL I USKE PROZORE */
         @media (max-width: 768px) {
             .grid-tabela {
-                grid-template-columns: 1fr; /* Tabela postaje isključivo JEDNA vertikalna kolona */
-                row-gap: 25px;
-                padding: 15px;
-                width: 100%;
-                max-width: 340px; /* Savršeno centrirano i prilagođeno širini telefona */
+                grid-template-columns: 100px 300px; /* Redukujemo na tačno dvije kolone */
+                column-gap: 10px;
+                row-gap: 35px;
+                padding: 15px 10px;
+                width: auto;
+                max-width: 420px;
                 box-sizing: border-box;
             }
 
-            /* Sakrivamo desktop zaglavlje i desni blok sa računom */
-            .tabela-header, .desni-tekst-blok {
+            /* Redukovani header na mobitelu */
+            #header-racun {
+                display: none !important; /* Potpuno sakrivamo treći stubac "Jednačine" */
+            }
+            #header-dijagrami {
+                text-align: center !important;
+            }
+            .tabela-header {
+                font-size: 12px;
+                padding-bottom: 6px;
+            }
+
+            /* Sakrivamo velike desne tekstualne blokove sa proračunima */
+            .desni-tekst-blok {
                 display: none !important; 
             }
 
-            /* Nazivi greda na mobitelu postaju centrirani naslovi iznad svakog crteža */
+            /* Nazivi greda dobijaju fiksnu širinu i čisto lijevo ravnanje bez preklapanja */
             .naziv-grede {
-                text-align: center !important;
-                background: #fdfdfd;
-                padding: 6px;
-                border-bottom: 1px dashed #ddd;
-                margin-bottom: -10px; /* Približava naslov svom crtežu */
+                text-align: left !important;
+                font-size: 12px;
+                white-space: nowrap;
+                padding-right: 5px;
             }
 
+            /* Osiguravamo da crtež ostane u svom prostoru i centriran unutar svoje kolone */
             .crtez-kontejner {
                 justify-content: center !important;
+                overflow: visible;
             }
 
             .kontrolni-panel {
@@ -160,12 +175,10 @@
 
     <div class="grid-tabela">
         
-        <!-- ZAGLAVLJE (Vidljivo samo na računaru) -->
-        <div class="tabela-header">Statika</div>
-        <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
-        <div class="tabela-header">Jednačine i Reakcije</div>
+        <div class="tabela-header" id="header-statika">Statika</div>
+        <div class="tabela-header" id="header-dijagrami" style="text-align: center;">Dijagrami</div>
+        <div class="tabela-header" id="header-racun">Jednačine i Reakcije</div>
 
-        <!-- ================= RED 1: PROSTA GREDA ================= -->
         <div class="naziv-grede">1. Prosta greda</div>
         <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
@@ -195,7 +208,6 @@
             <div id="f_Reakcije" style="color:#27ae60;"></div>
         </div>
 
-        <!-- ================= RED 2: SA PREPUSTIMA ================= -->
         <div class="naziv-grede">2. Sa prepustima</div>
         <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
@@ -227,7 +239,6 @@
             <div id="f_PrepustR" style="color:#27ae60;"></div>
         </div>
 
-        <!-- ================= RED 3: KONZOLA ================= -->
         <div class="naziv-grede">3. Konzola</div>
         <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
@@ -260,7 +271,6 @@
 
     </div>
 
-    <!-- RESPONSIVNI FIXED PANEL -->
     <div class="kontrolni-panel">
         <div class="panel-red">
             <div class="input-grupa">
