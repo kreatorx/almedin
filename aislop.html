@@ -1,0 +1,388 @@
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; background-color: #ffffff; padding: 20px 0 160px 0; box-sizing: border-box;">
+
+    <h3 style="margin-top: 0; margin-bottom: 30px; color: #333; font-size: 18px;">Parametarski Solver sa Logaritamskom Normalizacijom Vizuelizacije</h3>
+
+    <div style="display: grid; grid-template-columns: 120px 300px 220px; align-items: center; row-gap: 40px; column-gap: 20px; border: 1px solid #eee; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        
+        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Statika</div>
+        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px; text-align: center;">Dijagrami (M i T)</div>
+        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Jednačine i Reakcije</div>
+
+        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">1. Prosta greda</div>
+        <div>
+            <svg width="300" height="120" style="display: block; overflow: visible;">
+                <g id="teret">
+                    <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                    <polygon points="15,30 12,24 18,24" fill="red" />
+                </g>
+                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                <polygon points="15,36 7,50 23,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
+                <polygon points="285,36 277,50 293,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+                <line x1="272" y1="54" x2="298" y2="54" stroke="black" stroke-width="1.5" />
+                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <path id="momenatPlot" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                <path id="transverzalnaPlot" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
+                
+                <text id="tTekstLijevo" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                <text id="tTekstDesno" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+            </svg>
+        </div>
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #3498db;">
+            <div style="font-weight: bold; margin-bottom: 3px;">Mmax u polju:</div>
+            <div id="f_Mmax" style="color:#2980b9; margin-bottom: 5px;"></div>
+            <div id="f_Reakcije" style="color:#27ae60;"></div>
+        </div>
+
+        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">2. Sa prepustima</div>
+        <div>
+            <svg width="300" height="120" style="display: block; overflow: visible;">
+                <g id="teretPrepust">
+                    <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                    <polygon points="15,30 12,24 18,24" fill="red" />
+                </g>
+                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                
+                <g id="oslonacA_Prepust"><polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" /></g>
+                <g id="oslonacB_Prepust">
+                    <polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="-13" y1="54" x2="13" y2="54" stroke="black" stroke-width="1.5" />
+                </g>
+
+                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <path id="momenatPlotPrepust" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                <path id="transverzalnaPlotPrepust" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                <text id="momenatTekstPrepust" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
+                <text id="tTekstPrepust1" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                <text id="tTekstPrepust2" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+            </svg>
+        </div>
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #e67e22;">
+            <div id="f_PrepustNaslov" style="font-weight:bold; margin-bottom: 3px;"></div>
+            <div id="f_PrepustM" style="color:#2980b9; margin-bottom: 5px;"></div>
+            <div id="f_PrepustR" style="color:#27ae60;"></div>
+        </div>
+
+        <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">3. Konzola</div>
+        <div>
+            <svg width="300" height="120" style="display: block; overflow: visible;">
+                <g id="teretKonzola">
+                    <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                    <polygon points="15,30 12,24 18,24" fill="red" />
+                </g>
+                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                <line x1="15" y1="22" x2="15" y2="44" stroke="black" stroke-width="2.5" />
+                <line x1="15" y1="24" x2="11" y2="28" stroke="black" stroke-width="1" />
+                <line x1="15" y1="29" x2="11" y2="33" stroke="black" stroke-width="1" />
+                <line x1="15" y1="34" x2="11" y2="38" stroke="black" stroke-width="1" />
+                <line x1="15" y1="39" x2="11" y2="43" stroke="black" stroke-width="1" />
+                <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
+                <path id="momenatPlotKonzola" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                <path id="transverzalnaPlotKonzola" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
+                <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+            </svg>
+        </div>
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #9b59b6;">
+            <div style="font-weight: bold; margin-bottom: 3px;">Uklještenje:</div>
+            <div id="f_KonzolaM" style="color:#2980b9; margin-bottom: 5px;"></div>
+            <div id="f_KonzolaT" style="color:#27ae60;"></div>
+        </div>
+
+    </div>
+
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.98); border-top: 1px solid #e0e0e0; padding: 15px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 -4px 15px rgba(0,0,0,0.06); z-index: 9999; backdrop-filter: blur(5px); font-size: 12px; color: #444;">
+        
+        <div style="display: flex; align-items: center; gap: 25px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>Pozicija sile (klizač):</span>
+                <input type="range" id="gredaSlider" min="0" max="100" value="0" style="width: 250px; cursor: pointer; margin: 0;">
+            </div>
+            
+            <div style="border-left: 1px solid #ddd; height: 20px;"></div>
+            
+            <div style="display: flex; align-items: center; gap: 15px; font-weight: bold;">
+                <label style="display: flex; align-items: center; gap: 5px; color: #2980b9; cursor: pointer;">
+                    <input type="checkbox" id="checkM" checked style="cursor: pointer;"> Prikaži M dijagram
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; color: #27ae60; cursor: pointer;">
+                    <input type="checkbox" id="checkT" checked style="cursor: pointer;"> Prikaži T dijagram
+                </label>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 15px; font-weight: 500;">
+            <label>Ukupno L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 50px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
+            
+            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            
+            <span style="color: #e67e22;">Prepusti:</span>
+            <label>L₁ = <input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 45px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
+            <label>L₂ = <input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 45px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
+            
+            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            
+            <label style="color: #2980b9;">Sila na a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 55px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
+            
+            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            
+            <label style="color: red;">Sila F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 55px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
+        </div>
+    </div>
+
+</div>
+
+<script>
+const GEOMETRIJA = {
+    pocetakX: 15, krajX: 285, duzinaX: 270,
+    oslonacB_PrepustX: 215,
+    nulaY: 85, 
+    maxPikselaDopusteno: 120,
+    skalaM_baza: 22,
+    skalaT_baza: 15
+};
+
+const elementi = {
+    slider: document.getElementById('gredaSlider'),
+    checkM: document.getElementById('checkM'),
+    checkT: document.getElementById('checkT'),
+    inputL: document.getElementById('inputL'), inputL1: document.getElementById('inputL1'), inputL2: document.getElementById('inputL2'),
+    inputA: document.getElementById('inputA'), inputF: document.getElementById('inputF'),
+    txtF1: document.getElementById('txtF1'), txtF2: document.getElementById('txtF2'), txtF3: document.getElementById('txtF3'),
+    teret: document.getElementById('teret'), momenatPlot: document.getElementById('momenatPlot'), momenatTekst: document.getElementById('momenatTekst'), transverzalnaPlot: document.getElementById('transverzalnaPlot'),
+    tTekstLijevo: document.getElementById('tTekstLijevo'), tTekstDesno: document.getElementById('tTekstDesno'),
+    oslonacA_Prepust: document.getElementById('oslonacA_Prepust'), oslonacB_Prepust: document.getElementById('oslonacB_Prepust'),
+    teretPrepust: document.getElementById('teretPrepust'), momenatPlotPrepust: document.getElementById('momenatPlotPrepust'), momenatTekstPrepust: document.getElementById('momenatTekstPrepust'), transverzalnaPlotPrepust: document.getElementById('transverzalnaPlotPrepust'),
+    tTekstPrepust1: document.getElementById('tTekstPrepust1'), tTekstPrepust2: document.getElementById('tTekstPrepust2'),
+    teretKonzola: document.getElementById('teretKonzola'), momenatPlotKonzola: document.getElementById('momenatPlotKonzola'), momenatTekstKonzola: document.getElementById('momenatTekstKonzola'), transverzalnaPlotKonzola: document.getElementById('transverzalnaPlotKonzola'),
+    tTekstKonzola: document.getElementById('tTekstKonzola')
+};
+
+const formule = {
+    prostaM: document.getElementById('f_Mmax'), prostaR: document.getElementById('f_Reakcije'),
+    prepustNaslov: document.getElementById('f_PrepustNaslov'), prepustM: document.getElementById('f_PrepustM'), prepustR: document.getElementById('f_PrepustR'),
+    konzolaM: document.getElementById('f_KonzolaM'), konzolaT: document.getElementById('f_KonzolaT')
+};
+
+function logSkala(vrijednost, tip) {
+    if (vrijednost === 0) return 0;
+    const znak = Math.sign(vrijednost);
+    const apsolutno = Math.abs(vrijednost);
+    const k = (tip === 'M') ? GEOMETRIJA.skalaM_baza : GEOMETRIJA.skalaT_baza;
+    return znak * k * Math.log(apsolutno + 1);
+}
+
+function kontrolisiVidljivostDijagrama() {
+    const prikaziM = elementi.checkM.checked ? "block" : "none";
+    const prikaziT = elementi.checkT.checked ? "block" : "none";
+    
+    document.querySelectorAll('.dijagram-m').forEach(el => el.style.display = prikaziM);
+    document.querySelectorAll('.dijagram-t').forEach(el => el.style.display = prikaziT);
+}
+
+function azurirajSVE(izvor) {
+    let L = Math.max(1.0, parseFloat(elementi.inputL.value) || 4.0);
+    let L1 = Math.max(0.0, parseFloat(elementi.inputL1.value) || 0.0);
+    let L2 = Math.max(0.0, parseFloat(elementi.inputL2.value) || 0.0);
+    let F = Math.max(0.1, parseFloat(elementi.inputF.value) || 1.0);
+    let a = parseFloat(elementi.inputA.value);
+    if (isNaN(a)) a = 0;
+
+    if (L1 + L2 >= L) {
+        L1 = L * 0.25; L2 = L * 0.25;
+        elementi.inputL1.value = L1.toFixed(1); elementi.inputL2.value = L2.toFixed(1);
+    }
+
+    if (izvor === 'slider') {
+        a = L * (parseFloat(elementi.slider.value) / 100);
+        elementi.inputA.value = a.toFixed(2);
+    } else {
+        if (a > L) a = L;
+        if (a < 0) a = 0;
+        elementi.inputA.value = a.toFixed(2);
+        elementi.slider.value = (a / L) * 100;
+    }
+    elementi.inputA.max = L;
+
+    const pxPerMetar = GEOMETRIJA.duzinaX / L;
+    const cistiX = a * pxPerMetar;
+    const apsX = GEOMETRIJA.pocetakX + cistiX;
+
+    elementi.txtF1.textContent = F.toFixed(0) + "kN";
+    elementi.txtF2.textContent = F.toFixed(0) + "kN";
+    elementi.txtF3.textContent = F.toFixed(0) + "kN";
+
+    elementi.teret.setAttribute('transform', `translate(${cistiX}, 0)`);
+    elementi.teretPrepust.setAttribute('transform', `translate(${cistiX}, 0)`);
+    elementi.teretKonzola.setAttribute('transform', `translate(${cistiX}, 0)`);
+
+    // ================= 1. PROSTA GREDA =================
+    const b1 = L - a;
+    const Mmax1 = (F * a * b1) / L;
+    const Tl1 = (F * b1) / L;
+    const Td1 = -(F * a) / L;
+
+    const mPx1 = logSkala(Mmax1, 'M');
+    const tlPx1 = logSkala(Tl1, 'T');
+    const tdPx1 = logSkala(Td1, 'T');
+
+    elementi.momenatPlot.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${apsX} ${GEOMETRIJA.nulaY + mPx1} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+    elementi.momenatTekst.textContent = Mmax1 > 0 ? Mmax1.toFixed(1) + " kNm" : "";
+    elementi.momenatTekst.setAttribute('x', apsX);
+    elementi.momenatTekst.setAttribute('y', GEOMETRIJA.nulaY + mPx1 + (mPx1 >= 0 ? 11 : -4));
+    elementi.transverzalnaPlot.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY - tlPx1} L ${apsX} ${GEOMETRIJA.nulaY - tlPx1} L ${apsX} ${GEOMETRIJA.nulaY - tdPx1} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY - tdPx1} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+    
+    // ISPRAVLJENO: Dinamičko računanje sredine za oba pravougaonika T dijagrama
+    if (a > 0.05) {
+        elementi.tTekstLijevo.textContent = "+" + Tl1.toFixed(1) + " kN";
+        elementi.tTekstLijevo.setAttribute('x', (GEOMETRIJA.pocetakX + apsX) / 2); // Tačno na pola lijevog bloka
+        elementi.tTekstLijevo.setAttribute('y', GEOMETRIJA.nulaY - tlPx1 - 4);
+    } else { elementi.tTekstLijevo.textContent = ""; }
+
+    if (a < L - 0.05) {
+        elementi.tTekstDesno.textContent = Td1.toFixed(1) + " kN";
+        elementi.tTekstDesno.setAttribute('x', (apsX + GEOMETRIJA.krajX) / 2);    // Tačno na pola desnog bloka
+        elementi.tTekstDesno.setAttribute('y', GEOMETRIJA.nulaY - tdPx1 + 10);
+    } else { elementi.tTekstDesno.textContent = ""; }
+
+    formule.prostaM.innerHTML = `M = ${F}·${a.toFixed(1)}·${b1.toFixed(1)}/${L} = <b>${Mmax1.toFixed(1)} kNm</b>`;
+    formule.prostaR.innerHTML = `Ra = <b>${Tl1.toFixed(1)} kN</b> | Rb = <b>${Math.abs(Td1).toFixed(1)} kN</b>`;
+
+    // ================= 2. GREDA SA PREPUSTIMA =================
+    const apsOslonacAX = GEOMETRIJA.pocetakX + (L1 * pxPerMetar);
+    const apsOslonacBX = GEOMETRIJA.krajX - (L2 * pxPerMetar);
+    elementi.oslonacA_Prepust.setAttribute('transform', `translate(${apsOslonacAX}, 0)`);
+    elementi.oslonacB_Prepust.setAttribute('transform', `translate(${apsOslonacBX}, 0)`);
+
+    const L_raspon2 = L - L1 - L2;
+    let M_A = 0, M_B = 0, M_f2 = 0, Tl2 = 0, Td2 = 0;
+
+    if (a < L1) {
+        const krak = L1 - a;
+        M_A = -F * krak;
+        Tl2 = (F * (L_raspon2 + krak)) / L_raspon2; 
+        Td2 = -(F * krak) / L_raspon2;             
+        
+        const mAPx = logSkala(M_A, 'M'); 
+        const fPx = logSkala(-F, 'T');    
+        const tdPx2 = logSkala(Math.abs(Td2), 'T'); 
+
+        elementi.momenatPlotPrepust.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${apsX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY + mAPx} L ${apsOslonacBX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+        elementi.momenatTekstPrepust.textContent = Math.abs(M_A).toFixed(1) + " kNm";
+        elementi.momenatTekstPrepust.setAttribute('x', apsOslonacAX);
+        elementi.momenatTekstPrepust.setAttribute('y', GEOMETRIJA.nulaY + mAPx - 6);
+        elementi.transverzalnaPlotPrepust.setAttribute('d', `M ${apsX} ${GEOMETRIJA.nulaY} L ${apsX} ${GEOMETRIJA.nulaY - fPx} L ${apsOslonacAX} ${GEOMETRIJA.nulaY - fPx} L ${apsOslonacAX} ${GEOMETRIJA.nulaY - tdPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY - tdPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY} Z`);
+        
+        elementi.tTekstPrepust1.textContent = "-" + F.toFixed(1) + " kN";
+        elementi.tTekstPrepust1.setAttribute('x', (apsX + apsOslonacAX) / 2);
+        elementi.tTekstPrepust1.setAttribute('y', GEOMETRIJA.nulaY - fPx + 10);
+
+        elementi.tTekstPrepust2.textContent = "+" + Math.abs(Td2).toFixed(1) + " kN";
+        elementi.tTekstPrepust2.setAttribute('x', (apsOslonacAX + apsOslonacBX) / 2);
+        elementi.tTekstPrepust2.setAttribute('y', GEOMETRIJA.nulaY - tdPx2 - 4);
+
+        formule.prepustNaslov.textContent = "Lijevi prepust:";
+        formule.prepustM.innerHTML = `M_oslonacA = <b>${M_A.toFixed(1)} kNm</b>`;
+        formule.prepustR.innerHTML = `Ra = <b>${Tl2.toFixed(1)} kN</b> | Rb = <b>${Td2.toFixed(1)} kN</b>`;
+    } 
+    else if (a >= L1 && a <= (L - L2)) {
+        const a_unutra = a - L1; 
+        const b_unutra = L_raspon2 - a_unutra;
+        Tl2 = (F * b_unutra) / L_raspon2; 
+        Td2 = -((F * a_unutra) / L_raspon2); 
+        M_f2 = (F * a_unutra * b_unutra) / L_raspon2;
+        
+        const mfPx2 = logSkala(M_f2, 'M'); 
+        const tlPx2 = logSkala(Tl2, 'T'); 
+        const tdPx2 = logSkala(Td2, 'T');
+
+        elementi.momenatPlotPrepust.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY} L ${apsX} ${GEOMETRIJA.nulaY + mfPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+        elementi.momenatTekstPrepust.textContent = M_f2 > 0 ? M_f2.toFixed(1) + " kNm" : "";
+        elementi.momenatTekstPrepust.setAttribute('x', apsX);
+        elementi.momenatTekstPrepust.textContent = M_f2 > 0 ? M_f2.toFixed(1) + " kNm" : "";
+        elementi.momenatTekstPrepust.setAttribute('y', GEOMETRIJA.nulaY + mfPx2 + 11);
+        elementi.transverzalnaPlotPrepust.setAttribute('d', `M ${apsOslonacAX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY - tlPx2} L ${apsX} ${GEOMETRIJA.nulaY - tlPx2} L ${apsX} ${GEOMETRIJA.nulaY - tdPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY - tdPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY} Z`);
+
+        elementi.tTekstPrepust1.textContent = Tl2 > 0 ? "+" + Tl2.toFixed(1) + " kN" : "";
+        elementi.tTekstPrepust1.setAttribute('x', (apsOslonacAX + apsX) / 2);
+        elementi.tTekstPrepust1.setAttribute('y', GEOMETRIJA.nulaY - tlPx2 - 4);
+
+        elementi.tTekstPrepust2.textContent = Td2 < 0 ? Td2.toFixed(1) + " kN" : "";
+        elementi.tTekstPrepust2.setAttribute('x', (apsX + apsOslonacBX) / 2);
+        elementi.tTekstPrepust2.setAttribute('y', GEOMETRIJA.nulaY - tdPx2 + 10);
+
+        formule.prepustNaslov.textContent = "Unutrašnje polje:";
+        formule.prepustM.innerHTML = `M_polje = <b>${M_f2.toFixed(1)} kNm</b>`;
+        formule.prepustR.innerHTML = `Ra = <b>${Tl2.toFixed(1)} kN</b> | Rb = <b>${Math.abs(Td2).toFixed(1)} kN</b>`;
+    } 
+    else {
+        const krak = a - (L - L2); 
+        M_B = -F * krak; 
+        Tl2 = -(F * krak) / L_raspon2; 
+        Td2 = (F * (L_raspon2 + krak)) / L_raspon2; 
+        
+        const mBPx = logSkala(M_B, 'M'); 
+        const tlPx2 = logSkala(Tl2, 'T'); 
+        const fPx = logSkala(F, 'T');
+
+        elementi.momenatPlotPrepust.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY} L ${apsOslonacBX} ${GEOMETRIJA.nulaY + mBPx} L ${apsX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+        elementi.momenatTekstPrepust.textContent = Math.abs(M_B).toFixed(1) + " kNm";
+        elementi.momenatTekstPrepust.setAttribute('x', apsOslonacBX);
+        elementi.momenatTekstPrepust.setAttribute('y', GEOMETRIJA.nulaY + mBPx - 4);
+        elementi.transverzalnaPlotPrepust.setAttribute('d', `M ${apsOslonacAX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY - tlPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY - tlPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY - fPx} L ${apsX} ${GEOMETRIJA.nulaY - fPx} L ${apsX} ${GEOMETRIJA.nulaY} Z`);
+
+        elementi.tTekstPrepust1.textContent = Tl2.toFixed(1) + " kN";
+        elementi.tTekstPrepust1.setAttribute('x', (apsOslonacAX + apsOslonacBX) / 2);
+        elementi.tTekstPrepust1.setAttribute('y', GEOMETRIJA.nulaY - tlPx2 + 10);
+
+        elementi.tTekstPrepust2.textContent = "+" + F.toFixed(1) + " kN";
+        elementi.tTekstPrepust2.setAttribute('x', (apsOslonacBX + apsX) / 2);
+        elementi.tTekstPrepust2.setAttribute('y', GEOMETRIJA.nulaY - fPx - 4);
+
+        formule.prepustNaslov.textContent = "Desni prepust:";
+        formule.prepustM.innerHTML = `M_oslonacB = <b>${M_B.toFixed(1)} kNm</b>`;
+        formule.prepustR.innerHTML = `Ra = <b>${Tl2.toFixed(1)} kN</b> | Rb = <b>${Td2.toFixed(1)} kN</b>`;
+    }
+
+    // ================= 3. KONZOLA =================
+    const M_uklj = -F * a;
+    const mPx3 = logSkala(M_uklj, 'M'); 
+    const fPx3 = logSkala(-F, 'T');    
+
+    elementi.momenatPlotKonzola.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY + mPx3} L ${apsX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
+    elementi.momenatTekstKonzola.textContent = M_uklj !== 0 ? Math.abs(M_uklj).toFixed(1) + " kNm" : "";
+    elementi.momenatTekstKonzola.setAttribute('x', GEOMETRIJA.pocetakX + 4);
+    elementi.momenatTekstKonzola.setAttribute('y', GEOMETRIJA.nulaY + mPx3 - 4);
+    elementi.transverzalnaPlotKonzola.setAttribute('d', cistiX > 0 ? `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY - fPx3} L ${apsX} ${GEOMETRIJA.nulaY - fPx3} L ${apsX} ${GEOMETRIJA.nulaY} Z` : `Z`);
+
+    if (cistiX > 0) {
+        elementi.tTekstKonzola.textContent = "-" + F.toFixed(1) + " kN";
+        elementi.tTekstKonzola.setAttribute('x', (GEOMETRIJA.pocetakX + apsX) / 2);
+        elementi.tTekstKonzola.setAttribute('y', GEOMETRIJA.nulaY - fPx3 + 10);
+    } else {
+        elementi.tTekstKonzola.textContent = "";
+    }
+
+    formule.konzolaM.innerHTML = `M_uklj = -${F} · ${a.toFixed(1)} = <b>${M_uklj.toFixed(1)} kNm</b>`;
+    formule.konzolaT.innerHTML = `T = <b>${cistiX > 0 ? (-F).toFixed(1) : "0.0"} kN</b> | R = <b>${F.toFixed(1)} kN</b>`;
+
+    kontrolisiVidljivostDijagrama();
+}
+
+if (elementi.slider) {
+    elementi.slider.addEventListener('input', () => azurirajSVE('slider'));
+    elementi.checkM.addEventListener('change', kontrolisiVidljivostDijagrama);
+    elementi.checkT.addEventListener('change', kontrolisiVidljivostDijagrama);
+    
+    elementi.inputL.addEventListener('input', () => azurirajSVE('inputL'));
+    elementi.inputL1.addEventListener('input', () => azurirajSVE('inputL1'));
+    elementi.inputL2.addEventListener('input', () => azurirajSVE('inputL2'));
+    elementi.inputA.addEventListener('input', () => azurirajSVE('inputA'));
+    elementi.inputF.addEventListener('input', () => azurirajSVE('inputF'));
+    
+    azurirajSVE('slider');
+}
+</script>
