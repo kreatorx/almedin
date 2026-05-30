@@ -4,20 +4,145 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Građevinski dnevnik by Almedin</title>
+    <style>
+        /* GLAVNI STILOVI ZA RAČUNAR (Desktop) */
+        .main-container {
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            font-family: sans-serif; 
+            background-color: #ffffff; 
+            padding: 20px 20px 180px 20px; 
+            box-sizing: border-box;
+        }
+
+        .grid-tabela {
+            display: grid; 
+            grid-template-columns: 120px 300px 220px; 
+            align-items: center; 
+            row-gap: 40px; 
+            column-gap: 20px; 
+            border: 1px solid #eee; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            background: #ffffff;
+        }
+
+        .tabela-header {
+            font-weight: bold; 
+            color: #555; 
+            border-bottom: 2px solid #ddd; 
+            padding-bottom: 10px;
+        }
+
+        .kontrolni-panel {
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: rgba(255, 255, 255, 0.98); 
+            border-top: 1px solid #e0e0e0; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 12px; 
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.06); 
+            z-index: 9999; 
+            backdrop-filter: blur(5px); 
+            font-size: 13px; 
+            color: #444;
+            box-sizing: border-box;
+        }
+
+        .panel-red {
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .input-grupa {
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .separator {
+            border-left: 1px solid #ddd; 
+            height: 16px;
+        }
+
+        /* STILOVI PRILAGOĐENI ZA MOBITEL (Ekran užeg profila) */
+        @media (max-width: 768px) {
+            .grid-tabela {
+                grid-template-columns: 1fr; /* Tabela postaje jedna jedina kolona */
+                row-gap: 25px;
+                padding: 15px;
+                width: 100%;
+                max-width: 340px; /* Prilagođeno širini telefona */
+                box-sizing: border-box;
+            }
+
+            /* Sakrivamo fiksno desktop zaglavlje jer gubi smisao u jednoj koloni */
+            .tabela-header {
+                display: none; 
+            }
+
+            /* Centriramo crteže i nazive greda na mobitelu */
+            .grid-tabela > div {
+                text-align: center !important;
+            }
+
+            /* Dodajemo mali vizuelni razmak ispod naziva svake grede */
+            .grid-tabela > div[style*="font-size: 13px"] {
+                border-bottom: 1px dashed #ddd;
+                padding-bottom: 5px;
+                margin-top: 15px;
+            }
+
+            /* Kontrolni panel na dnu prelamamo u stubac da se sve vidi */
+            .kontrolni-panel {
+                padding: 10px;
+            }
+
+            .panel-red {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .separator {
+                display: none; /* Sakrivamo vertikalne crtice na mobitelu */
+            }
+            
+            /* Smanjujemo slider da ne izlazi van ekrana telefona */
+            #gredaSlider {
+                width: 200px !important;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; background-color: #ffffff; padding: 20px 0 160px 0; box-sizing: border-box;">
 
-    <h3 style="margin-top: 0; margin-bottom: 30px; color: #333; font-size: 18px;">Parametarski Solver sa Logaritamskom Normalizacijom Vizuelizacije</h3>
+<div class="main-container">
 
-    <div style="display: grid; grid-template-columns: 120px 300px 220px; align-items: center; row-gap: 40px; column-gap: 20px; border: 1px solid #eee; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+    <h3 style="margin-top: 0; margin-bottom: 30px; color: #333; font-size: 18px; text-align: center;">Parametarski Solver sa Logaritamskom Normalizacijom</h3>
+
+    <div class="grid-tabela">
         
-        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Statika</div>
-        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px; text-align: center;">Dijagrami (M i T)</div>
-        <div style="font-weight: bold; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Jednačine i Reakcije</div>
+        <div class="tabela-header">Statika</div>
+        <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
+        <div class="tabela-header">Jednačine i Reakcije</div>
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">1. Prosta greda</div>
-        <div>
+        <div style="display: flex; justify-content: center;">
             <svg width="300" height="120" style="display: block; overflow: visible;">
                 <g id="teret">
                     <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -32,19 +157,18 @@
                 <path id="momenatPlot" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
                 <path id="transverzalnaPlot" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
                 <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
-                
                 <text id="tTekstLijevo" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
                 <text id="tTekstDesno" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #3498db;">
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #3498db; box-sizing: border-box;">
             <div style="font-weight: bold; margin-bottom: 3px;">Mmax u polju:</div>
             <div id="f_Mmax" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_Reakcije" style="color:#27ae60;"></div>
         </div>
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">2. Sa prepustima</div>
-        <div>
+        <div style="display: flex; justify-content: center;">
             <svg width="300" height="120" style="display: block; overflow: visible;">
                 <g id="teretPrepust">
                     <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -52,13 +176,11 @@
                     <polygon points="15,30 12,24 18,24" fill="red" />
                 </g>
                 <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
-                
                 <g id="oslonacA_Prepust"><polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" /></g>
                 <g id="oslonacB_Prepust">
                     <polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
                     <line x1="-13" y1="54" x2="13" y2="54" stroke="black" stroke-width="1.5" />
                 </g>
-
                 <line x1="5" y1="85" x2="295" y2="85" stroke="black" stroke-width="1" stroke-dasharray="3" />
                 <path id="momenatPlotPrepust" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
                 <path id="transverzalnaPlotPrepust" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
@@ -67,14 +189,14 @@
                 <text id="tTekstPrepust2" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #e67e22;">
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #e67e22; box-sizing: border-box;">
             <div id="f_PrepustNaslov" style="font-weight:bold; margin-bottom: 3px;"></div>
             <div id="f_PrepustM" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_PrepustR" style="color:#27ae60;"></div>
         </div>
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">3. Konzola</div>
-        <div>
+        <div style="display: flex; justify-content: center;">
             <svg width="300" height="120" style="display: block; overflow: visible;">
                 <g id="teretKonzola">
                     <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
@@ -94,7 +216,7 @@
                 <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #9b59b6;">
+        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #9b59b6; box-sizing: border-box;">
             <div style="font-weight: bold; margin-bottom: 3px;">Uklještenje:</div>
             <div id="f_KonzolaM" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_KonzolaT" style="color:#27ae60;"></div>
@@ -102,49 +224,55 @@
 
     </div>
 
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.98); border-top: 1px solid #e0e0e0; padding: 15px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 -4px 15px rgba(0,0,0,0.06); z-index: 9999; backdrop-filter: blur(5px); font-size: 12px; color: #444;">
-        
-        <div style="display: flex; align-items: center; gap: 25px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span>Pozicija sile (klizač):</span>
-                <input type="range" id="gredaSlider" min="0" max="100" value="0" style="width: 250px; cursor: pointer; margin: 0;">
+    <div class="kontrolni-panel">
+        <div class="panel-red">
+            <div class="input-grupa">
+                <span>Pozicija sile:</span>
+                <input type="range" id="gredaSlider" min="0" max="100" value="0">
             </div>
             
-            <div style="border-left: 1px solid #ddd; height: 20px;"></div>
+            <div class="separator"></div>
             
-            <div style="display: flex; align-items: center; gap: 15px; font-weight: bold;">
-                <label style="display: flex; align-items: center; gap: 5px; color: #2980b9; cursor: pointer;">
-                    <input type="checkbox" id="checkM" checked style="cursor: pointer;"> Prikaži M dijagram
+            <div class="input-grupa" style="font-weight: bold;">
+                <label style="color: #2980b9; cursor: pointer; display: flex; align-items: center; gap: 3px;">
+                    <input type="checkbox" id="checkM" checked> Prikaži M
                 </label>
-                <label style="display: flex; align-items: center; gap: 5px; color: #27ae60; cursor: pointer;">
-                    <input type="checkbox" id="checkT" checked style="cursor: pointer;"> Prikaži T dijagram
+                <label style="color: #27ae60; cursor: pointer; display: flex; align-items: center; gap: 3px;">
+                    <input type="checkbox" id="checkT" checked> Prikaži T
                 </label>
             </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 15px; font-weight: 500;">
-            <label>Ukupno L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 50px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
+        <div class="panel-red" style="font-weight: 500;">
+            <div class="input-grupa">
+                <label>Ukupno L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
+            </div>
             
-            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            <div class="separator"></div>
             
-            <span style="color: #e67e22;">Prepusti:</span>
-            <label>L₁ = <input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 45px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
-            <label>L₂ = <input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 45px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace;"></label> m
+            <div class="input-grupa">
+                <span style="color: #e67e22;">Prepusti:</span>
+                <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
+                <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
+            </div>
             
-            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            <div class="separator"></div>
             
-            <label style="color: #2980b9;">Sila na a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 55px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
+            <div class="input-grupa">
+                <label style="color: #2980b9;">na a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
+            </div>
             
-            <div style="border-left: 1px solid #ddd; height: 16px;"></div>
+            <div class="separator"></div>
             
-            <label style="color: red;">Sila F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 55px; padding: 3px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
+            <div class="input-grupa">
+                <label style="color: red;">F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
+            </div>
         </div>
     </div>
 
 </div>
 
-    </body>
-</html>
+
 
 <script>
 const GEOMETRIJA = {
@@ -397,3 +525,6 @@ if (elementi.slider) {
     azurirajSVE('slider');
 }
 </script>
+
+        </body>
+</html>
