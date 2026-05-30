@@ -39,6 +39,17 @@
             padding-bottom: 10px;
         }
 
+        /* Dodatni kontejner za naslov na mobitelu - inicijalno sakriven */
+        .tabela-header-mobile {
+            display: none;
+            font-weight: bold;
+            color: #555;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            text-align: center;
+            width: 100%;
+        }
+
         .naziv-grede {
             font-weight: bold; 
             color: #2c3e50; 
@@ -108,44 +119,37 @@
         /* STILOVI PRILAGOĐENI ZA MOBITEL I USKE PROZORE */
         @media (max-width: 768px) {
             .grid-tabela {
-                grid-template-columns: 100px 300px; /* Redukujemo na tačno dvije kolone */
-                column-gap: 10px;
-                row-gap: 35px;
-                padding: 15px 10px;
-                width: auto;
-                max-width: 420px;
+                grid-template-columns: 1fr; /* Prebacivanje u samo JEDNU kolonu */
+                row-gap: 30px;
+                padding: 15px;
+                width: 100%;
+                max-width: 340px;
                 box-sizing: border-box;
+                justify-items: center;
             }
 
-            /* Redukovani header na mobitelu */
-            #header-racun {
-                display: none !important; /* Potpuno sakrivamo treći stubac "Jednačine" */
-            }
-            #header-dijagrami {
-                text-align: center !important;
-            }
-            .tabela-header {
-                font-size: 12px;
-                padding-bottom: 6px;
-            }
-
-            /* Sakrivamo velike desne tekstualne blokove sa proračunima */
-            .desni-tekst-blok {
+            /* Sakrivamo standardne desktop headere i desne proračune */
+            .tabela-header, .desni-tekst-blok {
                 display: none !important; 
             }
 
-            /* Nazivi greda dobijaju fiksnu širinu i čisto lijevo ravnanje bez preklapanja */
-            .naziv-grede {
-                text-align: left !important;
-                font-size: 12px;
-                white-space: nowrap;
-                padding-right: 5px;
+            /* Aktivacija spojenog naslova na mobitelu */
+            .tabela-header-mobile {
+                display: block !important;
+                font-size: 13px;
             }
 
-            /* Osiguravamo da crtež ostane u svom prostoru i centriran unutar svoje kolone */
+            /* Nazivi greda postaju centralni naslovi iznad crteža */
+            .naziv-grede {
+                text-align: center !important;
+                font-size: 13px;
+                width: 100%;
+                margin-top: 10px;
+                margin-bottom: 5px; /* Pravi jasan odmak iznad crvene oznake sile */
+            }
+
             .crtez-kontejner {
                 justify-content: center !important;
-                overflow: visible;
             }
 
             .kontrolni-panel {
@@ -175,9 +179,11 @@
 
     <div class="grid-tabela">
         
-        <div class="tabela-header" id="header-statika">Statika</div>
-        <div class="tabela-header" id="header-dijagrami" style="text-align: center;">Dijagrami</div>
-        <div class="tabela-header" id="header-racun">Jednačine i Reakcije</div>
+        <div class="tabela-header">Statika</div>
+        <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
+        <div class="tabela-header">Jednačine i Reakcije</div>
+
+        <div class="tabela-header-mobile">Statika i Dijagrami</div>
 
         <div class="naziv-grede">1. Prosta greda</div>
         <div class="crtez-kontejner">
@@ -242,11 +248,6 @@
         <div class="naziv-grede">3. Konzola</div>
         <div class="crtez-kontejner">
             <svg width="300" height="135" style="display: block; overflow: visible;">
-                <g id="teretKonzola">
-                    <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
-                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
-                    <polygon points="15,30 12,24 18,24" fill="red" />
-                </g>
                 <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
                 <line x1="15" y1="22" x2="15" y2="44" stroke="black" stroke-width="2.5" />
                 <line x1="15" y1="24" x2="11" y2="28" stroke="black" stroke-width="1" />
@@ -259,8 +260,14 @@
                 <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
                 <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
                 
-                <text id="svgR3" x="25" y="55" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="start">R=0.0</text>
-                <text id="svgM3" x="25" y="66" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="start">Mu=0.0</text>
+                <text id="svgR3" x="15" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">R=0.0</text>
+                <text id="svgM3" x="15" y="77" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="middle">Mu=0.0</text>
+                
+                <g id="teretKonzola">
+                    <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                    <polygon points="15,30 12,24 18,24" fill="red" />
+                </g>
             </svg>
         </div>
         <div class="desni-tekst-blok" style="border-left: 3px solid #9b59b6;">
