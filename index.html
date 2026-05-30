@@ -38,6 +38,17 @@
             padding-bottom: 10px;
         }
 
+        .desni-tekst-blok {
+            text-align: left; 
+            font-size: 11px; 
+            font-family: monospace; 
+            color: #444; 
+            background: #fafafa; 
+            padding: 10px; 
+            border-radius: 4px; 
+            box-sizing: border-box;
+        }
+
         .kontrolni-panel {
             position: fixed; 
             bottom: 0; 
@@ -83,48 +94,39 @@
         /* STILOVI PRILAGOĐENI ZA MOBITEL (Ekran užeg profila) */
         @media (max-width: 768px) {
             .grid-tabela {
-                grid-template-columns: 1fr; /* Tabela postaje jedna jedina kolona */
-                row-gap: 25px;
-                padding: 15px;
+                grid-template-columns: 100px 300px; /* Smanjujemo na 2 kolone (Naziv i Crtež) */
+                row-gap: 30px;
+                padding: 10px;
                 width: 100%;
-                max-width: 340px; /* Prilagođeno širini telefona */
+                max-width: 420px;
                 box-sizing: border-box;
             }
 
-            /* Sakrivamo fiksno desktop zaglavlje jer gubi smisao u jednoj koloni */
+            /* SAKRIVAMO desni blok sa formulama na mobitelu jer su reakcije unutar crteža */
+            .desni-tekst-blok, .tabela-header:last-child {
+                display: none !important; 
+            }
+
             .tabela-header {
-                display: none; 
-            }
-
-            /* Centriramo crteže i nazive greda na mobitelu */
-            .grid-tabela > div {
-                text-align: center !important;
-            }
-
-            /* Dodajemo mali vizuelni razmak ispod naziva svake grede */
-            .grid-tabela > div[style*="font-size: 13px"] {
-                border-bottom: 1px dashed #ddd;
+                font-size: 11px;
                 padding-bottom: 5px;
-                margin-top: 15px;
             }
 
-            /* Kontrolni panel na dnu prelamamo u stubac da se sve vidi */
             .kontrolni-panel {
                 padding: 10px;
             }
 
             .panel-red {
                 flex-direction: column;
-                gap: 10px;
+                gap: 8px;
             }
 
             .separator {
-                display: none; /* Sakrivamo vertikalne crtice na mobitelu */
+                display: none; 
             }
             
-            /* Smanjujemo slider da ne izlazi van ekrana telefona */
             #gredaSlider {
-                width: 200px !important;
+                width: 180px !important;
             }
         }
     </style>
@@ -143,7 +145,7 @@
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">1. Prosta greda</div>
         <div style="display: flex; justify-content: center;">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
+            <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teret">
                     <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
                     <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
@@ -159,9 +161,12 @@
                 <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
                 <text id="tTekstLijevo" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
                 <text id="tTekstDesno" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                
+                <text id="svgRa1" x="15" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
+                <text id="svgRb1" x="285" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #3498db; box-sizing: border-box;">
+        <div class="desni-tekst-blok" style="border-left: 3px solid #3498db;">
             <div style="font-weight: bold; margin-bottom: 3px;">Mmax u polju:</div>
             <div id="f_Mmax" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_Reakcije" style="color:#27ae60;"></div>
@@ -169,7 +174,7 @@
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">2. Sa prepustima</div>
         <div style="display: flex; justify-content: center;">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
+            <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teretPrepust">
                     <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
                     <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
@@ -187,9 +192,12 @@
                 <text id="momenatTekstPrepust" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
                 <text id="tTekstPrepust1" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
                 <text id="tTekstPrepust2" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                
+                <text id="svgRa2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
+                <text id="svgRb2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #e67e22; box-sizing: border-box;">
+        <div class="desni-tekst-blok" style="border-left: 3px solid #e67e22;">
             <div id="f_PrepustNaslov" style="font-weight:bold; margin-bottom: 3px;"></div>
             <div id="f_PrepustM" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_PrepustR" style="color:#27ae60;"></div>
@@ -197,7 +205,7 @@
 
         <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">3. Konzola</div>
         <div style="display: flex; justify-content: center;">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
+            <svg width="300" height="135" style="display: block; overflow: visible;">
                 <g id="teretKonzola">
                     <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
                     <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
@@ -214,9 +222,12 @@
                 <path id="transverzalnaPlotKonzola" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
                 <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
                 <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                
+                <text id="svgR3" x="25" y="55" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="start">R=0.0</text>
+                <text id="svgM3" x="25" y="66" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="start">Mu=0.0</text>
             </svg>
         </div>
-        <div style="text-align: left; font-size: 11px; font-family: monospace; color: #444; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #9b59b6; box-sizing: border-box;">
+        <div class="desni-tekst-blok" style="border-left: 3px solid #9b59b6;">
             <div style="font-weight: bold; margin-bottom: 3px;">Uklještenje:</div>
             <div id="f_KonzolaM" style="color:#2980b9; margin-bottom: 5px;"></div>
             <div id="f_KonzolaT" style="color:#27ae60;"></div>
@@ -230,9 +241,7 @@
                 <span>Pozicija sile:</span>
                 <input type="range" id="gredaSlider" min="0" max="100" value="0">
             </div>
-            
             <div class="separator"></div>
-            
             <div class="input-grupa" style="font-weight: bold;">
                 <label style="color: #2980b9; cursor: pointer; display: flex; align-items: center; gap: 3px;">
                     <input type="checkbox" id="checkM" checked> Prikaži M
@@ -247,23 +256,17 @@
             <div class="input-grupa">
                 <label>Ukupno L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
             </div>
-            
             <div class="separator"></div>
-            
             <div class="input-grupa">
                 <span style="color: #e67e22;">Prepusti:</span>
                 <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
                 <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
             </div>
-            
             <div class="separator"></div>
-            
             <div class="input-grupa">
                 <label style="color: #2980b9;">na a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
             </div>
-            
             <div class="separator"></div>
-            
             <div class="input-grupa">
                 <label style="color: red;">F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
             </div>
@@ -271,8 +274,6 @@
     </div>
 
 </div>
-
-
 
 <script>
 const GEOMETRIJA = {
@@ -297,7 +298,11 @@ const elementi = {
     teretPrepust: document.getElementById('teretPrepust'), momenatPlotPrepust: document.getElementById('momenatPlotPrepust'), momenatTekstPrepust: document.getElementById('momenatTekstPrepust'), transverzalnaPlotPrepust: document.getElementById('transverzalnaPlotPrepust'),
     tTekstPrepust1: document.getElementById('tTekstPrepust1'), tTekstPrepust2: document.getElementById('tTekstPrepust2'),
     teretKonzola: document.getElementById('teretKonzola'), momenatPlotKonzola: document.getElementById('momenatPlotKonzola'), momenatTekstKonzola: document.getElementById('momenatTekstKonzola'), transverzalnaPlotKonzola: document.getElementById('transverzalnaPlotKonzola'),
-    tTekstKonzola: document.getElementById('tTekstKonzola')
+    tTekstKonzola: document.getElementById('tTekstKonzola'),
+    // Novi elementi za dinamičke tekstove na samom crtežu
+    svgRa1: document.getElementById('svgRa1'), svgRb1: document.getElementById('svgRb1'),
+    svgRa2: document.getElementById('svgRa2'), svgRb2: document.getElementById('svgRb2'),
+    svgR3: document.getElementById('svgR3'), svgM3: document.getElementById('svgM3')
 };
 
 const formule = {
@@ -374,18 +379,21 @@ function azurirajSVE(izvor) {
     elementi.momenatTekst.setAttribute('y', GEOMETRIJA.nulaY + mPx1 + (mPx1 >= 0 ? 11 : -4));
     elementi.transverzalnaPlot.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY - tlPx1} L ${apsX} ${GEOMETRIJA.nulaY - tlPx1} L ${apsX} ${GEOMETRIJA.nulaY - tdPx1} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY - tdPx1} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
     
-    // ISPRAVLJENO: Dinamičko računanje sredine za oba pravougaonika T dijagrama
     if (a > 0.05) {
         elementi.tTekstLijevo.textContent = "+" + Tl1.toFixed(1) + " kN";
-        elementi.tTekstLijevo.setAttribute('x', (GEOMETRIJA.pocetakX + apsX) / 2); // Tačno na pola lijevog bloka
+        elementi.tTekstLijevo.setAttribute('x', (GEOMETRIJA.pocetakX + apsX) / 2);
         elementi.tTekstLijevo.setAttribute('y', GEOMETRIJA.nulaY - tlPx1 - 4);
     } else { elementi.tTekstLijevo.textContent = ""; }
 
     if (a < L - 0.05) {
         elementi.tTekstDesno.textContent = Td1.toFixed(1) + " kN";
-        elementi.tTekstDesno.setAttribute('x', (apsX + GEOMETRIJA.krajX) / 2);    // Tačno na pola desnog bloka
+        elementi.tTekstDesno.setAttribute('x', (apsX + GEOMETRIJA.krajX) / 2);
         elementi.tTekstDesno.setAttribute('y', GEOMETRIJA.nulaY - tdPx1 + 10);
     } else { elementi.tTekstDesno.textContent = ""; }
+
+    // Ispis reakcija na crtežu proste grede
+    elementi.svgRa1.textContent = "Ra=" + Tl1.toFixed(1) + "kN";
+    elementi.svgRb1.textContent = "Rb=" + Math.abs(Td1).toFixed(1) + "kN";
 
     formule.prostaM.innerHTML = `M = ${F}·${a.toFixed(1)}·${b1.toFixed(1)}/${L} = <b>${Mmax1.toFixed(1)} kNm</b>`;
     formule.prostaR.innerHTML = `Ra = <b>${Tl1.toFixed(1)} kN</b> | Rb = <b>${Math.abs(Td1).toFixed(1)} kN</b>`;
@@ -395,6 +403,10 @@ function azurirajSVE(izvor) {
     const apsOslonacBX = GEOMETRIJA.krajX - (L2 * pxPerMetar);
     elementi.oslonacA_Prepust.setAttribute('transform', `translate(${apsOslonacAX}, 0)`);
     elementi.oslonacB_Prepust.setAttribute('transform', `translate(${apsOslonacBX}, 0)`);
+
+    // Pomicanje tekstualnih oznaka reakcija skupa sa osloncima
+    elementi.svgRa2.setAttribute('x', apsOslonacAX);
+    elementi.svgRb2.setAttribute('x', apsOslonacBX);
 
     const L_raspon2 = L - L1 - L2;
     let M_A = 0, M_B = 0, M_f2 = 0, Tl2 = 0, Td2 = 0;
@@ -439,7 +451,6 @@ function azurirajSVE(izvor) {
         const tdPx2 = logSkala(Td2, 'T');
 
         elementi.momenatPlotPrepust.setAttribute('d', `M ${GEOMETRIJA.pocetakX} ${GEOMETRIJA.nulaY} L ${apsOslonacAX} ${GEOMETRIJA.nulaY} L ${apsX} ${GEOMETRIJA.nulaY + mfPx2} L ${apsOslonacBX} ${GEOMETRIJA.nulaY} L ${GEOMETRIJA.krajX} ${GEOMETRIJA.nulaY} Z`);
-        elementi.momenatTekstPrepust.textContent = M_f2 > 0 ? M_f2.toFixed(1) + " kNm" : "";
         elementi.momenatTekstPrepust.setAttribute('x', apsX);
         elementi.momenatTekstPrepust.textContent = M_f2 > 0 ? M_f2.toFixed(1) + " kNm" : "";
         elementi.momenatTekstPrepust.setAttribute('y', GEOMETRIJA.nulaY + mfPx2 + 11);
@@ -486,6 +497,14 @@ function azurirajSVE(izvor) {
         formule.prepustR.innerHTML = `Ra = <b>${Tl2.toFixed(1)} kN</b> | Rb = <b>${Td2.toFixed(1)} kN</b>`;
     }
 
+    // Ispis reakcija na crtežu za gredu sa prepustima (Ra uzima Tl2, Rb uzima Td2 u zavisnosti od statike)
+    let ispisRa2 = (a < L1) ? Tl2 : Tl2;
+    let ispisRb2 = (a > L - L2) ? Td2 : Math.abs(Td2);
+    // Ako je sila na prepustu, prava vrijednost Rb je razlika ukupne sile i Ra
+    if (a < L1) ispisRb2 = Td2; 
+    elementi.svgRa2.textContent = "Ra=" + ispisRa2.toFixed(1) + "kN";
+    elementi.svgRb2.textContent = "Rb=" + ispisRb2.toFixed(1) + "kN";
+
     // ================= 3. KONZOLA =================
     const M_uklj = -F * a;
     const mPx3 = logSkala(M_uklj, 'M'); 
@@ -504,6 +523,10 @@ function azurirajSVE(izvor) {
     } else {
         elementi.tTekstKonzola.textContent = "";
     }
+
+    // Ispis vrijednosti reakcija u samom uklještenju
+    elementi.svgR3.textContent = "R=" + F.toFixed(1) + "kN";
+    elementi.svgM3.textContent = "Mu=" + Math.abs(M_uklj).toFixed(1) + "kNm";
 
     formule.konzolaM.innerHTML = `M_uklj = -${F} · ${a.toFixed(1)} = <b>${M_uklj.toFixed(1)} kNm</b>`;
     formule.konzolaT.innerHTML = `T = <b>${cistiX > 0 ? (-F).toFixed(1) : "0.0"} kN</b> | R = <b>${F.toFixed(1)} kN</b>`;
@@ -526,5 +549,5 @@ if (elementi.slider) {
 }
 </script>
 
-        </body>
+</body>
 </html>
