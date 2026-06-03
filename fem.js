@@ -2,6 +2,8 @@ const canvas = document.getElementById('femCanvas');
 const ctx = canvas.getContext('2d');
 const E = 3e7, A = 0.18, I = 0.0054;
 const SCALE = 50;
+let currentZoom = 1.0; // Početni zoom faktor
+const BASE_SCALE = 50;  // Tvoja osnovna skala
 let panX = 0, panY = 0;
 let diagScale = 1.0;
 
@@ -38,8 +40,8 @@ function undo() {
     if (currentView !== 'model') runFEM(); else draw();
 }
 
-function toCanvas(mx, my) { return { x: panX + mx * SCALE, y: panY - my * SCALE }; }
-function toModel(cx, cy) { return { x: (cx - panX) / SCALE, y: -(cy - panY) / SCALE }; }
+function toCanvas(mx, my) { return { x: panX + mx * (BASE_SCALE*currentZoom), y: panY - my * (BASE_SCALE*currentZoom) }; }
+function toModel(cx, cy) { return { x: (cx - panX) / (BASE_SCALE * currentZoom), y: -(cy - panY) / (BASE_SCALE * currentZoom) }; }
 
 function getSnapped(cx, cy) {
     let raw = toModel(cx, cy);
@@ -97,15 +99,20 @@ canvas.addEventListener('wheel', e => {
     if (['N', 'V', 'M'].includes(currentView)) {
         e.preventDefault();
         diagScale *= (e.deltaY > 0 ? 0.9 : 1.1);
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
         draw();
     }
 }, { passive: false });
 
-// PODRŠKA ZA MOBILNI PINCH-TO-ZOOM DIJAGRAMA
+// PODRŠKA ZA MOBILNI PINCH-TO-ZOOM DIJAGRAMA i ZOOM/PAN PRSTOM
 let initialPinchDist = 0;
+let pinchCenter = { x: 0, y: 0 };
 canvas.addEventListener('touchstart', e => {
     // 1. Pinch-to-zoom (2 prsta)
     if (e.touches.length === 2) {
+        pinchCenter.x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        pinchCenter.y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     }
     // 2. Klik/Potez (1 prst)
