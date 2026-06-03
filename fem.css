@@ -198,3 +198,9 @@ canvas {
         border-color: #00ff88;
     }
 
+#femCanvas {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+}
