@@ -10,9 +10,14 @@
 
     <div id="toolbar">
         <button onclick="undo()" style="background:#666; color:#fff;" title="Vrati korak unazad">↩ Undo</button>
+
+        <div style="display: flex; gap: 5px;">
         <button id="btn-draw" class="active" onclick="setMode('draw')">Crtanje</button>
         <button id="btn-select" onclick="setMode('select')">Uredi / Pomjeri</button>
+        </div>
+
         <button onclick="runFEM()" style="background:#00ff88; color:#000;">PRORAČUNAJ</button>
+
         <select id="result-view" onchange="changeView(this.value)">
             <option value="model">Model</option>
             <option value="def">Deformacija</option>
@@ -21,6 +26,7 @@
             <option value="M">Momenti (M)</option>
             <option value="R">Reakcije oslonaca</option>
         </select>
+
         <button onclick="clearAll()" style="background:#ff4a4a;">Obriši sve</button>
 
         <div class="toolbar-spacer"></div>
