@@ -126,6 +126,36 @@
             opacity: 0.8;
         }
 
+        /* STIL ZA AI FEM DUGME */
+        .ai-fem-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4a4ae7, #da70d6);
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+            .ai-fem-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+            }
+
+            .ai-fem-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
         /* STILOVI PRILAGOĐENI ZA MOBITEL I USKE PROZORE */
         @media (max-width: 768px) {
             .grid-tabela {
@@ -180,155 +210,174 @@
             #gredaSlider {
                 width: 180px !important;
             }
+
+            /* Prilagodba AI dugmeta za mobitel */
+            .ai-fem-btn {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 100%;
+                max-width: 340px;
+                justify-content: center;
+                margin-bottom: 20px;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="main-container">
+    <div class="main-container">
 
-    <div class="grid-tabela">
-        
-        <div class="tabela-header">Statika</div>
-        <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
-        <div class="tabela-header">Jednačine i Reakcije</div>
-
-        <div class="tabela-header-mobile">Statika i Dijagrami</div>
-
-        <div class="naziv-grede">1. Prosta greda</div>
-        <div class="crtez-kontejner">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
-                <g id="teret">
-                    <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
-                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
-                    <polygon points="15,30 12,24 18,24" fill="red" />
-                </g>
-                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
-                <polygon points="15,36 7,50 23,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
-                <polygon points="285,36 277,50 293,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
-                <line x1="272" y1="54" x2="298" y2="54" stroke="black" stroke-width="1.5" />
-                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
-                <path id="momenatPlot" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
-                <path id="transverzalnaPlot" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
-                <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
-                <text id="tTekstLijevo" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
-                <text id="tTekstDesno" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
-                
-                <text id="svgRa1" x="15" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
-                <text id="svgRb1" x="285" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
+        <a href="fem.html" class="ai-fem-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
             </svg>
-        </div>
-        <div class="desni-tekst-blok" style="border-left: 3px solid #3498db;">
-            <div style="font-weight: bold; margin-bottom: 3px;">Mmax u polju:</div>
-            <div id="f_Mmax" style="color:#2980b9; margin-bottom: 5px;"></div>
-            <div id="f_Reakcije" style="color:#27ae60;"></div>
+            AI FEM Solver
+        </a>
+
+        <div class="grid-tabela">
+
+            <div class="tabela-header">Statika</div>
+            <div class="tabela-header" style="text-align: center;">Dijagrami (M i T)</div>
+            <div class="tabela-header">Jednačine i Reakcije</div>
+
+            <div class="tabela-header-mobile">Statika i Dijagrami</div>
+
+            <div class="naziv-grede">1. Prosta greda</div>
+            <div class="crtez-kontejner">
+                <svg width="300" height="120" style="display: block; overflow: visible;">
+                    <g id="teret">
+                        <text id="txtF1" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                        <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                        <polygon points="15,30 12,24 18,24" fill="red" />
+                    </g>
+                    <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                    <polygon points="15,36 7,50 23,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
+                    <polygon points="285,36 277,50 293,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
+                    <line x1="272" y1="54" x2="298" y2="54" stroke="black" stroke-width="1.5" />
+                    <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
+                    <path id="momenatPlot" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                    <path id="transverzalnaPlot" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                    <text id="momenatTekst" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
+                    <text id="tTekstLijevo" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                    <text id="tTekstDesno" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+
+                    <text id="svgRa1" x="15" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
+                    <text id="svgRb1" x="285" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
+                </svg>
+            </div>
+            <div class="desni-tekst-blok" style="border-left: 3px solid #3498db;">
+                <div style="font-weight: bold; margin-bottom: 3px;">Mmax u polju:</div>
+                <div id="f_Mmax" style="color:#2980b9; margin-bottom: 5px;"></div>
+                <div id="f_Reakcije" style="color:#27ae60;"></div>
+            </div>
+
+            <div class="naziv-grede">2. Sa prepustima</div>
+            <div class="crtez-kontejner">
+                <svg width="300" height="120" style="display: block; overflow: visible;">
+                    <g id="teretPrepust">
+                        <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                        <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                        <polygon points="15,30 12,24 18,24" fill="red" />
+                    </g>
+                    <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                    <g id="oslonacA_Prepust"><polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" /></g>
+                    <g id="oslonacB_Prepust">
+                        <polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" />
+                        <line x1="-13" y1="54" x2="13" y2="54" stroke="black" stroke-width="1.5" />
+                    </g>
+                    <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
+                    <path id="momenatPlotPrepust" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                    <path id="transverzalnaPlotPrepust" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                    <text id="momenatTekstPrepust" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
+                    <text id="tTekstPrepust1" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+                    <text id="tTekstPrepust2" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+
+                    <text id="svgRa2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
+                    <text id="svgRb2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
+                </svg>
+            </div>
+            <div class="desni-tekst-blok" style="border-left: 3px solid #e67e22;">
+                <div id="f_PrepustNaslov" style="font-weight:bold; margin-bottom: 3px;"></div>
+                <div id="f_PrepustM" style="color:#2980b9; margin-bottom: 5px;"></div>
+                <div id="f_PrepustR" style="color:#27ae60;"></div>
+            </div>
+
+            <div class="naziv-grede">3. Konzola</div>
+            <div class="crtez-kontejner">
+                <svg width="300" height="120" style="display: block; overflow: visible;">
+                    <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
+                    <line x1="15" y1="22" x2="15" y2="44" stroke="black" stroke-width="2.5" />
+                    <line x1="15" y1="24" x2="11" y2="28" stroke="black" stroke-width="1" />
+                    <line x1="15" y1="29" x2="11" y2="33" stroke="black" stroke-width="1" />
+                    <line x1="15" y1="34" x2="11" y2="38" stroke="black" stroke-width="1" />
+                    <line x1="15" y1="39" x2="11" y2="43" stroke="black" stroke-width="1" />
+                    <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
+                    <path id="momenatPlotKonzola" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
+                    <path id="transverzalnaPlotKonzola" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
+                    <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
+                    <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
+
+                    <text id="svgR3" x="15" y="60" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">R=0.0</text>
+                    <text id="svgM3" x="15" y="70" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="middle">Mu=0.0</text>
+
+                    <g id="teretKonzola">
+                        <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
+                        <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
+                        <polygon points="15,30 12,24 18,24" fill="red" />
+                    </g>
+                </svg>
+            </div>
+            <div class="desni-tekst-blok" style="border-left: 3px solid #9b59b6;">
+                <div style="font-weight: bold; margin-bottom: 3px;">Uklještenje:</div>
+                <div id="f_KonzolaM" style="color:#2980b9; margin-bottom: 5px;"></div>
+                <div id="f_KonzolaT" style="color:#27ae60;"></div>
+            </div>
+
         </div>
 
-        <div class="naziv-grede">2. Sa prepustima</div>
-        <div class="crtez-kontejner">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
-                <g id="teretPrepust">
-                    <text id="txtF2" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
-                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
-                    <polygon points="15,30 12,24 18,24" fill="red" />
-                </g>
-                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
-                <g id="oslonacA_Prepust"><polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round" /></g>
-                <g id="oslonacB_Prepust">
-                    <polygon points="0,36 -8,50 8,50" fill="lightgray" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
-                    <line x1="-13" y1="54" x2="13" y2="54" stroke="black" stroke-width="1.5" />
-                </g>
-                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
-                <path id="momenatPlotPrepust" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
-                <path id="transverzalnaPlotPrepust" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
-                <text id="momenatTekstPrepust" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="middle"></text>
-                <text id="tTekstPrepust1" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
-                <text id="tTekstPrepust2" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
-                
-                <text id="svgRa2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Ra=0.0</text>
-                <text id="svgRb2" x="0" y="65" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">Rb=0.0</text>
-            </svg>
-        </div>
-        <div class="desni-tekst-blok" style="border-left: 3px solid #e67e22;">
-            <div id="f_PrepustNaslov" style="font-weight:bold; margin-bottom: 3px;"></div>
-            <div id="f_PrepustM" style="color:#2980b9; margin-bottom: 5px;"></div>
-            <div id="f_PrepustR" style="color:#27ae60;"></div>
-        </div>
+        <div class="potpis">@Almedin</div>
 
-        <div class="naziv-grede">3. Konzola</div>
-        <div class="crtez-kontejner">
-            <svg width="300" height="120" style="display: block; overflow: visible;">
-                <rect x="15" y="30" width="270" height="6" fill="lightgray" stroke="black" stroke-width="1.5" rx="1" />
-                <line x1="15" y1="22" x2="15" y2="44" stroke="black" stroke-width="2.5" />
-                <line x1="15" y1="24" x2="11" y2="28" stroke="black" stroke-width="1" />
-                <line x1="15" y1="29" x2="11" y2="33" stroke="black" stroke-width="1" />
-                <line x1="15" y1="34" x2="11" y2="38" stroke="black" stroke-width="1" />
-                <line x1="15" y1="39" x2="11" y2="43" stroke="black" stroke-width="1" />
-                <line x1="5" y1="105" x2="295" y2="105" stroke="black" stroke-width="0.5" stroke-dasharray="3" />
-                <path id="momenatPlotKonzola" class="dijagram-m" d="" fill="rgba(52, 152, 219, 0.15)" stroke="#3498db" stroke-width="1.5" />
-                <path id="transverzalnaPlotKonzola" class="dijagram-t" d="" fill="rgba(46, 204, 113, 0.15)" stroke="#2ecc71" stroke-width="1.5" />
-                <text id="momenatTekstKonzola" class="dijagram-m" x="0" y="0" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#2980b9" text-anchor="start"></text>
-                <text id="tTekstKonzola" class="dijagram-t" x="0" y="0" font-family="sans-serif" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle"></text>
-                
-                <text id="svgR3" x="15" y="60" font-family="monospace" font-size="9px" font-weight="bold" fill="#27ae60" text-anchor="middle">R=0.0</text>
-                <text id="svgM3" x="15" y="70" font-family="monospace" font-size="9px" font-weight="bold" fill="#2980b9" text-anchor="middle">Mu=0.0</text>
-                
-                <g id="teretKonzola">
-                    <text id="txtF3" x="15" y="12" font-family="sans-serif" font-size="10px" font-weight="bold" fill="red" text-anchor="middle">1kN</text>
-                    <line x1="15" y1="15" x2="15" y2="27" stroke="red" stroke-width="2" />
-                    <polygon points="15,30 12,24 18,24" fill="red" />
-                </g>
-            </svg>
-        </div>
-        <div class="desni-tekst-blok" style="border-left: 3px solid #9b59b6;">
-            <div style="font-weight: bold; margin-bottom: 3px;">Uklještenje:</div>
-            <div id="f_KonzolaM" style="color:#2980b9; margin-bottom: 5px;"></div>
-            <div id="f_KonzolaT" style="color:#27ae60;"></div>
+        <div class="kontrolni-panel">
+            <div class="panel-red">
+                <div class="input-grupa">
+                    <span>Pozicija sile:</span>
+                    <input type="range" id="gredaSlider" min="0" max="100" value="0">
+                </div>
+                <div class="separator"></div>
+                <div class="input-grupa" style="font-weight: bold;">
+                    <label style="color: #2980b9; cursor: pointer; display: flex; align-items: center; gap: 3px;">
+                        <input type="checkbox" id="checkM" checked> Prikaži M
+                    </label>
+                    <label style="color: #27ae60; cursor: pointer; display: flex; align-items: center; gap: 3px;">
+                        <input type="checkbox" id="checkT" checked> Prikaži T
+                    </label>
+                </div>
+            </div>
+
+            <div class="panel-red" style="font-weight: 500;">
+                <div class="input-grupa">
+                    <label>L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
+
+                    <div class="separator"></div>
+
+
+                    <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
+                    <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
+                </div>
+                <div class="separator"></div>
+                <div class="input-grupa">
+                    <label style="color: #2980b9;">a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
+
+                    <div class="separator"></div>
+
+                    <label style="color: red;">F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
+                </div><br>
+            </div>
         </div>
 
     </div>
-
-    <div class="potpis">@Almedin</div>
-
-    <div class="kontrolni-panel">
-        <div class="panel-red">
-            <div class="input-grupa">
-                <span>Pozicija sile:</span>
-                <input type="range" id="gredaSlider" min="0" max="100" value="0">
-            </div>
-            <div class="separator"></div>
-            <div class="input-grupa" style="font-weight: bold;">
-                <label style="color: #2980b9; cursor: pointer; display: flex; align-items: center; gap: 3px;">
-                    <input type="checkbox" id="checkM" checked> Prikaži M
-                </label>
-                <label style="color: #27ae60; cursor: pointer; display: flex; align-items: center; gap: 3px;">
-                    <input type="checkbox" id="checkT" checked> Prikaži T
-                </label>
-            </div>
-        </div>
-
-        <div class="panel-red" style="font-weight: 500;">
-            <div class="input-grupa">
-                <label>L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
-            
-            <div class="separator"></div>
-            
-               
-                <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
-                <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
-            </div>
-            <div class="separator"></div>
-            <div class="input-grupa">
-                <label style="color: #2980b9;">a = <input type="number" id="inputA" min="0.0" max="4.0" step="0.05" value="0.00" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold;"></label> m
-            
-            <div class="separator"></div>
-            
-                <label style="color: red;">F = <input type="number" id="inputF" min="0.1" max="500.0" step="1.0" value="1.0" style="width: 50px; text-align: center; font-family: monospace; font-weight: bold; color: red;"></label> kN
-            </div><br>
-        </div>
-    </div>
-
-</div>
 
 <script>
 const GEOMETRIJA = {

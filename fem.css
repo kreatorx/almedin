@@ -1,0 +1,200 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1e1e24;
+    color: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#toolbar {
+    background: #2a2a35;
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    border-bottom: 2px solid #3a3a4a;
+    z-index: 10;
+    flex-wrap: wrap;
+}
+
+button, select {
+    background: #4a4ae7;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+    button:hover {
+        background: #3a3ab5;
+    }
+
+    button.active {
+        background: #00ff88;
+        color: #000;
+    }
+
+#canvas-container {
+    flex: 1;
+    position: relative;
+    background: #111116;
+    cursor: crosshair;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.modal {
+    display: none;
+    position: absolute;
+    background: #2a2a35;
+    border: 1px solid #4a4ae7;
+    border-radius: 6px;
+    padding: 12px;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    width: max-content;
+}
+
+    .modal h3 {
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: #00ff88;
+        text-align: center;
+        border-bottom: 1px solid #444;
+        padding-bottom: 6px;
+    }
+
+.icon-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.icon-btn {
+    background: #1e1e24;
+    border: 1px solid #555;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .icon-btn.active {
+        background: #4a4ae7;
+        border-color: #00ff88;
+    }
+
+    .icon-btn svg {
+        pointer-events: none;
+    }
+
+.input-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 6px;
+    justify-content: space-between;
+}
+
+    .input-row label {
+        font-size: 11px;
+        color: #ccc;
+    }
+
+    .input-row input {
+        padding: 4px;
+        font-size: 11px;
+        background: #1e1e24;
+        border: 1px solid #555;
+        color: white;
+        border-radius: 3px;
+        text-align: center;
+    }
+
+        .input-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .input-row input:focus {
+            border-color: #00ff88;
+            outline: none;
+        }
+
+.modal .actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 5px;
+}
+
+.modal button {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+}
+
+    .modal button.delete {
+        background: #ff4a4a;
+    }
+
+        .modal button.delete:hover {
+            background: #b53a3a;
+        }
+
+#btn-q-type {
+    width: 24px;
+    padding: 2px 0;
+    font-size: 14px;
+    background: #1e1e24;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+    #btn-q-type:hover {
+        background: #00ff88;
+        color: #000;
+    }
+
+.toolbar-spacer {
+    flex-grow: 1;
+}
+
+#btn-settings {
+    background: #1e1e24;
+    border: 1px solid #555;
+    padding: 6px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    #btn-settings:hover {
+        border-color: #00ff88;
+    }
+

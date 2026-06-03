@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web FEM Analizator - Analytical Smooth</title>
+    <link rel="stylesheet" href="fem.css">
+</head>
+<body>
+
+    <div id="toolbar">
+        <button onclick="undo()" style="background:#666; color:#fff;" title="Vrati korak unazad">↩ Undo</button>
+        <button id="btn-draw" class="active" onclick="setMode('draw')">Crtanje</button>
+        <button id="btn-select" onclick="setMode('select')">Uredi / Pomjeri</button>
+        <button onclick="runFEM()" style="background:#00ff88; color:#000;">PRORAČUNAJ</button>
+        <select id="result-view" onchange="changeView(this.value)">
+            <option value="model">Model</option>
+            <option value="def">Deformacija</option>
+            <option value="N">Aksijalne (N)</option>
+            <option value="V">Transverzalne (V)</option>
+            <option value="M">Momenti (M)</option>
+            <option value="R">Reakcije oslonaca</option>
+        </select>
+        <button onclick="clearAll()" style="background:#ff4a4a;">Obriši sve</button>
+
+        <div class="toolbar-spacer"></div>
+
+        <button id="btn-settings" onclick="openSettings()" title="Postavke Grida i Snapa">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+        <input type="text" id="ai-prompt" placeholder="Unesi prompt (npr. ram 2 sprata...)" style="background: #1e1e24; color: #fff; border: 1px solid #555; padding: 6px; border-radius: 5px; width: 250px;">
+        <button onclick="generateAI()" style="background:#da70d6; color:#fff;" id="btn-ai">✨ AI Generiši</button>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="femCanvas"></canvas>
+
+        <div id="settingsModal" class="modal" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 200;">
+            <h3>Postavke</h3>
+            <div class="input-row">
+                <label style="width: 100px; text-align: left;">Prikaži Grid:</label>
+                <input type="checkbox" id="set-grid-vis" checked onchange="updateSettings()">
+            </div>
+            <div class="input-row">
+                <label style="width: 100px; text-align: left;">Grid Korak (m):</label>
+                <input type="number" id="set-grid-step" step="0.1" value="0.5" style="width: 60px;" onchange="updateSettings()">
+            </div>
+            <div style="border-bottom: 1px solid #444; margin: 8px 0;"></div>
+            <div class="input-row">
+                <label style="width: 100px; text-align: left;">Snap to Grid:</label>
+                <input type="checkbox" id="set-snap-vis" checked onchange="updateSettings()">
+            </div>
+            <div class="input-row">
+                <label style="width: 100px; text-align: left;">Snap Korak (m):</label>
+                <input type="number" id="set-snap-step" step="0.1" value="0.5" style="width: 60px;" onchange="updateSettings()">
+            </div>
+            <div class="actions">
+                <button onclick="closeSettings()">Zatvori</button>
+            </div>
+        </div>
+
+        <div id="nodeModal" class="modal">
+            <h3>Čvor</h3>
+            <div class="icon-row" id="restraint-icons">
+                <div class="icon-btn" onclick="setRestraint('none', true)" title="Slobodan"><svg width="20" height="20"><circle cx="10" cy="10" r="3" fill="#fff" /></svg></div>
+                <div class="icon-btn" onclick="setRestraint('pinned', true)" title="Zglob"><svg width="20" height="20"><polygon points="10,6 16,16 4,16" fill="none" stroke="#fff" /><line x1="2" y1="16" x2="18" y2="16" stroke="#fff" /></svg></div>
+                <div class="icon-btn" onclick="setRestraint('roller-x', true)" title="Pokretni"><svg width="20" height="20"><polygon points="10,6 15,14 5,14" fill="none" stroke="#fff" /><circle cx="7" cy="17" r="1.5" fill="#fff" /><circle cx="13" cy="17" r="1.5" fill="#fff" /></svg></div>
+                <div class="icon-btn" onclick="setRestraint('fixed', true)" title="Uklještenje"><svg width="20" height="20"><line x1="8" y1="2" x2="8" y2="18" stroke="#fff" stroke-width="2" /><line x1="8" y1="4" x2="14" y2="0" stroke="#fff" /><line x1="8" y1="10" x2="14" y2="6" stroke="#fff" /><line x1="8" y1="16" x2="14" y2="12" stroke="#fff" /></svg></div>
+            </div>
+            <div class="input-row">
+                <label>F:</label><input type="number" id="node-fx" step="1" style="width:50px" title="Fx (kN)"><input type="number" id="node-fy" step="1" style="width:50px" title="Fy (kN)">
+                <label style="margin-left:5px">M:</label><input type="number" id="node-m" step="1" style="width:50px" title="Mz (kNm)">
+            </div>
+            <div class="input-row">
+                <label>Poz:</label><input type="number" id="node-x" step="0.1" style="width:75px" title="X (m)"><input type="number" id="node-y" step="0.1" style="width:75px" title="Y (m)">
+            </div>
+            <div class="actions">
+                <button onclick="saveNode()">Spasi</button><button class="delete" onclick="deleteNode()">Obriši čvor</button>
+            </div>
+        </div>
+
+        <div id="elementModal" class="modal">
+            <h3 id="load-modal-title">Opterećenje Elementa</h3>
+            <div class="input-row" style="justify-content: flex-start; gap: 8px;">
+                <label>q:</label>
+                <input type="number" id="elem-q" step="1" style="width: 75px;" title="Vrijednost q (kN/m)">
+                <button id="btn-q-type" onclick="toggleQType()" title="Promijeni tip: Gravitaciono / Normalno">↓</button>
+            </div>
+            <div class="input-row">
+                <label>x1 (m):</label><input type="number" id="elem-x1" step="0.1" style="width:55px" title="Odmak od prvog čvora">
+                <label>x2 (m):</label><input type="number" id="elem-x2" step="0.1" style="width:55px" title="Odmak od drugog čvora">
+            </div>
+            <div style="border-bottom: 1px solid #444; margin: 8px 0;"></div>
+            <h3 style="margin-bottom: 5px; font-size: 13px;">Koncentrisano na dužini x</h3>
+            <div class="input-row">
+                <label>Fx (kN):</label><input type="number" id="elem-fx-load" step="1" style="width:45px">
+                <label>Fy (kN):</label><input type="number" id="elem-fy-load" step="1" style="width:45px">
+                <label>M (kNm):</label><input type="number" id="elem-m-load" step="1" style="width:45px">
+            </div>
+            <div class="input-row">
+                <label>Udaljenost x (m):</label><input type="number" id="elem-px" step="0.1" style="width:60px">
+            </div>
+            <div class="actions">
+                <button onclick="saveElementLoad()">Spasi</button><button class="delete" onclick="deleteElementLoad()">Obriši</button>
+            </div>
+        </div>
+    </div>
+    <script src="fem.js"></script>
+    </body> 
+</html>
