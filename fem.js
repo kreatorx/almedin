@@ -636,9 +636,11 @@ function gauss(A, B) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    let currentScale = BASE_SCALE * currentZoom; // Dinamička skala
+
     if (showGrid) {
         ctx.strokeStyle = '#22222a'; ctx.lineWidth = 1;
-        let stepPx = gridStep * SCALE;
+        let stepPx = gridStep * currentScale;
         let startX = panX % stepPx, startY = panY % stepPx;
         for (let x = startX; x < canvas.width; x += stepPx) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
         for (let y = startY; y < canvas.height; y += stepPx) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
@@ -900,7 +902,7 @@ async function generateAI() {
             // Automatsko centriranje vizure na novo-generisani model
             if (nodes.length > 0) {
                 let maxX = Math.max(...nodes.map(n => n.x));
-                panX = (canvas.width - maxX * SCALE) / 2;
+                panX = (canvas.width - maxX * currentScale) / 2;
                 panY = canvas.height - 100; // Baza u dnu ekrana
             }
 
