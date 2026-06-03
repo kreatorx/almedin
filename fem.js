@@ -113,6 +113,7 @@ canvas.addEventListener('touchstart', e => {
         e.preventDefault(); // Sprečava skrolanje stranice
         const touch = e.touches[0];
         const pos = getCanvasCoords(touch.clientX, touch.clientY);
+        lastPanPos = { x: pos.x, y: pos.y };
         handleStart(pos.x, pos.y);
     }
 }, { passive: false });
@@ -138,8 +139,9 @@ canvas.addEventListener('touchmove', e => {
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
-    // Završavamo operaciju
-    handleEnd({});
+    const touch = e.changedTouches[0];
+    const pos = getCanvasCoords(touch.clientX, touch.clientY);
+    handleEnd({ clientX: pos.x, clientY: pos.y });
 }, { passive: false });
 
 canvas.addEventListener('mousedown', e => {
@@ -253,6 +255,14 @@ function handleStart(cx, cy) {
 }
 
 function handleMove(cx, cy) {
+    // 1. PANNING (Samo ako smo u select modu i nismo vukli čvor)
+    if (isPanning) {
+        panX += (cx - lastPanPos.x);
+        panY += (cy - lastPanPos.y);
+        lastPanPos = { x: cx, y: cy };
+        draw();
+        return;
+    }
     const posData = getSnapped(cx, cy);
     if (isDrawing && startNode) {
         draw();
@@ -291,8 +301,11 @@ function handleMove(cx, cy) {
 function handleEnd(e) {
     if (isPanning) { isPanning = false; return; }
 
+    const clientX = e.clientX !== undefined ? e.clientX : 0;
+    const clientY = e.clientY !== undefined ? e.clientY : 0;
+
     if (isDrawing && startNode) {
-        const posC = getCanvasCoords(e.clientX, e.clientY);
+        const posC = { x: clientX, y: clientY };
         const posData = getSnapped(posC.x, posC.y);
         const hit = findHit(posData.raw.x, posData.raw.y);
         const endNode = (hit && hit.type === 'node') ? hit.node : null;
