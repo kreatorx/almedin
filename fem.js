@@ -104,11 +104,21 @@ canvas.addEventListener('wheel', e => {
 // PODRŠKA ZA MOBILNI PINCH-TO-ZOOM DIJAGRAMA
 let initialPinchDist = 0;
 canvas.addEventListener('touchstart', e => {
+    // 1. Pinch-to-zoom (2 prsta)
     if (e.touches.length === 2) {
         initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     }
-});
+    // 2. Klik/Potez (1 prst)
+    else if (e.touches.length === 1) {
+        e.preventDefault(); // Sprečava skrolanje stranice
+        const touch = e.touches[0];
+        const pos = getCanvasCoords(touch.clientX, touch.clientY);
+        handleStart(pos.x, pos.y);
+    }
+}, { passive: false });
+
 canvas.addEventListener('touchmove', e => {
+    // 1. Pinch-to-zoom
     if (e.touches.length === 2 && ['N', 'V', 'M'].includes(currentView)) {
         e.preventDefault();
         let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -118,6 +128,18 @@ canvas.addEventListener('touchmove', e => {
             draw();
         }
     }
+    // 2. Potez prstom (1 prst)
+    else if (e.touches.length === 1) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const pos = getCanvasCoords(touch.clientX, touch.clientY);
+        handleMove(pos.x, pos.y);
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    // Završavamo operaciju
+    handleEnd({});
 }, { passive: false });
 
 canvas.addEventListener('mousedown', e => {
