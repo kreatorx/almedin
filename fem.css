@@ -146,6 +146,11 @@ canvas {
             outline: none;
         }
 
+    input, select, textarea {
+        font-size: 16px !important; /* sprečava iOS da zumira */
+        padding: 10px;
+    }
+
 .modal .actions {
     display: flex;
     justify-content: space-between;

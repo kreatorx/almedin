@@ -60,6 +60,17 @@ function resize() {
 }
 window.addEventListener('resize', resize); setTimeout(resize, 50);
 
+// Kada korisnik završi kucanje i klikne van inputa
+document.addEventListener('focusout', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // Vraćamo viewport na normalu
+        setTimeout(() => {
+            window.scrollTo(0, 0); // Vraća skrol na početak
+            document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }, 300);
+    }
+});
+
 function setMode(m) {
     mode = m; document.getElementById('btn-draw').className = m === 'draw' ? 'active' : '';
     document.getElementById('btn-select').className = m === 'select' ? 'active' : '';
@@ -95,29 +106,38 @@ function updateSettings() {
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // SKALIRANJE DIJAGRAMA SCROLLOM (Točkić miša)
+// SKALIRANJE MIŠEM (Scroll)
 canvas.addEventListener('wheel', e => {
-    if (['N', 'V', 'M'].includes(currentView)) {
-        e.preventDefault();
-        diagScale *= (e.deltaY > 0 ? 0.9 : 1.1);
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
-        draw();
-    }
+    e.preventDefault(); // Sprječava skrolanje cijele stranice
+
+    let oldZoom = currentZoom;
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
+
+    // Zadržavanje fokusa ispod miša
+    const r = canvas.getBoundingClientRect();
+    let focusX = e.clientX - r.left;
+    let focusY = e.clientY - r.top;
+
+    panX = focusX - (focusX - panX) * (currentZoom / oldZoom);
+    panY = focusY - (focusY - panY) * (currentZoom / oldZoom);
+
+    draw();
 }, { passive: false });
 
-// PODRŠKA ZA MOBILNI PINCH-TO-ZOOM DIJAGRAMA i ZOOM/PAN PRSTOM
+// PODRŠKA ZA MOBILNI PINCH-TO-ZOOM I PAN
 let initialPinchDist = 0;
 let pinchCenter = { x: 0, y: 0 };
+
 canvas.addEventListener('touchstart', e => {
-    // 1. Pinch-to-zoom (2 prsta)
     if (e.touches.length === 2) {
+        // Zabilježi centar između dva prsta za Pinch-to-zoom
         pinchCenter.x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         pinchCenter.y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     }
-    // 2. Klik/Potez (1 prst)
     else if (e.touches.length === 1) {
-        e.preventDefault(); // Sprečava skrolanje stranice
+        e.preventDefault();
         const touch = e.touches[0];
         const pos = getCanvasCoords(touch.clientX, touch.clientY);
         lastPanPos = { x: pos.x, y: pos.y };
@@ -126,17 +146,30 @@ canvas.addEventListener('touchstart', e => {
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
-    // 1. Pinch-to-zoom
-    if (e.touches.length === 2 && ['N', 'V', 'M'].includes(currentView)) {
+    if (e.touches.length === 2) {
         e.preventDefault();
         let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+
         if (initialPinchDist > 0) {
-            diagScale *= (dist / initialPinchDist);
+            let oldZoom = currentZoom;
+            let zoomFactor = dist / initialPinchDist;
+
+            // Ažuriramo globalni zoom
+            currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
+
+            // Izračunaj koordinate centra prstiju unutar canvasa
+            const r = canvas.getBoundingClientRect();
+            let focusX = pinchCenter.x - r.left;
+            let focusY = pinchCenter.y - r.top;
+
+            // Matematika za fiksiranje crteža ispod prstiju
+            panX = focusX - (focusX - panX) * (currentZoom / oldZoom);
+            panY = focusY - (focusY - panY) * (currentZoom / oldZoom);
+
             initialPinchDist = dist;
             draw();
         }
     }
-    // 2. Potez prstom (1 prst)
     else if (e.touches.length === 1) {
         e.preventDefault();
         const touch = e.touches[0];
@@ -695,7 +728,7 @@ function draw() {
             ctx.moveTo(c1.x, c1.y);
             for (let i = 0; i <= n_pts; i++) {
                 let px = c1.x + dx * (i / n_pts), py = c1.y + dy * (i / n_pts);
-                let val = pts[i] * 1.5 * diagScale;
+                let val = pts[i] * 1.5;// * diagScale;
                 ctx.lineTo(px + nx * val, py + ny * val);
             }
             ctx.lineTo(c2.x, c2.y);
@@ -707,7 +740,7 @@ function draw() {
             ctx.beginPath();
             for (let i = 0; i <= n_pts; i++) {
                 let px = c1.x + dx * (i / n_pts), py = c1.y + dy * (i / n_pts);
-                let val = pts[i] * 1.5 * diagScale;
+                let val = pts[i] * 1.5;// * diagScale;
                 if (i === 0) ctx.moveTo(px + nx * val, py + ny * val);
                 else ctx.lineTo(px + nx * val, py + ny * val);
             }
