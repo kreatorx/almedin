@@ -1,9 +1,11 @@
 export default async function handler(req, res) {
+    // 1. Dozvoli samo POST metode
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Metoda nije dozvoljena' });
     }
 
     const { prompt } = req.body;
+
     if (!prompt) {
         return res.status(400).json({ error: 'Prompt je obavezan' });
     }
@@ -33,6 +35,7 @@ export default async function handler(req, res) {
     `;
 
     try {
+        // 2. Poziv prema OpenAI
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: 'POST',
             headers: {
@@ -54,7 +57,7 @@ export default async function handler(req, res) {
 
         // Čišćenje potencijalnog markdowna (npr. ```json ... ```)
         jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-
+        
         return res.status(200).json(JSON.parse(jsonString));
 
     } catch (error) {
