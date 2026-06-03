@@ -806,7 +806,7 @@ async function generateAI() {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/ask', {
+        const response = await fetch('https://almedin/api/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt })

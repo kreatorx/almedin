@@ -1,4 +1,13 @@
 export default async function handler(req, res) {
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     // 1. Dozvoli samo POST metode
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Metoda nije dozvoljena' });
@@ -54,6 +63,14 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         let jsonString = data.choices[0].message.content;
+
+        // Debug: Prikaz sirovog odgovora iz OpenAI
+        console.log("OPENAI RESPONSE:", data);
+
+        if (!response.ok) {
+            return res.status(response.status).json(data);
+        }
+        //
 
         // Čišćenje potencijalnog markdowna (npr. ```json ... ```)
         jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
