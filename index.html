@@ -126,13 +126,17 @@
             opacity: 0.8;
         }
 
-        /* STIL ZA AI FEM DUGME */
-        .ai-fem-btn {
+        /* GRUPISANI KONTEJNER ZA GORNJU DUGMAD (AI FEM i AutoKED) */
+        .top-nav-buttons {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: linear-gradient(135deg, #4a4ae7, #da70d6);
-            color: white;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .ai-fem-btn, .autoked-btn {
             text-decoration: none;
             padding: 12px 20px;
             border-radius: 10px;
@@ -143,21 +147,42 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            z-index: 1000;
+            color: white;
         }
 
-            .ai-fem-btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 15px rgba(0,0,0,0.25);
-            }
+        .ai-fem-btn {
+            background: linear-gradient(135deg, #4a4ae7, #da70d6);
+        }
 
-            .ai-fem-btn svg {
-                width: 18px;
-                height: 18px;
-            }
+        .autoked-btn {
+            background: linear-gradient(135deg, #007acc, #0098ff);
+        }
+
+        .ai-fem-btn:hover, .autoked-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+        }
 
         /* STILOVI PRILAGOĐENI ZA MOBITEL I USKE PROZORE */
         @media (max-width: 768px) {
+            .top-nav-buttons {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 100%;
+                max-width: 340px;
+                flex-direction: column;
+                gap: 8px;
+                margin-bottom: 20px;
+                box-sizing: border-box;
+            }
+
+            .ai-fem-btn, .autoked-btn {
+                width: 100%;
+                justify-content: center;
+                box-sizing: border-box;
+            }
+
             .grid-tabela {
                 grid-template-columns: 1fr; /* Prebacivanje u samo JEDNU kolonu */
                 row-gap: 20px;
@@ -185,7 +210,7 @@
                 font-size: 13px;
                 width: 100%;
                 margin-top: 0px;
-                margin-bottom: 0px; /* Pravi jasan odmak iznad crvene oznake sile */
+                margin-bottom: 0px; 
                 padding-bottom: -50px;
             }
 
@@ -210,18 +235,6 @@
             #gredaSlider {
                 width: 180px !important;
             }
-
-            /* Prilagodba AI dugmeta za mobitel */
-            .ai-fem-btn {
-                position: relative;
-                top: 0;
-                right: 0;
-                width: 100%;
-                max-width: 340px;
-                justify-content: center;
-                margin-bottom: 20px;
-                box-sizing: border-box;
-            }
         }
     </style>
 </head>
@@ -229,9 +242,14 @@
 
     <div class="main-container">
 
-        <a href="fem.html" class="ai-fem-btn">
-            AI FEM Solver
-        </a>
+        <div class="top-nav-buttons">
+            <a href="fem.html" class="ai-fem-btn">
+                AI FEM Solver
+            </a>
+            <a href="/ked/ked.html" class="autoked-btn">
+                AutoKED
+            </a>
+        </div>
 
         <div class="grid-tabela">
 
@@ -358,7 +376,6 @@
                     <label>L = <input type="number" id="inputL" min="1.0" max="20.0" step="0.5" value="4.0" style="width: 45px; text-align: center; font-family: monospace;"></label> m
 
                     <div class="separator"></div>
-
 
                     <label>L₁=<input type="number" id="inputL1" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
                     <label>L₂=<input type="number" id="inputL2" min="0.0" max="5.0" step="0.1" value="1.0" style="width: 40px; text-align: center; font-family: monospace;"></label>m
