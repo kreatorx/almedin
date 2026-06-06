@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAD Pro - Ispravljene Kote, Preseci i Fokus</title>
+    <link rel="stylesheet" href"ked.css">
+</head>
+<body>
+
+    <div id="toolbar">
+        <button id="btn-select" class="active" onclick="setMode('select')">Selekcija (S)</button>
+        <button id="btn-line" onclick="setMode('line')">Linija (L)</button>
+        <button id="btn-dimension" onclick="setMode('dimension')">Kota (D)</button>
+        
+        <select id="unit-select" onchange="drawEverything()">
+            <option value="mm">mm</option>
+            <option value="cm" selected>cm</option>
+            <option value="m">m</option>
+        </select>
+
+        <span style="font-size:12px;">Mjerilo:</span>
+        <select id="scale-select" onchange="drawEverything()">
+            <option value="1">1:1</option>
+            <option value="10">1:10</option>
+            <option value="20">1:20</option>
+            <option value="25">1:25</option>
+            <option value="50">1:50</option>
+            <option value="100">1:100</option>
+        </select>
+
+        <span style="font-size:12px;">Papir:</span>
+        <select id="paper-select" onchange="updatePaperStyle()">
+            <option value="NONE">Bez okvira</option>
+            <option value="A4_P">A4 Uspravno</option>
+            <option value="A4_L">A4 Položeno</option>
+            <option value="A3_P">A3 Uspravno</option>
+            <option value="A3_L">A3 Položeno</option>
+            <option value="A2_L">A2 Položeno</option>
+            <option value="A1_L">A1 Položeno</option>
+            <option value="A0_L">A0 Položeno</option>
+        </select>
+
+        <span style="font-size:12px;">G-SNAP:</span>
+        <select id="grid-snap-select" onchange="updateGridSnap()">
+            <option value="0.1">0.1</option>
+            <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+
+        <button id="btn-snap" onclick="toggleSnap()">SNAP (F2)</button>
+        <button id="btn-osnap" class="active" onclick="toggleOsnap()">OSNAP (F3)</button>
+        <button id="btn-ortho" class="active" onclick="toggleOrtho()">ORTHO (F4)</button>
+        
+        <button onclick="undo()" style="background: #2b579a;">Undo (Ctrl+Z)</button>
+        <button onclick="printCanvas()" style="background: #006400; font-weight: bold;">Print Okvir</button>
+        <button onclick="deleteSelected()" style="background: #900;">Obriši</button>
+        <button onclick="clearAll()" style="background: #cc5500;">Obriši Sve</button>
+    </div>
+
+    <div id="info-panel">X: 0, Y: 0</div>
+
+    <div id="dynamic-input-container">
+        <input type="text" id="dynamic-input" placeholder="Vrednost ili X,Y" autocomplete="off">
+    </div>
+
+    <canvas id="cadCanvas"></canvas>
+
+  </body>
+  <script src="ked/ked.js"></script>
+</html>
