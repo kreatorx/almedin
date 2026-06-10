@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EC8 - Centar Masa i Krutosti (CAD Verzija)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .sidebar {
+            width: 320px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        #sidebar-left { margin-right: 20px; }
+        #sidebar-right { margin-left: 20px; display: none; border: 2px solid #007bff; }
+        #canvas-container {
+            flex-grow: 1;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+        canvas { display: block; }
+        h2, h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-row { display: flex; gap: 10px; }
+        .input-row > div { flex: 1; }
+        input, select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;}
+        button:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .result-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 14px; line-height: 1.5; }
+        .instruction { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px;}
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar-left">
+    <h2>Dodaj Element</h2>
+    <div class="instruction">Klikni i povuci prazan prostor za PAN. Koristi točkić miša za ZOOM.</div>
+    <div class="input-row">
+        <div><label>X (m)</label><input type="number" id="el-x" value="5"></div>
+        <div><label>Y (m)</label><input type="number" id="el-y" value="5"></div>
+    </div>
+    <div class="input-row">
+        <div><label>b (m) - širina</label><input type="number" id="el-b" value="0.4" step="0.1"></div>
+        <div><label>d (m) - visina</label><input type="number" id="el-d" value="0.4" step="0.1"></div>
+    </div>
+    <div class="input-row">
+        <div><label>Vrsta</label>
+            <select id="el-type">
+                <option value="stub">Stub</option>
+                <option value="zid">Zid</option>
+            </select>
+        </div>
+    </div>
+    <button onclick="addElement()">Dodaj u model</button>
+
+    <h2 style="margin-top: 15px;">Postavke etaže</h2>
+    <div class="input-row">
+        <div><label>h ispod (m)</label><input type="number" id="h-ispod" value="3.0" step="0.1"></div>
+        <div><label>h iznad (m)</label><input type="number" id="h-iznad" value="3.0" step="0.1"></div>
+    </div>
+
+    <h2 style="margin-top: 15px;">Rezultati etaže</h2>
+    <div class="result-box" id="results">
+        CM (X, Y): 0.00, 0.00<br>
+        CR (X, Y): 0.00, 0.00<br>
+        Eksc. (ex, ey): 0.00, 0.00
+    </div>
+</div>
+
+<div id="canvas-container">
+    <canvas id="strucCanvas"></canvas>
+</div>
+
+<div class="sidebar" id="sidebar-right">
+    <h2>Karakteristike elementa</h2>
+    <div class="instruction">Izmjene se primjenjuju automatski.</div>
+    <div class="input-row">
+        <div><label>X (m)</label><input type="number" id="prop-x" step="0.1"></div>
+        <div><label>Y (m)</label><input type="number" id="prop-y" step="0.1"></div>
+    </div>
+    <div class="input-row">
+        <div><label>b (m) - širina</label><input type="number" id="prop-b" step="0.1"></div>
+        <div><label>d (m) - visina</label><input type="number" id="prop-d" step="0.1"></div>
+    </div>
+    <div class="input-row">
+        <div><label>Vrsta</label>
+            <select id="prop-type">
+                <option value="stub">Stub</option>
+                <option value="zid">Zid</option>
+            </select>
+        </div>
+    </div>
+    <button class="btn-danger" onclick="deleteSelected()">Obriši element</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('strucCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+
+    // Pan i Zoom varijable
+    let scale = 40; // 1m = 40px početno
+    let panX = 50;  // Početni pomak X
+    let panY = 500; // Početni pomak Y (bit će rekalibriran na init)
+
+    // Inženjerski parametri
+    const E = 3e7; 
+    const G = E / (2 * (1 + 0.2)); 
+    const gamma = 25; 
+
+    let elements = [];
+    let selectedElement = null; // Zadržava referencu na kliknuti element
+
+    // Mouse eventi varijable
+    let isDraggingElement = false;
+    let isPanning = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let startPanX = 0;
+    let startPanY = 0;
+
+    class Element {
+        constructor(id, type, x, y, b, d) {
+            this.id = id;
+            this.type = type;
+            this.x = x;
+            this.y = y;
+            this.b = b;
+            this.d = d;
+        }
+
+        getMass(h_ispod, h_iznad) {
+            return this.b * this.d * ((h_ispod + h_iznad) / 2) * gamma;
+        }
+
+        getKx(h) {
+            const Iy = 0.5 * (this.d * Math.pow(this.b, 3)) / 12; 
+            const A = 0.5 * (this.b * this.d);
+            return this.type === 'zid' ? 
+                1 / ((Math.pow(h, 3) / (12 * E * Iy)) + (1.2 * h / (G * A))) : 
+                (12 * E * Iy) / Math.pow(h, 3);
+        }
+
+        getKy(h) {
+            const Ix = 0.5 * (this.b * Math.pow(this.d, 3)) / 12;
+            const A = 0.5 * (this.b * this.d);
+            return this.type === 'zid' ? 
+                1 / ((Math.pow(h, 3) / (12 * E * Ix)) + (1.2 * h / (G * A))) : 
+                (12 * E * Ix) / Math.pow(h, 3);
+        }
+        
+        containsPoint(px, py) {
+            return px >= this.x - this.b/2 && px <= this.x + this.b/2 &&
+                   py >= this.y - this.d/2 && py <= this.y + this.d/2;
+        }
+    }
+
+    function init() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight || 700;
+        panY = canvas.height - 100; // Postavi Y osu pri dnu ekrana
+        
+        elements.push(new Element(1, 'stub', 2, 2, 0.4, 0.4));
+        elements.push(new Element(2, 'zid', 8, 5, 0.2, 2.0));
+        
+        setupPropertyListeners();
+        updateAndDraw();
+    }
+
+    function addElement() {
+        const x = parseFloat(document.getElementById('el-x').value);
+        const y = parseFloat(document.getElementById('el-y').value);
+        const b = parseFloat(document.getElementById('el-b').value);
+        const d = parseFloat(document.getElementById('el-d').value);
+        const type = document.getElementById('el-type').value;
+
+        const newEl = new Element(Date.now(), type, x, y, b, d);
+        elements.push(newEl);
+        selectElement(newEl); // Automatski ga selektuj
+        updateAndDraw();
+    }
+
+    function deleteSelected() {
+        if (!selectedElement) return;
+        elements = elements.filter(el => el.id !== selectedElement.id);
+        selectElement(null);
+        updateAndDraw();
+    }
+
+    // --- LOGIKA ZA ODABIR I PROPERTIES PANEL ---
+    function selectElement(el) {
+        selectedElement = el;
+        const propPanel = document.getElementById('sidebar-right');
+        
+        if (el) {
+            propPanel.style.display = 'flex';
+            document.getElementById('prop-x').value = el.x.toFixed(2);
+            document.getElementById('prop-y').value = el.y.toFixed(2);
+            document.getElementById('prop-b').value = el.b;
+            document.getElementById('prop-d').value = el.d;
+            document.getElementById('prop-type').value = el.type;
+        } else {
+            propPanel.style.display = 'none';
+        }
+    }
+
+    function setupPropertyListeners() {
+        const props = ['prop-x', 'prop-y', 'prop-b', 'prop-d', 'prop-type'];
+        props.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if(!selectedElement) return;
+                
+                if(id === 'prop-type') {
+                    selectedElement.type = e.target.value;
+                } else {
+                    const val = parseFloat(e.target.value) || 0;
+                    if (id === 'prop-x') selectedElement.x = val;
+                    if (id === 'prop-y') selectedElement.y = val;
+                    if (id === 'prop-b') selectedElement.b = val;
+                    if (id === 'prop-d') selectedElement.d = val;
+                }
+                updateAndDraw();
+            });
+        });
+
+        document.getElementById('h-ispod').addEventListener('input', updateAndDraw);
+        document.getElementById('h-iznad').addEventListener('input', updateAndDraw);
+    }
+
+    function calculateCenters() {
+        let sum_m = 0, sum_mx = 0, sum_my = 0;
+        let sum_kx = 0, sum_ky = 0, sum_kx_y = 0, sum_ky_x = 0;
+
+        const h_ispod = parseFloat(document.getElementById('h-ispod').value);
+        const h_iznad = parseFloat(document.getElementById('h-iznad').value);
+
+        elements.forEach(el => {
+            const m = el.getMass(h_ispod, h_iznad);
+            sum_m += m; sum_mx += m * el.x; sum_my += m * el.y;
+
+            const kx = el.getKx(h_ispod);
+            const ky = el.getKy(h_ispod);
+            sum_kx += kx; sum_ky += ky;
+            sum_ky_x += ky * el.x; sum_kx_y += kx * el.y;
+        });
+
+        if (sum_m === 0) return null;
+        return {
+            CM_X: sum_mx / sum_m, CM_Y: sum_my / sum_m,
+            CR_X: sum_ky === 0 ? (sum_mx / sum_m) : sum_ky_x / sum_ky,
+            CR_Y: sum_kx === 0 ? (sum_my / sum_m) : sum_kx_y / sum_kx
+        };
+    }
+
+    function updateAndDraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        
+        elements.forEach(el => {
+            const screenX = panX + (el.x - el.b/2) * scale;
+            const screenY = panY - (el.y + el.d/2) * scale; // Obrnuta Y osa
+            const screenW = el.b * scale;
+            const screenH = el.d * scale;
+
+            // Crtaj popunjen element
+            ctx.fillStyle = el.type === 'stub' ? '#6c757d' : '#343a40';
+            ctx.fillRect(screenX, screenY, screenW, screenH);
+            
+            // Crtaj obrub (Ako je selektovan crtaj plavo i deblje)
+            ctx.lineWidth = selectedElement && selectedElement.id === el.id ? 3 : 1;
+            ctx.strokeStyle = selectedElement && selectedElement.id === el.id ? '#007bff' : '#212529';
+            ctx.strokeRect(screenX, screenY, screenW, screenH);
+        });
+
+        const centers = calculateCenters();
+        if (centers) {
+            document.getElementById('results').innerHTML = `
+                CM (X, Y): ${centers.CM_X.toFixed(2)}, ${centers.CM_Y.toFixed(2)}<br>
+                CR (X, Y): ${centers.CR_X.toFixed(2)}, ${centers.CR_Y.toFixed(2)}<br>
+                Eksc. (ex, ey): ${Math.abs(centers.CM_X - centers.CR_X).toFixed(2)}, ${Math.abs(centers.CM_Y - centers.CR_Y).toFixed(2)}
+            `;
+            drawCrosshair(centers.CM_X, centers.CM_Y, 'red', 'CM');
+            drawCrosshair(centers.CR_X, centers.CR_Y, 'blue', 'CR');
+        }
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        
+        // Pisanje vertikalnih linija
+        const startX = -Math.floor(panX / scale);
+        const endX = startX + Math.ceil(canvas.width / scale) + 1;
+        for (let x = startX; x < endX; x++) {
+            ctx.beginPath();
+            ctx.moveTo(panX + x * scale, 0);
+            ctx.lineTo(panX + x * scale, canvas.height);
+            ctx.stroke();
+        }
+
+        // Horizontalne linije
+        const startY = -Math.floor((canvas.height - panY) / scale);
+        const endY = startY + Math.ceil(canvas.height / scale) + 1;
+        for (let y = startY; y < endY; y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, panY - y * scale);
+            ctx.lineTo(canvas.width, panY - y * scale);
+            ctx.stroke();
+        }
+        
+        // Glavne ose (X i Y=0)
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(panX, 0); ctx.lineTo(panX, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, panY); ctx.lineTo(canvas.width, panY); ctx.stroke();
+    }
+
+    function drawCrosshair(x, y, color, label) {
+        const sx = panX + x * scale;
+        const sy = panY - y * scale;
+        const size = 10;
+        ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx - size, sy); ctx.lineTo(sx + size, sy);
+        ctx.moveTo(sx, sy - size); ctx.lineTo(sx, sy + size);
+        ctx.stroke();
+        ctx.fillStyle = color; ctx.font = 'bold 12px Arial';
+        ctx.fillText(label, sx + 8, sy - 8);
+    }
+
+    // --- MOUSE LISTENERS ---
+    function getEngCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const engX = (mouseX - panX) / scale;
+        const engY = (panY - mouseY) / scale;
+        return { engX, engY, mouseX, mouseY };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const { engX, engY, mouseX, mouseY } = getEngCoords(e);
+        
+        let clickedOnElement = false;
+        // Provjeri klik unazad (Z-index logika)
+        for (let i = elements.length - 1; i >= 0; i--) {
+            if (elements[i].containsPoint(engX, engY)) {
+                selectElement(elements[i]);
+                isDraggingElement = true;
+                dragOffsetX = engX - elements[i].x;
+                dragOffsetY = engY - elements[i].y;
+                canvas.style.cursor = 'grabbing';
+                clickedOnElement = true;
+                break;
+            }
+        }
+
+        if (!clickedOnElement) {
+            selectElement(null); // Deselect
+            isPanning = true;
+            startPanX = mouseX - panX;
+            startPanY = mouseY - panY;
+            canvas.style.cursor = 'move';
+        }
+        updateAndDraw();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        const { engX, engY, mouseX, mouseY } = getEngCoords(e);
+
+        if (isDraggingElement && selectedElement) {
+            selectedElement.x = engX - dragOffsetX;
+            selectedElement.y = engY - dragOffsetY;
+            
+            // Ažuriraj properties UI uživo
+            document.getElementById('prop-x').value = selectedElement.x.toFixed(2);
+            document.getElementById('prop-y').value = selectedElement.y.toFixed(2);
+            updateAndDraw();
+        } else if (isPanning) {
+            panX = mouseX - startPanX;
+            panY = mouseY - startPanY;
+            updateAndDraw();
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        isDraggingElement = false;
+        isPanning = false;
+        canvas.style.cursor = 'grab';
+    });
+    
+    // Zoom in/out sa točkićem
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomSpeed = 0.1;
+        const direction = e.deltaY > 0 ? -1 : 1;
+        const newScale = scale * (1 + direction * zoomSpeed);
+        
+        // Ograniči zoom (da ne bude premalo ili preveliko)
+        if (newScale > 10 && newScale < 200) {
+            // Matematika za centriranje zooma prema poziciji miša
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+            
+            updateAndDraw();
+        }
+    });
+
+    window.onload = init;
+    window.addEventListener('resize', init);
+
+</script>
+</body>
+</html>
