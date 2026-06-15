@@ -1,0 +1,402 @@
+/* =========================================
+           OSNOVNI STILOVI
+========================================= */
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+#canvas-container {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    z-index: 1;
+}
+
+/* =========================================
+           GLAVNI UI PANEL (Lijevo)
+========================================= */
+#ui-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+    width: 340px;
+    background: rgba(30, 30, 30, 0.95);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #444;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    max-height: 95vh;
+    overflow-y: auto;
+}
+
+h3 {
+    margin: 0 0 10px 0;
+    color: #4fc3f7;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.info-box {
+    background: rgba(0,0,0,0.4);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0;
+}
+
+.label {
+    color: #aaa;
+}
+
+.value {
+    color: #a5d6a7;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+/* Dugmad */
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+button {
+    width: 100%;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-primary {
+    background: #0288d1;
+}
+
+.btn-success {
+    background: #2e7d32;
+}
+
+.btn-warning {
+    background: #f57c00;
+}
+
+.btn-danger {
+    background: #c62828;
+}
+
+.btn-export {
+    background: #5e35b1;
+}
+
+.btn-info {
+    background: #00838f;
+}
+
+.btn-secondary {
+    background: #555;
+    font-size: 11px;
+    padding: 5px;
+}
+
+#btn-clear-all {
+    background-color: #f44336;
+    color: white;
+    font-size: 11px;
+    padding: 5px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.active-mode {
+    outline: 2px solid #fff;
+    box-shadow: 0 0 10px #fff;
+}
+
+.input-group-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+    align-items: center;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+    .input-group label {
+        font-size: 10px;
+        color: #aaa;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 6px;
+        background: #222;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 12px;
+        box-sizing: border-box;
+    }
+
+.input-prefix {
+    font-size: 12px;
+    color: #4fc3f7;
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+/* Input polja */
+.input-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+    .input-row input {
+        width: 100%;
+        padding: 5px;
+        background: #222;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+#dxf-file-input {
+    display: none;
+}
+
+/* =========================================
+       PANELI ZA PROFILE I PRESJEKE
+========================================= */
+#profile-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 260px;
+    background: rgba(20, 20, 20, 0.95);
+    border-top: 2px solid #4fc3f7;
+    z-index: 20;
+    display: none;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+    #profile-header h4 {
+        margin: 0;
+        color: #4fc3f7;
+    }
+
+#profile-canvas {
+    width: 100%;
+    height: 190px;
+    background: #111;
+    border: 1px solid #333;
+    cursor: crosshair;
+}
+
+#cross-section-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.98);
+    border: 2px solid #00bcd4;
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 30;
+    display: none;
+    width: 320px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+}
+
+    #cross-section-panel h4 {
+        margin: 0 0 15px 0;
+        color: #00bcd4;
+        text-transform: uppercase;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    #cross-section-panel label {
+        font-size: 12px;
+        color: #aaa;
+        width: 120px;
+        display: inline-block;
+    }
+
+    #cross-section-panel .input-row {
+        margin-bottom: 8px;
+        align-items: center;
+    }
+
+/* Panel za zapremine i 2D profile (Desno) */
+#volume-panel {
+    position: absolute;
+    top: 5%;
+    right: 20px;
+    width: 450px;
+    height: 90vh;
+    background: rgba(25, 25, 25, 0.98);
+    border: 2px solid #ff9800;
+    border-radius: 8px;
+    z-index: 40;
+    display: none;
+    flex-direction: column;
+    box-shadow: -5px 5px 30px rgba(0,0,0,0.8);
+}
+
+#volume-header {
+    padding: 15px;
+    background: #111;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+}
+
+    #volume-header h4 {
+        margin: 0;
+        color: #ffb74d;
+    }
+
+#volume-canvas-container {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #444;
+    background: #222;
+}
+
+#sec-canvas {
+    width: 100%;
+    height: 200px;
+    background: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+#slider-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+#stac-slider {
+    flex-grow: 1;
+    margin: 0 10px;
+}
+
+#table-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    text-align: right;
+}
+
+th, td {
+    border: 1px solid #444;
+    padding: 5px;
+}
+
+th {
+    background: #333;
+    color: #4fc3f7;
+    text-align: center;
+    position: sticky;
+    top: 0;
+}
+
+.row-total {
+    background: #004d40;
+    font-weight: bold;
+    font-size: 13px;
+    color: #b2dfdb;
+}
+
+#volume-footer {
+    padding: 15px;
+    background: #111;
+    border-top: 1px solid #444;
+    border-radius: 0 0 8px 8px;
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* =========================================
+           POPUP ZA VERTIKALNE KRIVINE
+        ========================================= */
+#vcurve-panel {
+    display: none; /* Inicijalno sakriveno */
+    background: #333;
+    padding: 10px;
+    border: 1px solid #ffea00;
+    border-radius: 5px;
+    z-index: 100;
+}
+/* Osiguraj da profil header ne bude pretrpan */
+#profile-header {
+    display: flex;
+    flex-wrap: wrap; /* Dozvoli prelazak u novi red */
+    gap: 10px;
+    align-items: center;
+}
+
+
+/* =========================================
+ ANIMACIJE (Glow efekat za UI navođenje)
+========================================= */
+.glow-next {
+    animation: glowPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 4px 1px #00e676, 0 0 8px 2px rgba(0,230,118,0.4);
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: 0 0 4px 1px #00e676, 0 0 8px 2px rgba(0,230,118,0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 7px 2px #00e676, 0 0 14px 4px rgba(0,230,118,0.6);
+    }
+}

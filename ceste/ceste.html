@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Ceste by Almedin</title>
+    <link rel="stylesheet" href="ceste.css">
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "delaunator": "https://cdn.skypack.dev/delaunator@5.0.0",
+            "dxf-parser": "https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/+esm"
+          }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h3>CAD Panel</h3>
+        <div class="btn-group">
+            <button id="btn-load-dxf" class="btn-primary" onclick="document.getElementById('dxf-file-input').click()">1. Učitaj DXF Izohipse</button>
+            <input type="file" id="dxf-file-input" accept=".dxf">
+            <button class="btn-success" id="btn-make-surface" disabled>2. Generiši Površinu (TIN)</button>
+            <button class="btn-warning" id="btn-draw-trasa" disabled>3. Crtaj Tjemena (VPI)</button>
+
+            <hr style="border-top:1px solid #444; width:100%;">
+
+            <div class="input-group">
+                <label>Parametri Krivina (m):</label>
+                <div class="input-group-container">
+                    <div style="display: flex; align-items: center; flex: 1;">
+                        <span class="input-prefix">R:</span>
+                        <input type="number" id="krivina-r" value="100" title="Radijus kružne krivine">
+                    </div>
+                    <div style="display: flex; align-items: center; flex: 1;">
+                        <span class="input-prefix">L:</span>
+                        <input type="number" id="krivina-l" value="40" title="Dužina prelaznice (klotoide)">
+                    </div>
+                </div>
+            </div>
+            <button class="btn-info" id="btn-calc-curves" disabled style="background:#00bcd4; color:#000;">3b. Interpoliraj Krivine</button>
+
+            <hr style="border-top:1px solid #444; width:100%;">
+
+            <button class="btn-danger" id="btn-make-profile" disabled>4. Izvuci Liniju Terena</button>
+            <button class="btn-primary" id="btn-show-profile" disabled style="background:#5e35b1;">4b. Otvori Uzdužni Profil</button>
+
+            <hr style="border-top:1px solid #444; width:10%;">
+
+            <div class="input-group-container">
+                <div class="input-group">
+                    <label>Razmak stac. (m):</label>
+                    <input type="number" id="stac-korak" value="20">
+                </div>
+                <div class="input-group">
+                    <label>Širina presjeka (m):</label>
+                    <input type="number" id="stac-sirina" value="10" title="Informativna širina plave linije">
+                </div>
+            </div>
+            <button class="btn-info" id="btn-make-sections" disabled>5. Generiši Stacionaže</button>
+            <button class="btn-warning" id="btn-define-cross" disabled>5b. Definiši Poprečni Profil</button>
+            <button class="btn-primary" id="btn-make-corridor" disabled style="background:#ff3d00;">6. Izradi 3D Koridor</button>
+
+            <button class="btn-success" id="btn-show-volumes" disabled style="background:#009688; font-size:14px; text-transform:uppercase; margin-top:5px; border:1px solid #fff;">7. Zapremine i 2D Profili</button>
+
+            <button class="btn-export" id="btn-export-gltf" disabled>Eksportuj Model (GLTF)</button>
+            <button class="btn-secondary" id="btn-wireframe">Mreža Terena On/Off</button>
+        </div>
+
+        <div class="info-box" style="margin-top:10px;">
+            <div class="info-row"><span class="label">Status:</span><span class="value" id="status-text" style="color:#ffb74d;">Spreman.</span></div>
+            <div class="info-row"><span class="label">Dužina Trase:</span><span class="value" id="trasa-length">0.00 m</span></div>
+        </div>
+        <button id="btn-clear-all" title="Obriši sve (Delete)">Obriši sve</button>
+    </div>
+
+    <div id="cross-section-panel">
+        <h4>Assembly - Poprečni Profil</h4>
+        <div class="input-row"><label>Širina trake (m):</label><input type="number" id="cp-traka-w" value="3.5" step="0.1"></div>
+        <div class="input-row"><label>Pad asfalta (%):</label><input type="number" id="cp-traka-pad" value="-2.5" step="0.1"></div>
+        <div class="input-row"><label>Debljina kolovoza (m):</label><input type="number" id="cp-traka-deb" value="0.4" step="0.05"></div>
+        <div class="input-row"><label>Širina bankine (m):</label><input type="number" id="cp-bank-w" value="1.5" step="0.1"></div>
+        <div class="input-row"><label>Pad bankine (%):</label><input type="number" id="cp-bank-pad" value="-4.0" step="0.1"></div>
+        <hr style="border-top:1px solid #444; margin: 10px 0;">
+        <div class="input-row"><label>Kosina Nasipa (1:X):</label><input type="number" id="cp-nasip" value="1.5" step="0.1"></div>
+        <div class="input-row"><label>Kosina Usjeka (1:X):</label><input type="number" id="cp-usjek" value="1.0" step="0.1"></div>
+
+        <button class="btn-success" id="btn-apply-cross" style="margin-top:15px; background:#00e676; color:#000;">Primijeni na Stacionaže</button>
+        <button class="btn-danger" id="btn-close-cross" style="margin-top:5px; background:#444;">Zatvori</button>
+    </div>
+
+    <div id="volume-panel">
+        <div id="volume-header">
+            <h4>Proračun Količina & 2D Presjeci</h4>
+            <button id="btn-close-volumes" style="width:auto; padding:5px 10px; background:#c62828;">Zatvori</button>
+        </div>
+        <div id="volume-canvas-container">
+            <canvas id="sec-canvas"></canvas>
+            <div id="slider-container">
+                <button id="btn-prev-stac" style="width:30px; padding:2px;">&lt;</button>
+                <input type="range" id="stac-slider" min="0" value="0" step="1">
+                <button id="btn-next-stac" style="width:30px; padding:2px;">&gt;</button>
+            </div>
+            <div id="stac-label-display" style="font-size:14px; font-weight:bold; margin-top:5px; color:#4fc3f7;">Stacionaža: 0.00 m</div>
+        </div>
+        <div id="table-container">
+            <table id="vol-table">
+                <thead><tr><th>Stac.</th><th>A_Iskop(m2)</th><th>A_Nasip(m2)</th><th>V_Iskop(m3)</th><th>V_Nasip(m3)</th></tr></thead>
+                <tbody id="vol-table-body"></tbody>
+            </table>
+        </div>
+        <div id="volume-footer">
+            UKUPNO ZAPREMINA:<br>
+            <span style="color:#ff5252;">ISKOP: <span id="tot-iskop">0.00</span> m³</span> |
+            <span style="color:#69f0ae;">NASIP: <span id="tot-nasip">0.00</span> m³</span>
+        </div>
+    </div>
+
+    <div id="profile-panel">
+        <div id="profile-header">
+            <h4>Uzdužni Profil (Teren i Niveleta)</h4>
+
+            <div id="vcurve-controls" style="display:flex; gap:10px; align-items:center; background:#333; padding:5px 10px; border-radius:5px;">
+                <button class="btn-warning" id="btn-draw-niveleta" style="padding: 5px 10px; width:auto;">Crtaj Niveletu</button>
+                <label>Radijus (Rv):</label>
+                <input type="number" id="vc-radijus" style="width:70px;" value="0" placeholder="Unesite Rv">
+                <button id="btn-apply-vc" class="btn-success" style="width:auto; padding:5px 10px;">Primijeni Rv</button>
+                <button id="btn-delete-vc" class="btn-danger" style="width:auto; padding:5px 10px;">Briši Tjeme</button>
+                <button id="btn-delete-all-niveleta" style="width:auto; padding:5px 10px; background:#880000;">Briši Sve</button>
+            </div>
+
+            <button id="close-profile" style="background:#555; color:white; border:none; cursor:pointer; padding: 5px 10px;">Zatvori X</button>
+        </div>
+        <canvas id="profile-canvas"></canvas>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module" src="ceste.js"></script>
+
+</body>
+</html>
