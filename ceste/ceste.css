@@ -400,3 +400,28 @@ th {
         box-shadow: 0 0 7px 2px #00e676, 0 0 14px 4px rgba(0,230,118,0.6);
     }
 }
+
+
+/* =========================================
+POTPIS
+    */
+#watermark {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    pointer-events: none;
+    user-select: none;
+    z-index: 100;
+}
+
+/* Mobilna optimizacija */
+@media (max-width: 600px) {
+    #watermark {
+        font-size: 8px;
+        bottom: 5px;
+        right: 5px;
+    }
+}

@@ -884,36 +884,40 @@ function klikNaProfilCanvas(event) {
     }
 }
 
-
 function interpolirajNiveletu(stac) {
     if (niveletaPoints.length === 0) return 0;
-    if (niveletaPoints.length === 1) return niveletaPoints[0].visina;
 
+    // Provjera da li se stacionaža nalazi unutar zone vertikalne krivine
     for (let i = 1; i < niveletaPoints.length - 1; i++) {
         let P = niveletaPoints[i];
-        if (P.T1 && P.T2 && stac >= P.T1.s && stac <= P.T2.s) {
-            let x = stac - P.T1.s;
-            return P.T1.h + P.i_in * x + (P.deltaI / (2 * P.L_v)) * (x * x);
+        if (P.Rv > 0) {
+            let P_prev = niveletaPoints[i - 1], P_next = niveletaPoints[i + 1];
+
+            let i1 = (P.visina - P_prev.visina) / (P.stacionaza - P_prev.stacionaza);
+            let i2 = (P_next.visina - P.visina) / (P.stacionaza - P_prev.stacionaza); // Ovdje je greška bila u redoslijedu
+            let deltaI = i2 - i1;
+
+            let L = Math.abs(P.Rv * deltaI);
+            let stacPoc = P.stacionaza - L / 2;
+            let stacKraj = P.stacionaza + L / 2;
+
+            if (stac >= stacPoc && stac <= stacKraj) {
+                let x = stac - stacPoc;
+                // Osnovna formula parabole: y = y_poc + i1*x + (deltaI / (2*L)) * x^2
+                let yPoc = P.visina - (L / 2) * i1;
+                return yPoc + i1 * x + (deltaI / (2 * L)) * (x * x);
+            }
         }
     }
 
+    // Linearna interpolacija ako nije u krivini
     for (let i = 0; i < niveletaPoints.length - 1; i++) {
         let P1 = niveletaPoints[i], P2 = niveletaPoints[i + 1];
-
-        let sStart = P1.T2 ? P1.T2.s : P1.stacionaza;
-        let hStart = P1.T2 ? P1.T2.h : P1.visina;
-
-        let sEnd = P2.T1 ? P2.T1.s : P2.stacionaza;
-        let hEnd = P2.T1 ? P2.T1.h : P2.visina;
-
-        if (stac >= sStart && stac <= sEnd) {
-            return hStart + ((stac - sStart) / (sEnd - sStart)) * (hEnd - hStart);
+        if (stac >= P1.stacionaza && stac <= P2.stacionaza) {
+            return P1.visina + ((stac - P1.stacionaza) / (P2.stacionaza - P1.stacionaza)) * (P2.visina - P1.visina);
         }
     }
-
-    if (stac <= niveletaPoints[0].stacionaza) return niveletaPoints[0].visina;
-    if (stac >= niveletaPoints[niveletaPoints.length - 1].stacionaza) return niveletaPoints[niveletaPoints.length - 1].visina;
-    return 0;
+    return niveletaPoints[niveletaPoints.length - 1].visina;
 }
 
 function nacrtajSamo3DNiveletu() {
