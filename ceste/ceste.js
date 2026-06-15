@@ -825,14 +825,26 @@ function crtajCanvasProfil() {
 
     // Crtaj VPI Tjemena
     niveletaPoints.forEach((pt, index) => {
-        ctx.beginPath();
-        ctx.fillStyle = (index === aktivnoVertikalnoTjeme) ? '#ffea00' : '#ffffff';
-        ctx.arc(uX(pt.stacionaza), uY(pt.visina), (index === aktivnoVertikalnoTjeme) ? 6 : 4, 0, 2 * Math.PI);
-        ctx.fill(); ctx.stroke();
+        const jeAktivno = (index === aktivnoVertikalnoTjeme);
 
+        ctx.beginPath();
+        // Veći radijus za aktivno (10px), manji za ostale (4px)
+        const radius = jeAktivno ? 8 : 6;
+
+        // Boja: Zelena za aktivno, Bijela za ostalo
+        ctx.fillStyle = jeAktivno ? '#fcba03' : '#16a2de';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+
+        ctx.arc(uX(pt.stacionaza), uY(pt.visina), radius, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        // Tekst sa radijusom
         if (pt.Rv > 0) {
-            ctx.fillStyle = '#ffea00'; ctx.font = '11px Arial';
-            ctx.fillText(`Rv=${pt.Rv}`, uX(pt.stacionaza) - 15, uY(pt.visina) - 12);
+            ctx.fillStyle = '#ffea00';
+            ctx.font = jeAktivno ? 'bold 14px Arial' : '11px Arial';
+            ctx.fillText(`Rv=${pt.Rv}`, uX(pt.stacionaza) - 15, uY(pt.visina) - 18);
         }
     });
 }
@@ -874,6 +886,7 @@ function klikNaProfilCanvas(event) {
         if (panel) panel.style.display = 'block';
         let rc = document.getElementById('vc-radijus');
         if (rc) rc.value = niveletaPoints[kliknutoTjeme].Rv || 0;
+        crtajCanvasProfil();
     }
     else if (isDrawingNiveleta) {
         if (stac >= 0 && stac <= profilMaxStac) {
