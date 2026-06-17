@@ -110,17 +110,32 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => {
     e.preventDefault(); // Sprječava skrolanje cijele stranice
 
-    let oldZoom = currentZoom;
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
-
     // Zadržavanje fokusa ispod miša
     const r = canvas.getBoundingClientRect();
     let focusX = e.clientX - r.left;
     let focusY = e.clientY - r.top;
 
-    panX = focusX - (focusX - panX) * (currentZoom / oldZoom);
-    panY = focusY - (focusY - panY) * (currentZoom / oldZoom);
+    // Dobijamo koordinate modela ispod miša za provjeru
+    let posData = getSnapped(focusX, focusY);
+    let hit = findHit(posData.raw.x, posData.raw.y);
+
+    // Ako smo u modu dijagrama i miš je na elementu, skaliramo dijagram
+    if (['N', 'V', 'M', 'def'].includes(currentView) && hit && hit.type === 'element') {
+        if (e.deltaY > 0) {
+            diagScale /= 1.1; // Smanjuje dijagram (skrol dole)
+        } else {
+            diagScale *= 1.1; // Povećava dijagram (skrol gore)
+        }
+    }
+    // U suprotnom, radimo klasični zoom modela
+    else {
+        let oldZoom = currentZoom;
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        currentZoom = Math.min(Math.max(currentZoom * zoomFactor, 0.2), 5.0);
+
+        panX = focusX - (focusX - panX) * (currentZoom / oldZoom);
+        panY = focusY - (focusY - panY) * (currentZoom / oldZoom);
+    }
 
     draw();
 }, { passive: false });
@@ -181,7 +196,7 @@ canvas.addEventListener('touchmove', e => {
 canvas.addEventListener('touchend', e => {
     const touch = e.changedTouches[0];
     const pos = getCanvasCoords(touch.clientX, touch.clientY);
-    handleEnd({ clientX: pos.x, clientY: pos.y });
+    handleEnd( pos.x, pos.y );
 }, { passive: false });
 
 canvas.addEventListener('mousedown', e => {
@@ -196,7 +211,23 @@ canvas.addEventListener('mousemove', e => {
     handleMove(pos.x, pos.y);
 });
 
-canvas.addEventListener('mouseup', e => handleEnd(e));
+canvas.addEventListener('mouseup', e => {
+    const pos = getCanvasCoords(e.clientX, e.clientY);
+    handleEnd(pos.x, pos.y);
+});
+
+window.addEventListener('keydown', e => {
+    // Reaguj na tastaturu samo ako smo u pregledu dijagrama (N, V, M)
+    if (['N', 'V', 'M', 'def'].includes(currentView)) {
+        if (e.key === '+' || e.key === '=' || e.key === 'NumpadAdd') {
+            diagScale *= 1.1;
+            draw();
+        } else if (e.key === '-' || e.key === 'NumpadSubtract') {
+            diagScale /= 1.1;
+            draw();
+        }
+    }
+});
 
 function getCanvasCoords(cx, cy) { const r = canvas.getBoundingClientRect(); return { x: cx - r.left, y: cy - r.top }; }
 
@@ -338,30 +369,36 @@ function handleMove(cx, cy) {
     }
 }
 
-function handleEnd(e) {
+function handleEnd(cx, cy) {
     if (isPanning) { isPanning = false; return; }
 
-    const clientX = e.clientX !== undefined ? e.clientX : 0;
-    const clientY = e.clientY !== undefined ? e.clientY : 0;
+    const posData = getSnapped(cx, cy);
+    let target = useSnap ? posData.snapped : posData.raw;
 
     if (isDrawing && startNode) {
-        const posC = { x: clientX, y: clientY };
-        const posData = getSnapped(posC.x, posC.y);
         const hit = findHit(posData.raw.x, posData.raw.y);
         const endNode = (hit && hit.type === 'node') ? hit.node : null;
 
         let dist = Math.hypot(posData.snapped.x - startNode.x, posData.snapped.y - startNode.y);
-        if (dist > 0.05) {
-            saveHistory();
-            if (endNode && endNode !== startNode) {
-                const exists = elements.some(el => (el.n1 === nodes.indexOf(startNode) && el.n2 === nodes.indexOf(endNode)) || (el.n1 === nodes.indexOf(endNode) && el.n2 === nodes.indexOf(startNode)));
-                if (!exists) elements.push({ n1: nodes.indexOf(startNode), n2: nodes.indexOf(endNode), loads: [] });
-            } else if (!endNode) {
-                nodes.push({ x: posData.snapped.x, y: posData.snapped.y, res: 'none', fx: 0, fy: 0, m: 0 });
-                elements.push({ n1: nodes.indexOf(startNode), n2: nodes.length - 1, loads: [] });
-            }
+
+        if (dist < 0.05) {
+            isDrawing = false;
+            startNode = null;
+            draw();
+            return;
         }
-        isDrawing = false; startNode = null;
+
+        saveHistory();
+        if (endNode && endNode !== startNode) {
+            const exists = elements.some(el => (el.n1 === nodes.indexOf(startNode) && el.n2 === nodes.indexOf(endNode)) || (el.n1 === nodes.indexOf(endNode) && el.n2 === nodes.indexOf(startNode)));
+            if (!exists) elements.push({ n1: nodes.indexOf(startNode), n2: nodes.indexOf(endNode), loads: [] });
+        } else if (!endNode) {
+            nodes.push({ x: target.x, y: target.y, res: 'none', fx: 0, fy: 0, m: 0 });
+            elements.push({ n1: nodes.indexOf(startNode), n2: nodes.length - 1, loads: [] });
+        }
+
+        isDrawing = false;
+        startNode = null;
     } else if (mode === 'select' && dragNode) {
         if (!isDraggingNode) { selectedNode = dragNode; openNodeModal(dragNode, dragStartPos.x, dragStartPos.y); }
         dragNode = null; isDraggingNode = false;
@@ -730,7 +767,7 @@ function draw() {
             ctx.moveTo(c1.x, c1.y);
             for (let i = 0; i <= n_pts; i++) {
                 let px = c1.x + dx * (i / n_pts), py = c1.y + dy * (i / n_pts);
-                let val = pts[i] * 1.5;// * diagScale;
+                let val = pts[i] * 1.5 * diagScale;
                 ctx.lineTo(px + nx * val, py + ny * val);
             }
             ctx.lineTo(c2.x, c2.y);
@@ -742,7 +779,7 @@ function draw() {
             ctx.beginPath();
             for (let i = 0; i <= n_pts; i++) {
                 let px = c1.x + dx * (i / n_pts), py = c1.y + dy * (i / n_pts);
-                let val = pts[i] * 1.5;// * diagScale;
+                let val = pts[i] * 1.5 * diagScale;
                 if (i === 0) ctx.moveTo(px + nx * val, py + ny * val);
                 else ctx.lineTo(px + nx * val, py + ny * val);
             }
@@ -803,15 +840,69 @@ function draw() {
     });
 
     // Greda (Konstruktivni elementi)
+    // --- SKALIRANJE DEFORMACIJA ---
+    // Računamo automatsku skalu tako da maksimalni ugib bude uvijek vidljiv (npr. 40 piksela na ekranu)
+    let dispScale = 1;
+    if (currentView === 'def') {
+        let maxU = 1e-9;
+        nodes.forEach(n => { if (n.u) maxU = Math.max(maxU, Math.hypot(n.u[0], n.u[1])); });
+        let targetMeters = 40 / (BASE_SCALE * currentZoom); // Pretvaramo 40px u metrike modela
+        dispScale = (targetMeters / maxU) * diagScale;
+    }
+
+    // Greda (Konstruktivni elementi)
     elements.forEach(el => {
         let n1 = nodes[el.n1], n2 = nodes[el.n2];
         let c1 = toCanvas(n1.x, n1.y), c2 = toCanvas(n2.x, n2.y);
-        if (currentView === 'def' && n1.u) { c1.x += n1.u[0] * 50; c1.y -= n1.u[1] * 50; c2.x += n2.u[0] * 50; c2.y -= n2.u[1] * 50; }
         let dx = c2.x - c1.x, dy = c2.y - c1.y, Lg = Math.hypot(dx, dy);
         if (Lg === 0) return; let nx = -dy / Lg, ny = dx / Lg;
 
+        // Crtanje osnovne (nedeformisane) linije
         ctx.beginPath(); ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
-        ctx.strokeStyle = currentView === 'model' ? '#ffffff' : '#555566'; ctx.lineWidth = 4; ctx.stroke();
+        if (currentView === 'def') {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; // Blijeda silueta originalnog štapa
+            ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+        } else {
+            ctx.strokeStyle = currentView === 'model' ? '#ffffff' : '#555566'; ctx.lineWidth = 4; ctx.stroke();
+        }
+
+        // Crtanje PRAVE krive linije ugiba
+        if (currentView === 'def' && n1.u && n2.u && el.FEM_DATA) {
+            let fd = el.FEM_DATA;
+            let ug = [n1.u[0], n1.u[1], n1.u[2], n2.u[0], n2.u[1], n2.u[2]];
+            let ul = Array(6).fill(0);
+            for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) ul[i] += fd.T[i][j] * ug[j];
+
+            ctx.beginPath();
+            let steps = 20; // Dijelimo element na 20 segmenata za glatku krivu
+            for (let i = 0; i <= steps; i++) {
+                let xi = i / steps;
+                let x = xi * fd.L;
+
+                // Hermitovi polinomi za poprečno pomjeranje (savijanje)
+                let N1 = 1 - 3 * xi * xi + 2 * xi * xi * xi, N2 = x - 2 * x * xi + x * xi * xi;
+                let N3 = 3 * xi * xi - 2 * xi * xi * xi, N4 = -x * xi + x * xi * xi;
+                let vy = ul[1] * N1 + ul[2] * N2 + ul[4] * N3 + ul[5] * N4;
+
+                // Linearna interpolacija za uzdužno pomjeranje
+                let vx = ul[0] * (1 - xi) + ul[3] * xi;
+
+                // Transformacija nazad u globalni sistem
+                let c = fd.T[0][0], s = fd.T[0][1];
+                let dx_glob = vx * c - vy * s;
+                let dy_glob = vx * s + vy * c;
+
+                // Skaliranje pomjeranja dodato na stvarne koordinate modela
+                let defModelX = (n1.x + (n2.x - n1.x) * xi) + dx_glob * dispScale;
+                let defModelY = (n1.y + (n2.y - n1.y) * xi) + dy_glob * dispScale;
+                let p = toCanvas(defModelX, defModelY);
+
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            ctx.strokeStyle = '#00ff88'; // Jarko zelena za deformisanu gredu
+            ctx.lineWidth = 3; ctx.stroke();
+        }
 
         if (currentView === 'model') {
             let L_real = Math.hypot(n2.x - n1.x, n2.y - n1.y);
@@ -823,11 +914,30 @@ function draw() {
     // Čvorovi i Oslonci
     nodes.forEach(n => {
         let c = toCanvas(n.x, n.y);
-        if (currentView === 'def' && n.u) { c.x += n.u[0] * 50; c.y -= n.u[1] * 50; }
+
+        // Crtanje deformisane pozicije čvora
+        if (currentView === 'def' && n.u) {
+            c = toCanvas(n.x + n.u[0] * dispScale, n.y + n.u[1] * dispScale);
+        }
 
         ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, Math.PI * 2);
         ctx.fillStyle = (n === selectedNode || n === dragNode) ? '#4a4ae7' : '#00ff88'; ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+
+        // --- ISPIS DEFORMACIJA NA ČVORU ---
+        if (currentView === 'def' && n.u) {
+            ctx.fillStyle = '#ffffff'; // Bijela boja teksta
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'left';
+
+            // Pomoćna funkcija za lijepo formatiranje malih brojeva (prebacuje u naučni zapis ako je broj < 0.0001)
+            let fmt = (val) => (Math.abs(val) > 0 && Math.abs(val) < 0.0001) ? val.toExponential(2) : val.toFixed(4);
+
+            // Ispisujemo u, v, fi pomaknuto malo udesno od čvora
+            ctx.fillText(`u: ${fmt(n.u[0])}`, c.x + 12, c.y - 12);
+            ctx.fillText(`v: ${fmt(n.u[1])}`, c.x + 12, c.y);
+            ctx.fillText(`fi: ${fmt(n.u[2])}`, c.x + 12, c.y + 12);
+        }
 
         if (currentView === 'model' || currentView === 'R') {
             ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 2;

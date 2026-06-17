@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dimenzioniranje by Almedin</title>
+    <link rel="stylesheet" href="dimenzioniranje.css">
+</head>
+<body>
+    <div id="toolbar">
+        <button onclick="undo()" style="background:#666; color:#fff;" title="Vrati korak unazad">↩ Undo</button>
+        <div style="display: flex; gap: 5px;">
+            <button id="btn-draw" class="active" onclick="setMode('draw')">Crtanje</button>
+            <button id="btn-select" onclick="setMode('select')">Uredi / Pomjeri</button>
+        </div>
+        <button onclick="runDim()" style="background:#00ff88; color:#000;">PRORAČUNAJ</button>
+        <select id="result-view" onchange="changeView(this.value)">
+            <option value="model">Model</option>
+            <option value="def">Deformacija</option>
+            <option value="N">Aksijalne (N)</option>
+            <
