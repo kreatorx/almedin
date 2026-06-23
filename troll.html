@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM_CRITICAL_ERROR</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            margin: 0;
+            overflow: hidden;
+            background-image: radial-gradient(rgba(0, 30, 0, 0.5), black 120%);
+            height: 100vh;
+        }
+
+        #terminal {
+            width: 100%;
+            height: 90vh;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .warning {
+            color: #ff3333;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        .success {
+            color: #00ffcc;
+        }
+
+        .info {
+            color: #ffff00;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        /* Sakrivanje scrollbar-a za bolji filmski efekat */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="terminal"></div>
+
+<script>
+    const terminal = document.getElementById('terminal');
+
+    // Lista dramatičnih poruka koje će se ispisivati
+    const logs = [
+        "[INFO] Inicijalizacija protokola...",
+        "[INFO] Povezivanje na proxy server: 185.220.101.5...",
+        "[SUCCESS] Veza uspostavljena preko tunela: Tor-Node-Alpha",
+        "[INFO] Skeniranje lokalnog uređaja...",
+        "[WARNING] Detektovan operativni sistem: " + navigator.platform,
+        "[INFO] Pristupanje particijama diska (C:/, D:/)...",
+        "[SUCCESS] Sigurnosni zid (Firewall) uspješno zaobiđen.",
+        "[INFO] Izvlačenje keširanih lozinki iz pretraživača...",
+        "[SUCCESS] Pronađeno: 14 sačuvanih lozinki (Google Chrome/Edge).",
+        "[INFO] Ekstrakcija privatnih ključeva i sesijskih kolačića (Session Cookies)...",
+        "[INFO] Pristupanje folderu: 'C:\\Users\\Admin\\Documents'...",
+        "[WARNING] Pronađeni osjetljivi dokumenti! Kopiranje u toku...",
+        "[INFO] Pakovanje podataka u kriptovani paket (AES-256)...",
+        "[INFO] Pokretanje skripte za slanje podataka na udaljeni server...",
+        "[INFO] Povezivanje sa: http://darknet-storage-node-771x.onion/upload",
+        "[SUCCESS] Slanje paketa 1/4 (Lozinke i Autentifikacija) - 100% ZAVRŠENO",
+        "[SUCCESS] Slanje paketa 2/4 (Lični dokumenti i Slike) - 100% ZAVRŠENO",
+        "[SUCCESS] Slanje paketa 3/4 (Istorija pretraživanja i Lokacija) - 100% ZAVRŠENO",
+        "[INFO] Aktivacija self-destruct skripte za brisanje tragova u logovima...",
+        "[SUCCESS] Svi lokalni logovi očišćeni.",
+        "[WARNING] UREĐAJ JE USPJEŠNO KOMPROMITOVAN. MOŽETE ZATVORITI PROZOR."
+    ];
+
+    let currentLine = 0;
+
+    function typeLog() {
+        if (currentLine < logs.length) {
+            const lineText = logs[currentLine];
+            const p = document.createElement('p');
+            
+            // Dodavanje boja u zavisnosti od tipa poruke
+            if (lineText.includes("[WARNING]")) {
+                p.className = 'warning';
+            } else if (lineText.includes("[SUCCESS]")) {
+                p.className = 'success';
+            } else if (lineText.includes("[INFO]")) {
+                p.className = 'info';
+            }
+
+            p.textContent = lineText;
+            terminal.appendChild(p);
+            
+            // Automatski skroluj na dno kako se linije dodaju
+            terminal.scrollTop = terminal.scrollHeight;
+            currentLine++;
+
+            // Nasumični tajming između linija da izgleda realističnije (između 600ms i 2000ms)
+            let delay = Math.random() * (2000 - 600) + 600;
+            
+            // Ako je upozorenje ili uspješno slanje, neka napravi malo dužu pauzu radi drame
+            if (lineText.includes("Slanje paketa") || lineText.includes("UPOZORENJE")) {
+                delay += 1000;
+            }
+
+            setTimeout(typeLog, delay);
+        }
+    }
+
+    // Pokreni skriptu nakon 1.5 sekunde čekanja (za napetost)
+    setTimeout(typeLog, 1500);
+</script>
+
+</body>
+</html>
