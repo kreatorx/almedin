@@ -568,34 +568,16 @@ window.addEventListener('resize', () => {
 
 
 // ============================================================
-// TOGGLE SIDEBAR (mobitel) - ISPRAVKA
-// ============================================================
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar) {
-        sidebar.classList.toggle('open');
-    }
-    if (overlay) {
-        overlay.classList.toggle('open');
-    }
-}
-
-// Dodatni event listener za sigurnost (ako dugme ne radi preko onclick)
+// TOGGLE SIDEBAR
 document.addEventListener('DOMContentLoaded', function() {
-    const toggleBtn = document.getElementById('sidebar-toggle');
-    const overlay = document.getElementById('sidebar-overlay');
+    document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
+        document.getElementById('sidebar')?.classList.toggle('open');
+        document.getElementById('sidebar-overlay')?.classList.toggle('open');
+    });
     
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            toggleSidebar();
-        });
-    }
-    
-    if (overlay) {
-        overlay.addEventListener('click', function() {
-            toggleSidebar();
-        });
-    }
+    document.getElementById('sidebar-overlay')?.addEventListener('click', function() {
+        document.getElementById('sidebar')?.classList.remove('open');
+        document.getElementById('sidebar-overlay')?.classList.remove('open');
+    });
 });
+
