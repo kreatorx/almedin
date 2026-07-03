@@ -1,178 +1,240 @@
 <!DOCTYPE html>
-<html lang="bs">
+<html lang="hr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geotehnika: Proračun Šipova by Almedin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <style rel="stylesheet" href="pilon.css"></style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Duboko temeljenje by Almedin</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="pilon.css" />
 </head>
-<body class="h-screen w-screen flex flex-col md:flex-row overflow-hidden bg-slate-950">
+<body>
 
-    <div class="w-full bg-slate-950 p-3 flex justify-between items-center md:hidden border-b border-slate-800 z-50 flex-shrink-0">
-        <div>
-            <h1 class="text-sm font-bold text-white flex items-center gap-1.5">
-                <span class="px-1 bg-amber-600 rounded text-[10px] text-slate-950 font-black">EC7</span>
-                Proračun Šipova
-            </h1>
-        </div>
-        <button onclick="toggleSidebar()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded transition-all">
-            ⚙️ Parametri
-        </button>
-    </div>
+    <div class="max-w-7xl mx-auto">
 
-    <div id="main-sidebar" class="hidden md:flex w-full md:w-[420px] md:max-w-[420px] bg-slate-900 border-r border-slate-800 flex-col flex-shrink-0 h-[calc(100vh-49px)] md:h-full absolute md:relative z-40 top-[49px] md:top-0 left-0 shadow-2xl md:shadow-none overflow-hidden">
-
-        <div class="p-4 bg-gradient-to-r from-slate-950 to-slate-900 border-b border-slate-800 hidden md:block flex-shrink-0">
-            <h1 class="text-md font-bold text-white flex items-center gap-2">
-                <span class="p-1 bg-amber-600 rounded text-xs text-slate-950 font-black">EC7</span>
-                Napredni Proračun Šipova
-            </h1>
-            <p class="text-[11px] text-slate-400 mt-0.5">Statistika (Srednja/Min) i DA1 (K1 & K2) - Integrisane Tabele</p>
+        <!-- NASLOV -->
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Proračun šipa prema EN 1997-1</h1>
+                <p class="text-slate-400 text-xs">Bušeni / zabijeni šip – statički, SPT ili dinamički podaci</p>
+            </div>
+            <button onclick="azurirajSve()" class="btn btn-primary text-xs">🔄 Ponovni proračun</button>
         </div>
 
-        <div class="p-4 space-y-4 overflow-y-auto flex-1 bg-slate-900 custom-sidebar-scroll">
+        <!-- GLAVNI LAYOUT -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
-            <div class="space-y-2 bg-slate-950/60 p-3 rounded border border-slate-800 text-xs">
-                <h3 class="font-bold text-indigo-400 uppercase tracking-wider text-[10px]">1. Geometrija, Izvođenje i Opterećenje</h3>
+            <!-- SIDEBAR: parametri -->
+            <div class="lg:col-span-1 space-y-3" id="sidebar">
 
-                <div>
-                    <label class="text-slate-400 block mb-1">Tehnologija izvođenja šipa:</label>
-                    <select id="pile-type" onchange="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-amber-400 font-bold">
-                        <option value="buseni" selected>Bušeni šipovi (Tabele 4-1, 4-2)</option>
-                        <option value="zabijeni">Zabijeni šipovi (Tabela 4-3 - API 1987)</option>
-                    </select>
+                <!-- Dimenzije šipa -->
+                <div class="card sidebar-card">
+                    <div class="label-sm">Geometrija šipa</div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                        <div>
+                            <label class="sidebar-label">Prečnik D [m]</label>
+                            <input type="number" id="pile-d" value="0.5" step="0.05" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                        <div>
+                            <label class="sidebar-label">Dužina L [m]</label>
+                            <input type="number" id="pile-l" value="8.0" step="0.5" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                        <div>
+                            <label class="sidebar-label">G<sub>k</sub> [kN]</label>
+                            <input type="number" id="pile-gk" value="250" step="5" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                        <div>
+                            <label class="sidebar-label">Q<sub>k</sub> [kN]</label>
+                            <input type="number" id="pile-qk" value="80" step="5" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                    </div>
+                    <div class="mt-1.5">
+                        <label class="sidebar-label">Nivo podzemne vode [m]</label>
+                        <input type="number" id="w-level" value="2.0" step="0.5" oninput="azurirajSve()" class="sidebar-input" />
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-slate-400 block mb-1">Prečnik D (m):</label>
-                        <input type="number" id="pile-d" value="0.5" step="0.1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">Dužina L (m):</label>
-                        <input type="number" id="pile-l" value="8.0" step="0.5" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-slate-400 block mb-1">Karakteristična sila G<sub>k</sub> (kN):</label>
-                        <input type="number" id="pile-gk" value="250" step="100" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white font-semibold text-amber-400">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">Karakteristična sila Q<sub>k</sub> (kN):</label>
-                        <input type="number" id="pile-qk" value="80" step="50" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white font-semibold text-cyan-400">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-cyan-400 block mb-1">Nivo vode - NPV (m):</label>
-                        <input type="number" id="w-level" value="2.0" step="0.5" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-cyan-900 rounded text-cyan-300">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">Broj profila ispitivanja:</label>
-                        <select id="num-profiles" onchange="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                            <option value="1">1 profil (ξ₁=1.40, ξ₂=1.40)</option>
-                            <option value="2" selected>2 profila (ξ₁=1.35, ξ₂=1.27)</option>
-                            <option value="3">3 profila (ξ₁=1.33, ξ₂=1.23)</option>
-                            <option value="4">4 profila (ξ₁=1.31, ξ₂=1.20)</option>
-                            <option value="5">5+ profila (ξ₁=1.28, ξ₂=1.15)</option>
+                <!-- Tip šipa i ispitivanja -->
+                <div class="card sidebar-card">
+                    <div class="label-sm">Metodologija</div>
+                    <div class="mt-1.5">
+                        <label class="sidebar-label">Tehnologija</label>
+                        <select id="pile-type" onchange="azurirajSve()" class="sidebar-input">
+                            <option value="buseni">Bušeni šip</option>
+                            <option value="zabijeni">Zabijeni šip</option>
                         </select>
                     </div>
+                    <div class="mt-1.5">
+                        <label class="sidebar-label">Vrsta ispitivanja</label>
+                        <select id="test-type" onchange="azurirajSve()" class="sidebar-input">
+                            <option value="spt">SPT / CPT</option>
+                            <option value="static">Statičko (prese)</option>
+                            <option value="dynamic">Dinamičko (PDA)</option>
+                        </select>
+                    </div>
+                    <div class="mt-1.5">
+                        <label class="sidebar-label">Broj ispitivanja n</label>
+                        <select id="num-profiles" onchange="azurirajSve()" class="sidebar-input">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">≥7</option>
+                        </select>
+                    </div>
+                    <div class="mt-1.5 text-[0.6rem] text-slate-400 flex justify-between">
+                        <span>ξ₁ = <span id="val-xi1">1.33</span></span>
+                        <span>ξ₂ = <span id="val-xi2">1.23</span></span>
+                    </div>
                 </div>
+
+                <!-- Grupa šipova -->
+                <div class="card sidebar-card">
+                    <div class="label-sm">Grupa šipova</div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                        <div>
+                            <label class="sidebar-label">nx</label>
+                            <input type="number" id="group-nx" value="1" min="1" step="1" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                        <div>
+                            <label class="sidebar-label">ny</label>
+                            <input type="number" id="group-ny" value="1" min="1" step="1" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                        <div>
+                            <label class="sidebar-label">s<sub>x</sub> [m]</label>
+                            <input type="number" id="group-sx" value="2.5" step="0.1" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                        <div>
+                            <label class="sidebar-label">s<sub>y</sub> [m]</label>
+                            <input type="number" id="group-sy" value="2.5" step="0.1" oninput="azurirajSve()" class="sidebar-input" />
+                        </div>
+                    </div>
+                    <div class="mt-1.5">
+                        <label class="sidebar-label">Debljina kape t [m]</label>
+                        <input type="number" id="cap-t" value="1.5" step="0.1" oninput="azurirajSve()" class="sidebar-input" />
+                    </div>
+                </div>
+
+                <!-- Slojevi tla (dinamički) -->
+                <div class="card sidebar-card">
+                    <div class="flex justify-between items-center">
+                        <span class="label-sm">Slojevi tla</span>
+                        <button onclick="dodajSloj()" class="btn text-[0.6rem]">+ Dodaj sloj</button>
+                    </div>
+                    <div id="proceduralni-slojevi" class="space-y-2 mt-1.5 max-h-[350px] overflow-y-auto pr-1">
+                        <!-- popunjava JS -->
+                    </div>
+                </div>
+
             </div>
 
-            <div class="space-y-2 bg-slate-950/60 p-3 rounded border border-slate-800 text-xs">
-                <h3 class="font-bold text-indigo-400 uppercase tracking-wider text-[10px]">2. Konfiguracija Grupe (Bloka)</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-slate-400 block mb-1">Broj u X (n<sub>x</sub>):</label>
-                        <input type="number" id="group-nx" value="1" min="1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">Broj u Y (n<sub>y</sub>):</label>
-                        <input type="number" id="group-ny" value="1" min="1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-slate-400 block mb-1">Razmak s<sub>x</sub> (m):</label>
-                        <input type="number" id="group-sx" value="2.5" step="0.1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">Razmak s<sub>y</sub> (m):</label>
-                        <input type="number" id="group-sy" value="2.5" step="0.1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                    </div>
-                </div>
-                <div>
-                    <label class="text-slate-400 block mb-1">Debljina naglavne ploče t (m):</label>
-                    <input type="number" id="cap-t" value="1.5" step="0.1" oninput="azurirajSve()" class="w-full p-1.5 bg-slate-800 border border-slate-700 rounded text-white">
-                </div>
-            </div>
+            <!-- DESNA STRANA: 3D + rezultati -->
+            <div class="lg:col-span-3 space-y-4">
 
-            <div class="space-y-2">
-                <div class="flex justify-between items-center sticky top-0 bg-slate-900 pb-1 z-10">
-                    <h3 class="font-bold text-amber-400 uppercase tracking-wider text-[10px]">3. Geološki Slojevi Profila</h3>
-                    <button onclick="dodajSloj()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded text-[10px] transition-all">+ Dodaj Sloj</button>
+                <!-- 3D prikaz -->
+                <div class="card p-1">
+                    <div id="canvas-container"></div>
                 </div>
-                <div id="proceduralni-slojevi" class="space-y-2"></div>
+
+                <!-- Karakteristične vrijednosti -->
+                <div class="card">
+                    <div class="label-sm mb-1.5">Karakteristične vrijednosti (pojedinačni šip)</div>
+                    <div class="grid grid-cols-3 gap-2 text-sm">
+                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>b,k</sub></span><br><span id="val-rbk" class="font-bold text-white text-base">-</span> kN</div>
+                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>s,k</sub></span><br><span id="val-rsk" class="font-bold text-white text-base">-</span> kN</div>
+                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>c,k</sub></span><br><span id="val-rck" class="font-bold text-white text-base">-</span> kN</div>
+                    </div>
+                    <div class="text-[0.6rem] text-slate-400 mt-1">
+                        Efektivni napon na bazi: σ'<sub>y</sub> = <span id="val-sigma-baza" class="text-white">-</span> kPa
+                    </div>
+                </div>
+
+                <!-- Dvostupčani raspored: lijevo pristupi, desno detaljni proračun -->
+                <div class="grid grid-2cols gap-3" style="grid-template-columns: 1fr 1.5fr;">
+
+                    <!-- Lijeva kolona: 4 pristupa -->
+                    <div class="space-y-2">
+                        <div class="label-sm">Proračunski pristupi (grupa)</div>
+
+                        <!-- PP1/K1 -->
+                        <div class="approach-card">
+                            <div class="flex justify-between items-start">
+                                <span class="approach-title text-amber-300">PP1/K1 (A1+M1+R1)</span>
+                                <span id="status-pp1k1" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k1" class="approach-value text-white">-</span></div>
+                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k1" class="approach-value text-emerald-400">-</span></div>
+                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k1" class="approach-value text-sky-400">-</span></div>
+                            </div>
+                        </div>
+
+                        <!-- PP1/K2 -->
+                        <div class="approach-card">
+                            <div class="flex justify-between items-start">
+                                <span class="approach-title text-amber-300">PP1/K2 (A2+M1+R4)</span>
+                                <span id="status-pp1k2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k2" class="approach-value text-white">-</span></div>
+                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k2" class="approach-value text-emerald-400">-</span></div>
+                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k2" class="approach-value text-sky-400">-</span></div>
+                            </div>
+                        </div>
+
+                        <!-- PP2 -->
+                        <div class="approach-card">
+                            <div class="flex justify-between items-start">
+                                <span class="approach-title text-amber-300">PP2 (A1+M1+R2)</span>
+                                <span id="status-pp2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp2" class="approach-value text-white">-</span></div>
+                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp2" class="approach-value text-emerald-400">-</span></div>
+                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp2" class="approach-value text-sky-400">-</span></div>
+                            </div>
+                        </div>
+
+                        <!-- PP3 -->
+                        <div class="approach-card">
+                            <div class="flex justify-between items-start">
+                                <span class="approach-title text-amber-300">PP3 (A1/A2+M2+R3)</span>
+                                <span id="status-pp3" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp3" class="approach-value text-white">-</span></div>
+                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp3" class="approach-value text-emerald-400">-</span></div>
+                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp3" class="approach-value text-sky-400">-</span></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Desna kolona: detaljni proračun -->
+                    <div class="card flex flex-col h-full">
+                        <div class="label-sm mb-0.5">Detaljni proračun</div>
+                        <div id="izvjestaj-tekst" class="text-[0.6rem] font-mono bg-slate-900 p-2 rounded border border-slate-800 flex-1 overflow-y-auto max-h-[360px] whitespace-pre-wrap leading-relaxed">
+                            ...
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
-        <div class="relative flex-1 md:h-auto bg-slate-950 border-b border-slate-800">
-            <div id="canvas-container" class="w-full h-full"></div>
-            <div class="absolute top-3 left-3 bg-slate-900/90 border border-slate-800 p-2 rounded text-[10px] md:text-xs backdrop-blur-sm pointer-events-none">
-                <span class="font-bold text-white block">3D Radni Prozor: Paralelni Slojevi</span>
-            </div>
-        </div>
-
-        <div class="h-[40vh] md:h-[360px] bg-slate-900 border-t border-slate-800 flex flex-col overflow-y-auto text-xs">
-
-            <div class="p-4 bg-slate-950/60 border-b border-slate-800 space-y-3 flex-shrink-0">
-                <h3 class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Verifikacija DA1 (Eurocode 7)</h3>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div class="p-2 bg-slate-900/80 rounded border border-slate-800">
-                        <div class="flex justify-between font-bold mb-1">
-                            <span class="text-indigo-400">Kombinacija 1 (A1 + M1 + R1)</span>
-                            <span id="status-k1" class="px-1 rounded text-[10px]"></span>
-                        </div>
-                        <div class="text-[11px] text-slate-400 space-y-0.5">
-                            <div>Projektni Efekat E<sub>d</sub>: <span id="val-ed-k1" class="text-white font-bold">-</span></div>
-                            <div>Projektni Otpor R<sub>d</sub>: <span id="val-rd-k1" class="text-white font-bold">-</span></div>
-                        </div>
-                    </div>
-
-                    <div class="p-2 bg-slate-900/80 rounded border border-slate-800">
-                        <div class="flex justify-between font-bold mb-1">
-                            <span class="text-cyan-400">Kombinacija 2 (A2 + M2 + R4)</span>
-                            <span id="status-k2" class="px-1 rounded text-[10px]"></span>
-                        </div>
-                        <div class="text-[11px] text-slate-400 space-y-0.5">
-                            <div>Projektni Efekat E<sub>d</sub>: <span id="val-ed-k2" class="text-white font-bold">-</span></div>
-                            <div>Projektni Otpor R<sub>d</sub>: <span id="val-rd-k2" class="text-white font-bold">-</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex gap-4 text-[10px] text-slate-400 bg-slate-900/40 p-1.5 rounded border border-slate-800/60">
-                    <div>Faktori Aneks D:</div>
-                    <div>ξ₁ (srednja): <span id="val-xi1" class="text-amber-400 font-bold">-</span></div>
-                    <div>ξ₂ (minimalna): <span id="val-xi2" class="text-amber-400 font-bold">-</span></div>
-                </div>
-            </div>
-
-            <div class="p-4 font-mono text-slate-300 bg-slate-950/20 flex-1">
-                <h3 class="font-bold text-indigo-400 uppercase tracking-wider font-sans text-[10px] mb-2">Statistički Proračun Specifične Nosivosti</h3>
-                <div id="izvjestaj-tekst" class="space-y-1 leading-normal text-[11px]"></div>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="pilon.js"></script>
+    <!-- THREE.JS i OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js">
+    </script>
+    <!-- Glavni JS -->
+    <script src="pilon.js"></script>
 </body>
 </html>

@@ -1,31 +1,163 @@
+/* style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+
+* {
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background-color: #0f172a;
-    color: #f8fafc;
-    overflow: hidden;
+    background: #0b1120;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 12px;
 }
 
-.sidebar-scroll {
-    height: calc(100vh - 180px);
-    overflow-y: auto;
+::-webkit-scrollbar {
+    width: 5px;
 }
 
-@media (max-width: 768px) {
-    .sidebar-scroll {
-        height: auto;
-        max-height: 60vh;
-    }
-}
-
-.sidebar-scroll::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
     background: #1e293b;
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background: #475569;
-    border-radius: 3px;
+    border-radius: 6px;
 }
+
+input,
+select {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    color: #f1f5f9;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    width: 100%;
+}
+
+    input:focus,
+    select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+
+.label-sm {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+}
+
+.card {
+    background: #0f172a;
+    border-radius: 10px;
+    border: 1px solid #1e293b;
+    padding: 12px;
+}
+
+.btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+    .btn:hover {
+        background: #334155;
+        border-color: #475569;
+    }
+
+.btn-primary {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: white;
+}
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+#canvas-container {
+    width: 100%;
+    height: 380px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0b1120;
+}
+
+.status-badge {
+    padding: 1px 10px;
+    border-radius: 16px;
+    font-weight: 600;
+    font-size: 0.65rem;
+    display: inline-block;
+}
+
+.approach-card {
+    background: #0f172a;
+    border-radius: 8px;
+    border: 1px solid #1e293b;
+    padding: 8px 10px;
+    transition: border-color 0.2s;
+}
+
+    .approach-card:hover {
+        border-color: #3b82f6;
+    }
+
+.approach-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.approach-value {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.approach-label {
+    font-size: 0.55rem;
+    color: #94a3b8;
+}
+
+@media (max-width: 768px) {
+    .grid-2cols {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* sidebar kompaktnost */
+.sidebar-input {
+    padding: 3px 6px;
+    font-size: 0.7rem;
+}
+
+.sidebar-label {
+    font-size: 0.55rem;
+    color: #94a3b8;
+}
+
+.sidebar-card {
+    padding: 8px 10px;
+}
+
+.sloj-card {
+    padding: 6px 8px;
+    font-size: 0.65rem;
+}
+
+    .sloj-card input {
+        font-size: 0.65rem;
+        padding: 2px 4px;
+    }
+
+    .sloj-card .tip-radio {
+        font-size: 0.6rem;
+    }
