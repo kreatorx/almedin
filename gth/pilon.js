@@ -48,6 +48,17 @@ function getZabijeniNekoherentnoParametre(Nspt) {
     }
 }
 
+//EC 7-1 2.4.7.3.4
+let projektniPristup = [
+    { id: 1, naziv: 'P1K1', opis: 'Konstruktivna (A1+M1+R1)', faktor_baza: 1.25, faktor_omotac: 1.0 }, // PP1 K1 Plitki temelji, potporni zidovi itd. 
+    { id: 2, naziv: 'P1K2', opis: 'Geotehnička (A2+M2+R1)', faktor_baza: 1.60, faktor_omotac: 1.30 },    // PP1 K2 Šipovi i sidra
+    { id: 3, naziv: 'P2K1', opis: 'Geotehnička (A1+M1/M2+R2)', faktor_baza: 1.60, faktor_omotac: 1.30 },     // PP2 K1 Šipovi i sidra, redukcija otpora R 
+    { id: 4, naziv: 'P3K1', opis: 'Geotehnička (A1/A2+M2+R3)', faktor_baza: 1.60, faktor_omotac: 1.30 }     // PP3 K1 Šipovi i sidra, razdvaja izvor opterećenja
+    ]
+
+
+
+
 // Podaci o slojevima. Parametar predstavlja cu za glinu ili N60/Nspt za pijesak
 let geoloskiSlojevi = [
     { id: 1, tip: 'pijesak', debljina: 4.0, gama: 16, param_srednja: 6.33, param_min: 5 },
@@ -55,13 +66,91 @@ let geoloskiSlojevi = [
     { id: 3, tip: 'tvrdo', debljina: 3.0, gama: 19.5, param_srednja: 300, param_min: 250 }
 ];
 
-const xiTabele = {
+
+// KORELACIONI FAKTORI
+// xi1 i xi2 Statička ispitivanja, hidraulične prese i kontrategovi
+const xiTabele1 = {
+    "1": { xi1: 1.40, xi2: 1.40 },
+    "2": { xi1: 1.30, xi2: 1.20 },
+    "3": { xi1: 1.20, xi2: 1.05 },
+    "4": { xi1: 1.10, xi2: 1.00 },
+    "5": { xi1: 1.00, xi2: 1.00 }
+};
+
+//xi3 i xi4 Geotehnički ogledi broj udaraca SPT ili otpor na vrhu pentrometra CPT
+const xiTabele2 = {  
     "1": { xi1: 1.40, xi2: 1.40 },
     "2": { xi1: 1.35, xi2: 1.27 },
     "3": { xi1: 1.33, xi2: 1.23 },
     "4": { xi1: 1.31, xi2: 1.20 },
-    "5": { xi1: 1.28, xi2: 1.15 }
+    "5": { xi1: 1.29, xi2: 1.15 },
+    "6": { xi1: 1.27, xi2: 1.12 },
+    "7": { xi1: 1.25, xi2: 1.08 }
 };
+
+//xi5 i xi6 Dinamička ispitivanja, PDA i signal matching
+const xiTabele3 = {
+    "2": { xi1: 1.60, xi2: 1.50 },
+    "5": { xi1: 1.50, xi2: 1.35 },
+    "10": { xi1: 1.45, xi2: 1.30 },
+    "15": { xi1: 1.42, xi2: 1.25 },
+    "20": { xi1: 1.40, xi2: 1.25 }
+};
+
+
+// EQU (EQUILIBRIUM) - GRANIČNO STANJE GUBITKA STATIČKE RAVNOTEŽE
+// Parcijalni faktori za dejstva
+const gammaGdst = 1.1; // stalno destabilizirajuće
+const gammaGst = 1.0;  // stalno stabilizirajuće
+const gammaQdst = 1.5; // promjenjivo destabilizirajuće
+const gammaQst = 0;    // promjenjivo stabilizirajuće
+
+// Parcijalni faktori za parametre tla gammaM - primjenjuje se na tang Fi'
+const gammaFi = 1.25;   // efektivni ugao otpornosti na trenje
+const gammaC = 1.25;    // efektivna kohzija  
+const gammaGama = 1.00; // jedinična težina
+const gammaCu = 1.4;    // nedrenirana otpornost na smicanje
+const gammaQu = 1.4;    // jednoaksijalna pritisna čvstoća
+
+
+// STR (STRUCTURE) - GRANIČNO STANJE LOMA ILI PREKOMJERNE DEFORMACIJE KONSTRUKCIJE
+// Parcijalni faktori za dejstva
+const gammaGA1 = 1.35; // stalno nepovoljno
+const gammaGA2 = 1.0;  // stalno povoljno
+const gammaQA1 = 1.5; // promjenjivo nepovoljno
+const gammaQA2 = 1.3;    // promjenjivo povoljno
+
+// Parcijalni faktori za parametre tla gammaM M1 i M2 - primjenjuje se na tang Fi'
+const gammaFiM = [1.0,1.25];   // efektivni ugao otpornosti na trenje
+const gammaCM = [1.0, 1.25];    // efektivna kohzija  
+const gammaGamaM = [1.0, 1.4]; // jedinična težina
+const gammaCuM = [1.0, 1.4];    // nedrenirana otpornost na smicanje
+const gammaQuM = [1.0, 1.0];    // jednoaksijalna pritisna čvstoća
+
+
+// PARCIJALNI FAKTORI ZA OTPORE TEMELJENJA NA ŠIPOVIMA gammaR
+// Za plitko temeljenje i potporne zidove (R1 , R2, R3) otpori gammaRv - sila u podtlu i gammaRh - klizanje
+const gammaRv = [1.0, 1.4, 1.0]; // otpor u podtlu
+const GammaRh = [1.0, 1.1, 1.0]; // otpor klizanja
+
+// Za duboko temeljenje na zabijenim šipovima (R1 , R2, R3, R4)
+const gammaRbz = [1.0, 1.1, 1.0, 1.3]; // otpor u podtlu
+const GammaRsz = [1.0, 1.1, 1.0, 1.3]; // otpor klizanja
+const gammaRtz = [1.0, 1.1, 1.0, 1.3]; // ukupni otpor
+const gammaRstz = [1.25, 1.15, 1.1, 1.6]; // omotač, zategnuti šip
+
+// Za duboko temeljenje na bušenim šipovima (R1 , R2, R3, R4)
+const gammaRbb = [1.25, 1.1, 1.0, 1.6]; // otpor u podtlu
+const GammaRsb = [1.0, 1.1, 1.0, 1.3]; // otpor klizanja
+const gammaRtb = [1.15, 1.1, 1.0, 1.5]; // ukupni otpor
+const gammaRstb = [1.25, 1.15, 1.1, 1.6]; // omotač, zategnuti šip
+
+// Za duboko temeljenje na uvrnutim u tlo šipovima (R1 , R2, R3, R4)
+const gammaRbb = [1.1, 1.1, 1.0, 1.45]; // otpor u podtlu
+const GammaRsb = [1.0, 1.1, 1.0, 1.3]; // otpor klizanja
+const gammaRtb = [1.1, 1.1, 1.0, 1.4]; // ukupni otpor
+const gammaRstb = [1.25, 1.15, 1.15, 1.6]; // omotač, zategnuti šip
+
 
 function iscrtajSlojeveUSidebaru() {
     const container = document.getElementById('proceduralni-slojevi');
@@ -340,7 +429,7 @@ function izvrsiKompletnuAnalizu() {
     const capSrednja = proracunajSipKapacitet(D, L, npv, 'srednja', tehnologija);
     const capMinimalna = proracunajSipKapacitet(D, L, npv, 'min', tehnologija);
 
-    const R_b_k = Math.min(capSrednja.Rbk / xi1, capMinimalna.Rbk / xi2);
+    -const R_b_k = Math.min(capSrednja.Rbk / xi1, capMinimalna.Rbk / xi2);    //EC 7-1 7.6.2.2
     const R_s_k = Math.min(capSrednja.Rsk / xi1, capMinimalna.Rsk / xi2);
     const R_c_k = R_b_k + R_s_k;
 
