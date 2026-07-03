@@ -7,24 +7,23 @@
     <!-- CSS -->
     <link rel="stylesheet" href="pilon.css" />
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body>
 
-    <div class="max-w-7xl mx-auto">
+      <!-- TOGGLE DUGME (mobitel) -->
+    <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-        <!-- NASLOV -->
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div>
-                <h1 class="text-xl font-bold text-white tracking-tight">Proračun šipa prema EN 1997-1</h1>
-                <p class="text-slate-400 text-xs">Bušeni / zabijeni šip – statički, SPT ili dinamički podaci</p>
+    <!-- LAYOUT: sidebar + main -->
+    <div class="flex h-screen">
+
+        <!-- SIDEBAR -->
+        <div id="sidebar">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold text-slate-300">⚙️ Parametri</span>
+                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-white text-lg lg:hidden">✕</button>
             </div>
-            <button onclick="azurirajSve()" class="btn btn-primary text-xs">🔄 Ponovni proračun</button>
-        </div>
 
-        <!-- GLAVNI LAYOUT -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-
-            <!-- SIDEBAR: parametri -->
-            <div class="lg:col-span-1 space-y-3" id="sidebar">
+            <div class="space-y-3">
 
                 <!-- Dimenzije šipa -->
                 <div class="card sidebar-card">
@@ -120,7 +119,7 @@
                     </div>
                 </div>
 
-                <!-- Slojevi tla (dinamički) -->
+                <!-- Slojevi tla -->
                 <div class="card sidebar-card">
                     <div class="flex justify-between items-center">
                         <span class="label-sm">Slojevi tla</span>
@@ -132,102 +131,109 @@
                 </div>
 
             </div>
+        </div>
 
-            <!-- DESNA STRANA: 3D + rezultati -->
-            <div class="lg:col-span-3 space-y-4">
+        <!-- GLAVNI SADRŽAJ -->
+        <div id="main-content">
 
-                <!-- 3D prikaz -->
-                <div class="card p-1">
-                    <div id="canvas-container"></div>
+            <!-- NASLOV -->
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">Proračun šipa prema EN 1997-1</h1>
+                    <p class="text-slate-400 text-xs">Bušeni / zabijeni šip – statički, SPT ili dinamički podaci</p>
+                </div>
+                <button onclick="azurirajSve()" class="btn btn-primary text-xs">🔄 Ponovni proračun</button>
+            </div>
+
+            <!-- 3D prikaz -->
+            <div class="card p-1 mb-4">
+                <div id="canvas-container"></div>
+            </div>
+
+            <!-- Karakteristične vrijednosti -->
+            <div class="card mb-4">
+                <div class="label-sm mb-1.5">Karakteristične vrijednosti (pojedinačni šip)</div>
+                <div class="grid grid-cols-3 gap-2 text-sm">
+                    <div><span class="text-slate-400 text-[0.6rem]">R<sub>b,k</sub></span><br><span id="val-rbk" class="font-bold text-white text-base">-</span> kN</div>
+                    <div><span class="text-slate-400 text-[0.6rem]">R<sub>s,k</sub></span><br><span id="val-rsk" class="font-bold text-white text-base">-</span> kN</div>
+                    <div><span class="text-slate-400 text-[0.6rem]">R<sub>c,k</sub></span><br><span id="val-rck" class="font-bold text-white text-base">-</span> kN</div>
+                </div>
+                <div class="text-[0.6rem] text-slate-400 mt-1">
+                    Efektivni napon na bazi: σ'<sub>y</sub> = <span id="val-sigma-baza" class="text-white">-</span> kPa
+                </div>
+            </div>
+
+            <!-- Pristupi + detalji -->
+            <div class="grid-2cols">
+
+                <!-- Lijeva kolona: 4 pristupa -->
+                <div class="space-y-2">
+                    <div class="label-sm">Proračunski pristupi (grupa)</div>
+
+                    <div class="approach-card">
+                        <div class="flex justify-between items-start">
+                            <span class="approach-title text-amber-300">PP1/K1 (A1+M1+R1)</span>
+                            <span id="status-pp1k1" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                            <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k1" class="approach-value text-white">-</span></div>
+                            <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k1" class="approach-value text-emerald-400">-</span></div>
+                            <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k1" class="approach-value text-sky-400">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="approach-card">
+                        <div class="flex justify-between items-start">
+                            <span class="approach-title text-amber-300">PP1/K2 (A2+M1+R4)</span>
+                            <span id="status-pp1k2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                            <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k2" class="approach-value text-white">-</span></div>
+                            <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k2" class="approach-value text-emerald-400">-</span></div>
+                            <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k2" class="approach-value text-sky-400">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="approach-card">
+                        <div class="flex justify-between items-start">
+                            <span class="approach-title text-amber-300">PP2 (A1+M1+R2)</span>
+                            <span id="status-pp2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                            <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp2" class="approach-value text-white">-</span></div>
+                            <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp2" class="approach-value text-emerald-400">-</span></div>
+                            <div><span class="approach-label">Iskor.</span><br><span id="util-pp2" class="approach-value text-sky-400">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="approach-card">
+                        <div class="flex justify-between items-start">
+                            <span class="approach-title text-amber-300">PP3 (A1/A2+M2+R3)</span>
+                            <span id="status-pp3" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 mt-0.5">
+                            <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp3" class="approach-value text-white">-</span></div>
+                            <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp3" class="approach-value text-emerald-400">-</span></div>
+                            <div><span class="approach-label">Iskor.</span><br><span id="util-pp3" class="approach-value text-sky-400">-</span></div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Karakteristične vrijednosti -->
-                <div class="card">
-                    <div class="label-sm mb-1.5">Karakteristične vrijednosti (pojedinačni šip)</div>
-                    <div class="grid grid-cols-3 gap-2 text-sm">
-                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>b,k</sub></span><br><span id="val-rbk" class="font-bold text-white text-base">-</span> kN</div>
-                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>s,k</sub></span><br><span id="val-rsk" class="font-bold text-white text-base">-</span> kN</div>
-                        <div><span class="text-slate-400 text-[0.6rem]">R<sub>c,k</sub></span><br><span id="val-rck" class="font-bold text-white text-base">-</span> kN</div>
+                <!-- Desna kolona: detaljni proračun -->
+                <div class="card flex flex-col h-full">
+                    <div class="label-sm mb-0.5">Detaljni proračun</div>
+                    <div id="izvjestaj-tekst" class="text-[0.6rem] font-mono bg-slate-900 p-2 rounded border border-slate-800 flex-1 overflow-y-auto max-h-[360px] whitespace-pre-wrap leading-relaxed">
+                        ...
                     </div>
-                    <div class="text-[0.6rem] text-slate-400 mt-1">
-                        Efektivni napon na bazi: σ'<sub>y</sub> = <span id="val-sigma-baza" class="text-white">-</span> kPa
-                    </div>
-                </div>
-
-                <!-- Dvostupčani raspored: lijevo pristupi, desno detaljni proračun -->
-                <div class="grid grid-2cols gap-3" style="grid-template-columns: 1fr 1.5fr;">
-
-                    <!-- Lijeva kolona: 4 pristupa -->
-                    <div class="space-y-2">
-                        <div class="label-sm">Proračunski pristupi (grupa)</div>
-
-                        <!-- PP1/K1 -->
-                        <div class="approach-card">
-                            <div class="flex justify-between items-start">
-                                <span class="approach-title text-amber-300">PP1/K1 (A1+M1+R1)</span>
-                                <span id="status-pp1k1" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
-                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k1" class="approach-value text-white">-</span></div>
-                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k1" class="approach-value text-emerald-400">-</span></div>
-                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k1" class="approach-value text-sky-400">-</span></div>
-                            </div>
-                        </div>
-
-                        <!-- PP1/K2 -->
-                        <div class="approach-card">
-                            <div class="flex justify-between items-start">
-                                <span class="approach-title text-amber-300">PP1/K2 (A2+M1+R4)</span>
-                                <span id="status-pp1k2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
-                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp1k2" class="approach-value text-white">-</span></div>
-                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp1k2" class="approach-value text-emerald-400">-</span></div>
-                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp1k2" class="approach-value text-sky-400">-</span></div>
-                            </div>
-                        </div>
-
-                        <!-- PP2 -->
-                        <div class="approach-card">
-                            <div class="flex justify-between items-start">
-                                <span class="approach-title text-amber-300">PP2 (A1+M1+R2)</span>
-                                <span id="status-pp2" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
-                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp2" class="approach-value text-white">-</span></div>
-                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp2" class="approach-value text-emerald-400">-</span></div>
-                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp2" class="approach-value text-sky-400">-</span></div>
-                            </div>
-                        </div>
-
-                        <!-- PP3 -->
-                        <div class="approach-card">
-                            <div class="flex justify-between items-start">
-                                <span class="approach-title text-amber-300">PP3 (A1/A2+M2+R3)</span>
-                                <span id="status-pp3" class="status-badge bg-emerald-950 text-emerald-400 border border-emerald-800">✓</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-1.5 mt-0.5">
-                                <div><span class="approach-label">E<sub>d</sub></span><br><span id="ed-pp3" class="approach-value text-white">-</span></div>
-                                <div><span class="approach-label">R<sub>d</sub></span><br><span id="rd-pp3" class="approach-value text-emerald-400">-</span></div>
-                                <div><span class="approach-label">Iskor.</span><br><span id="util-pp3" class="approach-value text-sky-400">-</span></div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Desna kolona: detaljni proračun -->
-                    <div class="card flex flex-col h-full">
-                        <div class="label-sm mb-0.5">Detaljni proračun</div>
-                        <div id="izvjestaj-tekst" class="text-[0.6rem] font-mono bg-slate-900 p-2 rounded border border-slate-800 flex-1 overflow-y-auto max-h-[360px] whitespace-pre-wrap leading-relaxed">
-                            ...
-                        </div>
-                    </div>
-
                 </div>
 
             </div>
+
         </div>
+
     </div>
+
 
     <!-- THREE.JS i OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
