@@ -1,21 +1,1657 @@
 <!DOCTYPE html>
-<html lang="bs">
+<html lang="hr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimenzioniranje by Almedin</title>
-    <link rel="stylesheet" href="dimenzioniranje.css">
+    <title>3D AB Dimenzionator - Optimizirana Armatura & Presjek</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            padding: 15px;
+        }
+
+        .section {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .compact-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+            .input-group label {
+                font-size: 12px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+        input, select {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 13px;
+            max-width: 90px;
+        }
+
+        select {
+            max-width: 120px;
+        }
+
+        #main-wrapper {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            height: 500px;
+            margin-bottom: 15px;
+        }
+
+        #view-3d {
+            flex: 1.5;
+            background: #ffffff;
+            position: relative;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #view-2d {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nacrt-naslov {
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #e2e8f0;
+            border-bottom: 1px solid var(--border);
+            margin: 0;
+            text-transform: uppercase;
+            color: #475569;
+        }
+
+        .canvas-2d-wrapper {
+            flex: 2;
+            position: relative;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .presjeci-wrapper {
+            flex: 1.2;
+            display: flex;
+            gap: 15px;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            padding: 10px;
+            background: #ffffff;
+        }
+
+        .load-manager {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .load-table-wrapper {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 4px 6px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafc;
+        }
+
+        .btn-sm {
+            padding: 2px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+
+        .btn-add {
+            background: #10b981;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .btn-calc {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .diagram-label {
+            position: absolute;
+            font-size: 11px;
+            font-weight: bold;
+            color: #dc2626;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 5px;
+            border-radius: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            border: 1px solid #dc2626;
+        }
+
+        #inspector-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            color: #f8fafc;
+            border: 1px solid #475569;
+            padding: 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            display: none;
+        }
+
+        .tooltip-content {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .tooltip-text {
+            min-width: 180px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+            .tooltip-text h4 {
+                margin: 0 0 5px 0;
+                color: #38bdf8;
+                border-bottom: 1px solid #334155;
+                padding-bottom: 3px;
+            }
+
+        .insp-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .insp-val {
+            font-weight: bold;
+            color: #10b981;
+        }
+
+        .tooltip-canvas {
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        /* Stil za dinamičko polje unosa u naslovu */
+        .naslov-x-input {
+            font-weight: bold;
+            padding: 2px 6px;
+            font-size: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            max-width: 65px;
+            text-align: center;
+            background: #ffffff;
+            color: #0f172a;
+        }
+    </style>
 </head>
 <body>
-    <div id="toolbar">
-        <button onclick="undo()" style="background:#666; color:#fff;" title="Vrati korak unazad">↩ Undo</button>
-        <div style="display: flex; gap: 5px;">
-            <button id="btn-draw" class="active" onclick="setMode('draw')">Crtanje</button>
-            <button id="btn-select" onclick="setMode('select')">Uredi / Pomjeri</button>
+
+    <div class="section">
+        <h3>Geometrija, Materijali i Postavke Armiranja</h3>
+        <div class="compact-row">
+            <div class="input-group"><label>Presjek:</label><select id="type" onchange="osvjeziBeton()"><option value="pravokutni">Pravokutni</option></select></div>
+            <div class="input-group"><label>L (m):</label><input type="number" id="L" value="6" step="0.5" onchange="osvjeziBeton()"></div>
+            <span id="p-polja" class="compact-row" style="margin:0; gap:10px;"><div class="input-group"><label>b (cm):</label><input type="number" id="b" value="30" onchange="osvjeziBeton()"></div><div class="input-group"><label>h (cm):</label><input type="number" id="h" value="50" onchange="osvjeziBeton()"></div></span>
         </div>
-        <button onclick="runDim()" style="background:#00ff88; color:#000;">PRORAČUNAJ</button>
-        <select id="result-view" onchange="changeView(this.value)">
-            <option value="model">Model</option>
-            <option value="def">Deformacija</option>
-            <option value="N">Aksijalne (N)</option>
-            <
+
+        <div class="compact-row">
+            <div class="input-group"><label>Beton:</label><select id="fck"><option value="25">C25/30</option><option value="30">C30/37</option></select></div>
+            <div class="input-group"><label>Armatura (Dodatna):</label><select id="fyk"><option value="500">B500B</option></select></div>
+            <div class="input-group"><label>c (mm):</label><input type="number" id="c" value="35" step="1"></div>
+            <div class="input-group"><label title="Dodatak (+x) na EC2 minimalni razmak">Razmak +x (mm):</label><input type="number" id="s_min_tol" value="0.0" step="1" style="border-color: var(--accent); background-color: #eff6ff;"></div>
+            <div class="input-group"><label>Oslonci:</label><select id="support"><option value="greda">Slobodno oslonjena greda</option><option value="konzola">Uklještena konzola (lijevo)</option><option value="obostrano">Obostrano upeta greda</option></select></div>
+        </div>
+    </div>
+
+    <div id="main-wrapper">
+        <div id="view-3d">
+            <div id="inspector-tooltip">
+                <div class="tooltip-content">
+                    <div class="tooltip-text">
+                        <h4 id="isp-naslov">Presjek na x = 0.00 m</h4>
+                        <div class="insp-row"><span>M_Ed:</span> <span class="insp-val" id="isp-med">0.00 kNm</span></div>
+                        <div class="insp-row"><span>V_Ed:</span> <span class="insp-val" id="isp-ved">0.00 kN</span></div>
+                        <hr style="border:0; border-top:1px solid #334155; margin:5px 0;">
+                        <div class="insp-row"><span>μ_Eds:</span> <span class="insp-val" id="isp-mu">0.0000</span></div>
+                        <div class="insp-row"><span>ω_1:</span> <span class="insp-val" id="isp-omega">0.0000</span></div>
+                        <div class="insp-row"><span>ζ:</span> <span class="insp-val" id="isp-zeta">0.000</span></div>
+                        <div class="insp-row"><span>x_eff =</span> <span class="insp-val" id="isp-xeff">0.0 cm</span></div>
+                        <hr style="border:0; border-top:1px solid #334155; margin:5px 0;">
+                        <div class="insp-row"><span>As,req:</span> <span class="insp-val" id="isp-asreq">0.00 cm²</span></div>
+                    </div>
+                    <div class="tooltip-canvas">
+                        <canvas id="cross-canvas" width="200" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-2d">
+            <div class="nacrt-naslov" style="display: flex; justify-content: space-between; align-items: center; height: 24px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span id="naslov-desnog-panela">Nacrt armature (2D)</span>
+                    <span id="naslov-x-kontejner" style="display: none; align-items: center; gap: 4px; text-transform: none;">
+                        na x = <input type="number" id="input-uvecani-x" class="naslov-x-input" step="0.05" min="0" value="0.00" onchange="rucniUnosKoordinateX(this.value)"> m
+                    </span>
+                </div>
+                <button id="btn-nazad-nacrt" onclick="vratiUzduzniNacrt()" style="display: none; background: none; border: none; color: #475569; font-size: 20px; font-weight: bold; cursor: pointer; padding: 0 5px; line-height: 1;">&times;</button>
+            </div>
+
+            <div id="standardni-nacrt-kontejner" style="display: flex; flex-direction: column; flex: 1;">
+                <div class="canvas-2d-wrapper">
+                    <canvas id="nacrt-uzduzni" style="width:100%; height:100%; display:block;"></canvas>
+                </div>
+                <div class="presjeci-wrapper">
+                    <div style="text-align: center; font-size: 11px;">
+                        <b style="color: #475569;">Presjek - Oslonac</b><br>
+                        <canvas id="presjek-oslonac" width="130" height="130" style="margin-top:5px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0;"></canvas>
+                    </div>
+                    <div style="text-align: center; font-size: 11px;">
+                        <b style="color: #475569;">Presjek - Polje (Max M)</b><br>
+                        <canvas id="presjek-polje" width="130" height="130" style="margin-top:5px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uvecani-presjek-kontejner" style="display: none; flex: 1; padding: 15px; box-sizing: border-box; background: #ffffff;">
+                <canvas id="canvas-uvecani-presjek" style="width: 100%; height: 100%; display: block;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Upravljanje opterećenjima</h3>
+        <div class="load-manager">
+            <div class="load-table-wrapper">
+                <h4 style="margin:0 0 5px 0; font-size:12px;">Kontinuirana opterećenja</h4>
+                <table id="poly-load-table">
+                    <thead><tr><th>q (kN/m)</th><th>x1 (m)</th><th>x2 (m)</th><th>Akcija</th></tr></thead>
+                    <tbody><tr><td><input type="number" value="35" style="max-width:50px;"></td><td><input type="number" value="0" style="max-width:50px;"></td><td><input type="number" value="6" style="max-width:50px;"></td><td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td></tr></tbody>
+                </table>
+                <button class="btn-add" onclick="dodajRedKontinuirano()">+ Dodaj</button>
+            </div>
+            <div class="load-table-wrapper">
+                <h4 style="margin:0 0 5px 0; font-size:12px;">Koncentrirana opterećenja</h4>
+                <table id="point-load-table">
+                    <thead><tr><th>Tip</th><th>Vrijednost</th><th>x (m)</th><th>Akcija</th></tr></thead>
+                    <tbody><tr><td><select style="max-width:60px;"><option value="F">F (kN)</option><option value="M">M (kNm)</option></select></td><td><input type="number" value="30" style="max-width:50px;"></td><td><input type="number" value="3" style="max-width:50px;"></td><td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td></tr></tbody>
+                </table>
+                <button class="btn-add" onclick="dodajRedTockasto()">+ Dodaj</button>
+            </div>
+        </div>
+        <button class="btn-calc" onclick="izvrsiDimenzioniranje()">Pokreni proračun i 3D vizualizaciju</button>
+    </div>
+
+    <script>
+const TABELA_A1 = [
+    { mu: 0.000, omega: 0.0000, zeta: 1.000, xi: 0.000 }, { mu: 0.010, omega: 0.0101, zeta: 0.989, xi: 0.033 },
+    { mu: 0.020, omega: 0.0203, zeta: 0.983, xi: 0.048 }, { mu: 0.040, omega: 0.0412, zeta: 0.968, xi: 0.076 },
+    { mu: 0.060, omega: 0.0628, zeta: 0.952, xi: 0.103 }, { mu: 0.080, omega: 0.0850, zeta: 0.936, xi: 0.130 },
+    { mu: 0.100, omega: 0.1078, zeta: 0.919, xi: 0.157 }, { mu: 0.120, omega: 0.1314, zeta: 0.902, xi: 0.186 },
+    { mu: 0.140, omega: 0.1556, zeta: 0.884, xi: 0.216 }, { mu: 0.150, omega: 0.1680, zeta: 0.875, xi: 0.231 },
+    { mu: 0.160, omega: 0.1807, zeta: 0.866, xi: 0.247 }, { mu: 0.180, omega: 0.2065, zeta: 0.847, xi: 0.279 },
+    { mu: 0.200, omega: 0.2335, zeta: 0.826, xi: 0.313 }, { mu: 0.220, omega: 0.2616, zeta: 0.805, xi: 0.350 },
+    { mu: 0.240, omega: 0.2910, zeta: 0.781, xi: 0.389 }, { mu: 0.260, omega: 0.3218, zeta: 0.756, xi: 0.431 },
+    { mu: 0.280, omega: 0.3544, zeta: 0.728, xi: 0.477 }, { mu: 0.296, omega: 0.3818, zeta: 0.704, xi: 0.517 }
+];
+
+function ocitajIzTabele(mu_calc) {
+    if (mu_calc >= 0.296) return TABELA_A1[TABELA_A1.length - 1];
+    if (mu_calc <= 0) return TABELA_A1[0];
+    for (let i = 0; i < TABELA_A1.length - 1; i++) {
+        if (mu_calc >= TABELA_A1[i].mu && mu_calc <= TABELA_A1[i+1].mu) {
+            let f = (mu_calc - TABELA_A1[i].mu) / (TABELA_A1[i+1].mu - TABELA_A1[i].mu);
+            return { omega: TABELA_A1[i].omega + f*(TABELA_A1[i+1].omega-TABELA_A1[i].omega), zeta: TABELA_A1[i].zeta + f*(TABELA_A1[i+1].zeta-TABELA_A1[i].zeta), xi: TABELA_A1[i].xi + f*(TABELA_A1[i+1].xi-TABELA_A1[i].xi) };
+        }
+    }
+    return TABELA_A1[0];
+}
+
+let scene, camera, renderer, controls;
+let betonGroup = new THREE.Group(), armaturaGroup = new THREE.Group(), dijagramGroup = new THREE.Group(), opterecenjaGroup = new THREE.Group();
+let diagramLabels = [], globalStacionaze = [];
+
+let globalGeometrija = {};
+let globalRasporedSipki = [];
+let capMesh = null;
+let lastHoverX = null;
+let proracunato = false;
+
+let mouse = new THREE.Vector2();
+let raycaster = new THREE.Raycaster();
+
+let trenutniKliknutiPresjek = null;
+let prikazujeUvecaniPresjek = false;
+let memorisaniPresjek = null;
+
+let clipPlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 1000);
+
+init3D();
+render();
+
+function init3D() {
+    const container = document.getElementById('view-3d');
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff);
+    camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(4, 3, 6);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.localClippingEnabled = true;
+
+    container.appendChild(renderer.domElement);
+    controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6); dirLight.position.set(5, 10, 7); scene.add(dirLight);
+
+    scene.add(betonGroup);
+    scene.add(armaturaGroup);
+    scene.add(dijagramGroup);
+    scene.add(opterecenjaGroup);
+
+    osvjeziBeton();
+    window.addEventListener('resize', onWindowResize);
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('click', onCanvasClick);
+}
+
+function render() {
+    requestAnimationFrame(render); controls.update(); renderer.render(scene, camera);
+    const container = document.getElementById('view-3d'); const rect = container.getBoundingClientRect();
+    diagramLabels.forEach(lbl => {
+        let pos = lbl.pos.clone().project(camera);
+        if(pos.z < 1) { lbl.el.style.display = 'block'; lbl.el.style.left = (pos.x * 0.5 + 0.5) * rect.width + 'px'; lbl.el.style.top = (-(pos.y * 0.5) + 0.5) * rect.height + 'px'; } else { lbl.el.style.display = 'none'; }
+    });
+}
+
+function onWindowResize() {
+    const container = document.getElementById('view-3d');
+    camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function onMouseMove(event) {
+    const container = document.getElementById('view-3d');
+    const tooltip = document.getElementById('inspector-tooltip');
+    const rect = container.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    if(betonGroup.children.length > 0 && globalStacionaze.length > 0) {
+        const intersects = raycaster.intersectObject(betonGroup.children[0], false);
+
+        if(intersects.length > 0) {
+            let pt = intersects[0].point;
+            let L = parseFloat(document.getElementById('L').value);
+            let localX = pt.x + L/2;
+
+            clipPlane.normal.set(1, 0, 0);
+            clipPlane.constant = -pt.x;
+
+            if (proracunato) {
+                betonGroup.children[2].visible = true;
+                betonGroup.children[3].visible = true;
+                betonGroup.children[0].material.opacity = 0.0;
+                betonGroup.children[1].material.opacity = 0.0;
+            }
+
+            if(capMesh) {
+                capMesh.visible = true;
+                capMesh.position.x = pt.x;
+            }
+
+            let closest = globalStacionaze[0]; let minDist = Math.abs(globalStacionaze[0].absX - localX);
+            for(let s of globalStacionaze) { let d = Math.abs(s.absX - localX); if(d < minDist) { minDist = d; closest = s; } }
+
+            tooltip.style.display = 'block';
+            let tX = event.clientX - rect.left + 15;
+            let tY = event.clientY - rect.top + 15;
+            if (tX + 400 > rect.width) tX = event.clientX - rect.left - 420;
+            if (tY + 250 > rect.height) tY = event.clientY - rect.top - 260;
+            tooltip.style.left = tX + 'px';
+            tooltip.style.top = tY + 'px';
+
+            if(lastHoverX !== closest.absX) {
+                lastHoverX = closest.absX;
+
+                const b_cm = parseFloat(document.getElementById('b').value);
+                const h_cm = parseFloat(document.getElementById('h').value);
+                const cvs = document.getElementById('cross-canvas');
+                const baseSize = 200;
+
+                if (b_cm > h_cm) {
+                    cvs.width = baseSize; cvs.height = (h_cm / b_cm) * baseSize;
+                    cvs.style.width = baseSize + "px"; cvs.style.height = ((h_cm / b_cm) * baseSize) + "px";
+                } else {
+                    cvs.height = baseSize; cvs.width = (b_cm / h_cm) * baseSize;
+                    cvs.style.height = baseSize + "px"; cvs.style.width = ((b_cm / h_cm) * baseSize) + "px";
+                }
+
+                document.getElementById('isp-naslov').textContent = `Presjek na x = ${closest.absX.toFixed(2)} m`;
+                document.getElementById('isp-med').textContent = `${closest.My.toFixed(2)} kNm`;
+                document.getElementById('isp-ved').textContent = `${closest.Vz.toFixed(2)} kN`;
+                document.getElementById('isp-mu').textContent = closest.mu.toFixed(4);
+                document.getElementById('isp-omega').textContent = closest.omega.toFixed(4);
+                document.getElementById('isp-zeta').textContent = closest.zeta.toFixed(3);
+                document.getElementById('isp-xeff').textContent = `${closest.x_cm.toFixed(1)} cm`;
+                document.getElementById('isp-asreq').textContent = `${closest.As_req_cm2.toFixed(2)} cm²`;
+
+                crtaj2DPresjek('cross-canvas', closest, globalGeometrija, globalRasporedSipki);
+
+                // Dinamički "Preview" u hodu kroz gredu
+                if (prikazujeUvecaniPresjek) {
+                    trenutniKliknutiPresjek = closest;
+                    document.getElementById('input-uvecani-x').value = closest.absX.toFixed(2);
+                    crtajUvecaniKotiraniPresjek();
+                }
+            }
+
+        } else {
+            tooltip.style.display = 'none';
+            lastHoverX = null;
+            clipPlane.constant = 1000;
+
+            if(betonGroup.children.length > 3) {
+                betonGroup.children[2].visible = false;
+                betonGroup.children[3].visible = false;
+                betonGroup.children[0].material.opacity = proracunato ? 0.2 : 0.8;
+                betonGroup.children[1].material.opacity = proracunato ? 0.0 : 0.8;
+            }
+            if(capMesh) capMesh.visible = false;
+
+            // Kada sklonimo miš, vraća se na zadnji MEMORISANI presjek
+            if (prikazujeUvecaniPresjek && memorisaniPresjek) {
+                trenutniKliknutiPresjek = memorisaniPresjek;
+                document.getElementById('input-uvecani-x').value = memorisaniPresjek.absX.toFixed(2);
+                crtajUvecaniKotiraniPresjek();
+            }
+        }
+    }
+}
+
+function onCanvasClick(event) {
+    if (!proracunato || globalStacionaze.length === 0 || betonGroup.children.length === 0) return;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(betonGroup.children[0], false);
+
+    if (intersects.length > 0) {
+        let pt = intersects[0].point;
+        let L = parseFloat(document.getElementById('L').value);
+        let localX = pt.x + L/2;
+
+
+        let closest = globalStacionaze[0];
+        let minDist = Math.abs(globalStacionaze[0].absX - localX);
+        for(let s of globalStacionaze) {
+            let d = Math.abs(s.absX - localX);
+            if(d < minDist) { minDist = d; closest = s; }
+        }
+
+        // Memoriši klik
+        memorisaniPresjek = closest;
+        trenutniKliknutiPresjek = closest;
+        prikazujeUvecaniPresjek = true;
+
+        document.getElementById('standardni-nacrt-kontejner').style.display = 'none';
+        document.getElementById('uvecani-presjek-kontejner').style.display = 'flex';
+        document.getElementById('btn-nazad-nacrt').style.display = 'block';
+
+        // Prikazuje i ažurira input polje za x u naslovu
+        document.getElementById('naslov-desnog-panela').textContent = "Detalj presjeka";
+        document.getElementById('naslov-x-kontejner').style.display = 'inline-flex';
+        document.getElementById('input-uvecani-x').value = closest.absX.toFixed(2);
+        document.getElementById('input-uvecani-x').max = L.toFixed(2);
+
+        crtajUvecaniKotiraniPresjek();
+    }
+}
+
+// NOVO: rucni unos koordinate u polje
+function rucniUnosKoordinateX(vrijednost) {
+
+    if (!proracunato || globalStacionaze.length === 0) return;
+    let rX = parseFloat(vrijednost);
+    let L = parseFloat(document.getElementById('L').value);
+
+    if (isNaN(rX)) return;
+    if (rX < 0) rX = 0;
+    if (rX > L) rX = L;
+    
+
+    // Pronađi stacionažu najbližu unesenoj vrijednosti x
+    let closest = globalStacionaze[0];
+    let minDist = Math.abs(globalStacionaze[0].absX - rX);
+    for(let s of globalStacionaze) {
+        let d = Math.abs(s.absX - rX);
+        if(d < minDist) { minDist = d; closest = s; }
+    }
+
+    // Zaključaj uneti presjek kao novi memorisani presjek
+    memorisaniPresjek = closest;
+    trenutniKliknutiPresjek = closest;
+    document.getElementById('input-uvecani-x').value = closest.absX.toFixed(2);
+
+    // Pomjeri i 3D ravninu sječenja na tu tačnu poziciju radi vizuelne usklađenosti
+    clipPlane.normal.set(1, 0, 0);
+    clipPlane.constant = -(closest.absX - L/2);
+    if(capMesh) {
+        capMesh.visible = true;
+        capMesh.position.x = closest.absX - L/2;
+    }
+
+    crtajUvecaniKotiraniPresjek();
+}
+
+function vratiUzduzniNacrt() {
+    prikazujeUvecaniPresjek = false;
+    memorisaniPresjek = null;
+    document.getElementById('uvecani-presjek-kontejner').style.display = 'none';
+    document.getElementById('standardni-nacrt-kontejner').style.display = 'flex';
+    document.getElementById('btn-nazad-nacrt').style.display = 'none';
+    document.getElementById('naslov-x-kontejner').style.display = 'none';
+    document.getElementById('naslov-desnog-panela').textContent = "Nacrt armature (2D)";
+
+    // Resetuj 3D kvačice sječenja betona
+    clipPlane.constant = 1000;
+    if(capMesh) capMesh.visible = false;
+
+    azuriraj2DNacrt();
+}
+
+function azuriraj2DNacrt() {
+    if(globalStacionaze.length === 0) return;
+    const canvas = document.getElementById('nacrt-uzduzni');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width; canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+    let L = parseFloat(document.getElementById('L').value);
+
+    let margin = 40;
+    let beamY = canvas.height / 2;
+    let scaleX = (canvas.width - 2 * margin) / L;
+    let startX = margin;
+    let drawW = canvas.width - 2 * margin;
+
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(startX, beamY - 30, drawW, 60);
+    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeRect(startX, beamY - 30, drawW, 60);
+
+    let grupisane = {};
+    globalRasporedSipki.forEach(s => {
+        let duzina = Math.round((s.xEnd - s.xStart)*100);
+        let key = `${s.yReal.toFixed(3)}_${duzina}_${s.fi}_${s.tip}`;
+        if (!grupisane[key]) grupisane[key] = { ...s, duzina: duzina, count: 0 };
+        grupisane[key].count++;
+    });
+
+    let lista = Object.values(grupisane).sort((a,b) => b.duzina - a.duzina);
+    let donje = lista.filter(s => s.yReal < 0);
+    let gornje = lista.filter(s => s.yReal > 0);
+
+    let crtajSipku = (s, dY, boja, smjer) => {
+        let x1 = startX + s.xStart * scaleX;
+        let x2 = startX + s.xEnd * scaleX;
+        let kuka = 20;
+
+        ctx.beginPath();
+        if (s.tip === 'osnovna') {
+            ctx.moveTo(x1, dY + (smjer * kuka)); ctx.lineTo(x1, dY);
+        } else {
+            ctx.moveTo(x1, dY);
+        }
+        ctx.lineTo(x2, dY);
+        if (s.tip === 'osnovna') {
+            ctx.lineTo(x2, dY + (smjer * kuka));
+        }
+
+        ctx.strokeStyle = boja; ctx.lineWidth = 3; ctx.stroke();
+
+        ctx.fillStyle = '#0f172a'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center';
+        let prefix = (s.count >= 2) ? "2L" : "L";
+        ctx.fillText(`${prefix}${s.duzina}Ø${s.fi}`, (x1+x2)/2, dY - 10 * smjer);
+    };
+
+    let dY = beamY + 50;
+    donje.forEach(s => { crtajSipku(s, dY, '#ef4444', 1); dY += 30; });
+
+    let uY = beamY - 50;
+    gornje.forEach(s => { crtajSipku(s, uY, '#2563eb', -1); uY -= 30; });
+
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(startX, beamY - 20); ctx.lineTo(startX + drawW, beamY - 20); ctx.stroke();
+    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center';
+    ctx.fillText("2L" + Math.round(L*100) + "Ø12", canvas.width/2, beamY - 35);
+}
+
+function crtaj2DPresjek(canvasId, presjek, geom, raspored) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const margin = 0.05;
+    let scaleX = (w * (1 - margin * 2)) / geom.b;
+    let scaleY = (h * (1 - margin * 2)) / geom.h;
+    let scale = Math.min(scaleX, scaleY);
+
+    let cx = w / 2;
+    let cy = h / 2;
+
+    let b_px = geom.b * scale;
+    let h_px = geom.h * scale;
+    let c_px = geom.c * scale;
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(cx - b_px/2, cy - h_px/2, b_px, h_px);
+
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - b_px/2, cy - h_px/2, b_px, h_px);
+
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cx - b_px / 2 + c_px, cy - h_px / 2 + c_px, b_px - 2 * c_px, h_px - 2 * c_px);
+
+    ctx.fillStyle = '#2563eb';
+    let tekstSipki = {};
+
+    raspored.forEach(sipka => {
+        if (presjek.absX >= sipka.xStart && presjek.absX <= sipka.xEnd) {
+            let px = cx + (sipka.z * 1000) * scale;
+            let py = cy - (sipka.yReal * 1000) * scale;
+            ctx.beginPath();
+            ctx.arc(px, py, (sipka.fi / 2) * scale, 0, 2 * Math.PI);
+            ctx.fill();
+
+            if(!tekstSipki[sipka.fi]) tekstSipki[sipka.fi] = 0;
+            tekstSipki[sipka.fi]++;
+        }
+    });
+
+    ctx.fillStyle = '#94a3b8';
+    let pyK = cy - (geom.yKonstruktivno * 1000) * scale;
+    ctx.beginPath(); ctx.arc(cx - (geom.z_kut * 1000) * scale, pyK, (12 / 2) * scale, 0, 2 * Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + (geom.z_kut * 1000) * scale, pyK, (12 / 2) * scale, 0, 2 * Math.PI); ctx.fill();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+
+    let txtOut = Object.keys(tekstSipki).map(fi => `${tekstSipki[fi]}xØ${fi}`).join(' + ');
+    ctx.fillText(txtOut, cx, cy + h_px / 2 + 15);
+}
+
+function iscrtajCilindar(p1, p2, promjer, mat) {
+    let dist = p1.distanceTo(p2);
+    if (dist < 0.001) return;
+    let geom = new THREE.CylinderGeometry(promjer / 2, promjer / 2, dist, 8);
+    let mesh = new THREE.Mesh(geom, mat);
+    mesh.position.copy(p1).lerp(p2, 0.5);
+    let dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    armaturaGroup.add(mesh);
+}
+
+function iscrtajSipku3D(x1, x2, y, z, promjer, isKonstruktivna, presjekGeom, prikaziKuke) {
+    const mat = new THREE.MeshStandardMaterial({ color: isKonstruktivna ? 0x94a3b8 : 0x2563eb, metalness: 0.8, roughness: 0.1 });
+    let p1 = new THREE.Vector3(x1, y, z);
+    let p2 = new THREE.Vector3(x2, y, z);
+    iscrtajCilindar(p1, p2, promjer, mat);
+
+    if (prikaziKuke && presjekGeom) {
+        let h_max = (presjekGeom.h / 1000) - 2 * (presjekGeom.c / 1000) - 0.02;
+        let l_bd = Math.min(30 * promjer, h_max);
+        let smjer = (y > 0) ? -1 : 1;
+
+        let kukaVrh = new THREE.Vector3(x1, y + (l_bd * smjer), z);
+        iscrtajCilindar(p1, kukaVrh, promjer, mat);
+        let kukaVrh2 = new THREE.Vector3(x2, y + (l_bd * smjer), z);
+        iscrtajCilindar(p2, kukaVrh2, promjer, mat);
+    }
+}
+
+function crtajSavijenuVilicu(xPos, sirina, visina) {
+    const r = 0.004; const cR = 0.012; const w = sirina/2; const h = visina/2;
+    const shape = new THREE.Shape();
+    shape.moveTo(w-cR,-h); shape.lineTo(-w+cR,-h); shape.quadraticCurveTo(-w,-h,-w,-h+cR); shape.lineTo(-w,h-cR); shape.quadraticCurveTo(-w,h,-w+cR,h); shape.lineTo(w-cR,h); shape.quadraticCurveTo(w,h,w,h-cR); shape.lineTo(w,-h+cR); shape.quadraticCurveTo(w,-h,w-cR,-h); shape.lineTo(w-cR,-h);
+    armaturaGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(shape.getPoints(40).map(p => new THREE.Vector3(xPos, p.y, p.x)), true), 48, r, 10, true), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.5, roughness: 0.3 })));
+}
+
+function osvjeziBeton() {
+    while(betonGroup.children.length > 0) betonGroup.remove(betonGroup.children[0]);
+    const L = parseFloat(document.getElementById('L').value);
+    const h = parseFloat(document.getElementById('h').value)/100;
+    const b = parseFloat(document.getElementById('b').value)/100;
+
+    const geom = new THREE.BoxGeometry(L, h, b);
+    const edgesGeom = new THREE.EdgesGeometry(geom);
+
+    const matCut = new THREE.MeshStandardMaterial({
+        color: 0xabaaaa,
+        transparent: true,
+        opacity: proracunato ? 0.2 : 0.8,
+        side: THREE.DoubleSide,
+        clippingPlanes: [clipPlane],
+        stencilWrite: true,
+        stencilRef: 1,
+        stencilFunc: THREE.AlwaysStencilFunc,
+        stencilZPass: THREE.ReplaceStencilOp
+    });
+    const cutMesh = new THREE.Mesh(geom, matCut);
+    cutMesh.renderOrder = 1;
+    betonGroup.add(cutMesh);
+
+    const edgeMatCut = new THREE.LineBasicMaterial({
+        color: 0x666666,
+        transparent: true,
+        opacity: proracunato ? 0.0 : 0.8,
+        clippingPlanes: [clipPlane]
+    });
+    const edgesCut = new THREE.LineSegments(edgesGeom, edgeMatCut);
+    edgesCut.renderOrder = 2;
+    betonGroup.add(edgesCut);
+
+    const matFull = new THREE.MeshStandardMaterial({
+        color: 0xabaaaa,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide,
+        stencilWrite: true,
+        stencilRef: 1,
+        stencilFunc: THREE.NotEqualStencilFunc
+    });
+    const fullMesh = new THREE.Mesh(geom, matFull);
+    fullMesh.renderOrder = 3;
+    fullMesh.visible = false;
+    betonGroup.add(fullMesh);
+
+    const edgeMatFull = new THREE.LineBasicMaterial({
+        color: 0x666666,
+        transparent: true,
+        opacity: 0.8,
+        stencilWrite: true,
+        stencilRef: 1,
+        stencilFunc: THREE.NotEqualStencilFunc
+    });
+    const edgesFull = new THREE.LineSegments(edgesGeom, edgeMatFull);
+    edgesFull.renderOrder = 4;
+    edgesFull.visible = false;
+    betonGroup.add(edgesFull);
+
+    capMesh = new THREE.Mesh(new THREE.PlaneGeometry(b, h), new THREE.MeshStandardMaterial({ color: 0xabaaaa, side: THREE.DoubleSide }));
+    capMesh.rotation.y = Math.PI / 2;
+    capMesh.visible = false;
+    capMesh.renderOrder = 5;
+    betonGroup.add(capMesh);
+}
+
+function crtajOpterecenja(kontinuirana, tockasta, L, h_m) {
+    while(opterecenjaGroup.children.length > 0) opterecenjaGroup.remove(opterecenjaGroup.children[0]);
+
+    const matLoad = new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.8 });
+    const offsetIznadGrede = 0.5;
+    const yTop = h_m / 2 + offsetIznadGrede;
+
+    tockasta.forEach(t => {
+        if(t.tip === 'F' && t.val > 0) {
+            let xPos = t.x - L/2;
+            let arrowLen = 0.6;
+
+            let cylGeom = new THREE.CylinderGeometry(0.02, 0.02, arrowLen, 8);
+            let cyl = new THREE.Mesh(cylGeom, matLoad);
+            cyl.position.set(xPos, yTop + arrowLen/2, 0);
+
+            let coneGeom = new THREE.ConeGeometry(0.08, 0.2, 8);
+            let cone = new THREE.Mesh(coneGeom, matLoad);
+            cone.position.set(xPos, yTop, 0);
+            cone.rotation.z = Math.PI;
+
+            opterecenjaGroup.add(cyl, cone);
+        }
+    });
+
+    kontinuirana.forEach(k => {
+        if(k.q > 0 && k.x2 > k.x1) {
+            let xStart = k.x1 - L/2;
+            let xEnd = k.x2 - L/2;
+            let width = xEnd - xStart;
+            let xPos = xStart + width/2;
+            let loadHeight = 0.3;
+
+            let planeGeom = new THREE.PlaneGeometry(width, loadHeight);
+            let plane = new THREE.Mesh(planeGeom, new THREE.MeshBasicMaterial({color: 0x10b981, transparent: true, opacity: 0.3, side: THREE.DoubleSide}));
+            plane.position.set(xPos, yTop + loadHeight/2, 0);
+            opterecenjaGroup.add(plane);
+
+            let numArrows = Math.max(3, Math.floor(width / 0.5));
+            for(let i=0; i<=numArrows; i++) {
+                let ax = xStart + (i/numArrows)*width;
+                let coneGeom = new THREE.ConeGeometry(0.05, 0.15, 8);
+                let cone = new THREE.Mesh(coneGeom, matLoad);
+                cone.position.set(ax, yTop, 0);
+                cone.rotation.z = Math.PI;
+                opterecenjaGroup.add(cone);
+
+                let lineGeom = new THREE.CylinderGeometry(0.01, 0.01, loadHeight, 4);
+                let line = new THREE.Mesh(lineGeom, matLoad);
+                line.position.set(ax, yTop + loadHeight/2, 0);
+                opterecenjaGroup.add(line);
+            }
+        }
+    });
+}
+
+function dodajRedKontinuirano() { const t = document.getElementById('poly-load-table').getElementsByTagName('tbody')[0].insertRow(); t.innerHTML = `<td><input type="number" value="10" style="max-width:50px;"></td><td><input type="number" value="0" style="max-width:50px;"></td><td><input type="number" value="6" style="max-width:50px;"></td><td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td>`; }
+function dodajRedTockasto() { const t = document.getElementById('point-load-table').getElementsByTagName('tbody')[0].insertRow(); t.innerHTML = `<td><select style="max-width:60px;"><option value="F">F</option></select></td><td><input type="number" value="30" style="max-width:50px;"></td><td><input type="number" value="3" style="max-width:50px;"></td><td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td>`; }
+function obrisiRed(btn) { btn.parentNode.parentNode.remove(); }
+
+function izvrsiDimenzioniranje() {
+    proracunato = true;
+    osvjeziBeton();
+    while(armaturaGroup.children.length > 0) armaturaGroup.remove(armaturaGroup.children[0]);
+    while(dijagramGroup.children.length > 0) dijagramGroup.remove(dijagramGroup.children[0]);
+    diagramLabels.forEach(lbl => lbl.el.remove()); diagramLabels = []; globalStacionaze = []; globalRasporedSipki = [];
+
+    const L = parseFloat(document.getElementById('L').value);
+    const c_mm = parseFloat(document.getElementById('c').value);
+    const support = document.getElementById('support').value;
+    let h_mm = parseFloat(document.getElementById('h').value)*10;
+    let b_mm = parseFloat(document.getElementById('b').value)*10;
+
+    let kontinuirana = [], tockasta = [];
+    for(let r of document.getElementById('poly-load-table').getElementsByTagName('tbody')[0].rows) kontinuirana.push({ q: parseFloat(r.cells[0].getElementsByTagName('input')[0].value), x1: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x2: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
+    for(let r of document.getElementById('point-load-table').getElementsByTagName('tbody')[0].rows) tockasta.push({ tip: r.cells[0].getElementsByTagName('select')[0].value, val: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
+
+    crtajOpterecenja(kontinuirana, tockasta, L, h_mm/1000);
+
+    const n_seg = 60; const dx = L / n_seg;
+    let fcd = (0.85 * 25) / 1.5; let fyd = 500 / 1.15; let fctm = 2.6;
+    let fi_vilice = 8;
+
+    let fi_osnovno = 20;
+    let fi_dodatno = 14;
+
+    let d_mm = h_mm - c_mm - fi_vilice - fi_osnovno/2;
+    let d_m = d_mm / 1000;
+
+    // Dohvatanje uvezenih stvarnih sila iz čvorova (iz globalnog window objekta)
+    let M_A_stvarno = typeof window.global_M_A !== 'undefined' ? window.global_M_A : undefined;
+    let V_A_stvarno = typeof window.global_V_A !== 'undefined' ? window.global_V_A : undefined;
+    let N_A_stvarno = window.global_N_A || 0;
+    let N_B_stvarno = window.global_N_B || 0;
+
+    // NOVO: Ako nemamo uvezene FEM sile (rad na web interfejsu), računamo statičke reakcije!
+    if (V_A_stvarno === undefined) {
+        let Ra = 0, Ma = 0;
+        
+        // Reakcije od kontinuiranih opterećenja
+        for(let k of kontinuirana) {
+            let sila = k.q * (k.x2 - k.x1);
+            let tez = (k.x1 + k.x2) / 2;
+            if(support === 'greda' || support === 'obostrano') {
+                Ra += sila * (L - tez) / L;
+            } else if(support === 'konzola') {
+                Ra += sila;
+                Ma += sila * tez;
+            }
+        }
+        
+        // Reakcije od koncentrisanih opterećenja
+        for(let t of tockasta) {
+            if(t.tip === 'F') {
+                if(support === 'greda' || support === 'obostrano') {
+                    Ra += t.val * (L - t.x) / L;
+                } else if(support === 'konzola') {
+                    Ra += t.val;
+                    Ma += t.val * t.x;
+                }
+            }
+        }
+        
+        // Dodjeljujemo izračunate reakcije za integraciju
+        V_A_stvarno = Ra;
+        M_A_stvarno = (support === 'konzola') ? Ma : 0;
+    }
+
+    // --- KORAK 1: ANALITIČKA INTEGRACIJA UTICAJA DUŽ NOSAČA ---
+    for(let i = 0; i <= n_seg; i++) {
+        let x = i * dx;
+        
+        let V_z = V_A_stvarno; 
+        let M_y = M_A_stvarno + V_A_stvarno * x; 
+        let N_x = N_A_stvarno + ((N_B_stvarno - N_A_stvarno) / L) * x; 
+
+        // Superpozicija kontinuiranih opterećenja
+        for(let k of kontinuirana) { 
+            if (x > k.x1) { 
+                let len = Math.min(x, k.x2) - k.x1; 
+                if (len > 0) {
+                    let silaLijevo = k.q * len; 
+                    V_z -= silaLijevo; 
+                    M_y -= silaLijevo * (x - (k.x1 + len / 2)); 
+                }
+            } 
+        }
+        
+        // Superpozicija koncentrisanih opterećenja
+        for(let t of tockasta) {
+            if(t.tip === 'F' && x > t.x) { 
+                V_z -= t.val; 
+                M_y -= t.val * (x - t.x); 
+            }
+        }
+
+        // Privremeno punjenje niza sa čistom statikom
+        globalStacionaze.push({
+            x: x - L/2, absX: x, My: M_y, Vz: Math.abs(V_z), Nx: N_x,
+            M_design: 0, mu: 0, omega: 0, zeta: 0, xi: 0, z_m: 0, x_cm: 0, As_req_cm2: 0
+        });
+    
+        }
+
+    // --- KORAK 2: POKRIVANJE DIJAGRAMA MOMENATA (ZATEZUĆA LINIJA AL) I DIMENZIONISANJE ---
+    globalStacionaze.forEach((st) => {
+        let z_priblizno = 0.9 * d_m; 
+        let a_l = 0.5 * z_priblizno; // Shift prslina (cotTheta = 1.0)
+
+        // Traženje maksimalnog momenta u zoni [x - al, x + al]
+        let max_M_u_zoni = Math.abs(st.My);
+        globalStacionaze.forEach(provjeraSt => {
+            if (provjeraSt.absX >= (st.absX - a_l) && provjeraSt.absX <= (st.absX + a_l)) {
+                if (Math.abs(provjeraSt.My) > max_M_u_zoni) {
+                    max_M_u_zoni = Math.abs(provjeraSt.My);
+                }
+            }
+        });
+
+        st.M_design = max_M_u_zoni;
+
+        // Pokretanje EC2 proračuna na bazi mjerodavnog M_design
+        let M_nmm = st.M_design * 1000000;
+        let mu_Eds = M_nmm / (b_mm * d_mm * d_mm * fcd);
+        let tab = ocitajIzTabele(mu_Eds);
+
+        let As_req = (1 / fyd) * tab.omega * b_mm * d_mm * fcd;
+        
+        // Dodavanje uticaja aksijalne zatežuće sile (ako postoji)
+        if (st.Nx > 0) {
+            As_req += (st.Nx * 1000) / fyd; 
+        }
+
+        let As_min = Math.max(0.26 * (fctm / 500) * b_mm * d_mm, 0.0013 * b_mm * d_mm);
+        if (As_req < As_min) As_req = As_min;
+
+        st.mu = mu_Eds;
+        st.omega = tab.omega;
+        st.zeta = tab.zeta;
+        st.xi = tab.xi;
+        st.z_m = (tab.zeta * d_mm) / 1000;
+        st.x_cm = (tab.xi * d_mm) / 10;
+        st.As_req_cm2 = As_req / 100;
+    });
+
+    setTimeout(() => {
+        azuriraj2DNacrt();
+    }, 100);
+
+    crtaj3DDijagramMomenta(globalStacionaze, L, h_mm / 1000);
+
+    let maxAsReq = Math.max(...globalStacionaze.map(s => s.As_req_cm2));
+    let povrsina_osnovno = (Math.PI * Math.pow(fi_osnovno, 2)) / 400;
+    let As_ugradjeno_osnovno = 2 * povrsina_osnovno;
+    let povrsina_dodatno = (Math.PI * Math.pow(fi_dodatno, 2)) / 400;
+
+    globalStacionaze.forEach(st => {
+        let As_preostalo = Math.max(0, st.As_req_cm2 - As_ugradjeno_osnovno);
+        st.komada_dodatnih = Math.ceil(As_preostalo / povrsina_dodatno);
+    });
+
+    let h_m = h_mm / 1000; let b_m = b_mm / 1000; let c_m = c_mm / 1000;
+    const z_u_kutovima = (b_m / 2) - c_m - (fi_vilice/1000) - (fi_osnovno/1000)/2;
+    const y_donja_zona = -(h_m / 2) + c_m + (fi_vilice/1000) + (fi_osnovno/1000)/2;
+    const y_gornja_zona = (h_m / 2) - c_m - (fi_vilice/1000) - (12/2000);
+    let yKonstruktivno = (support === 'konzola') ? y_donja_zona : y_gornja_zona;
+
+    globalGeometrija = { b: b_mm, h: h_mm, c: c_mm, fiV: fi_vilice, fiS: fi_osnovno, support: support, y_donja: y_donja_zona, y_gornja: y_gornja_zona, z_kut: z_u_kutovima, yKonstruktivno: yKonstruktivno };
+
+    let rasporedSipki = [];
+
+    rasporedSipki.push({ z: -z_u_kutovima, y: y_donja_zona, prioritet: 0, fi: fi_osnovno, tip: 'osnovna', parId: 0 });
+    rasporedSipki.push({ z: z_u_kutovima, y: y_donja_zona, prioritet: 1, fi: fi_osnovno, tip: 'osnovna', parId: 0 });
+
+    let maxDodatnih = Math.max(...globalStacionaze.map(s => s.komada_dodatnih));
+    let preostalo = maxDodatnih;
+
+    let fi_o_m = fi_osnovno / 1000;
+    let fi_d_m = fi_dodatno / 1000;
+
+    let k = parseFloat(document.getElementById('s_min_tol').value) / 1000;
+    let s_min_m = Math.max(fi_o_m, 0.020) + k;
+
+    let clearSpace_0 = (2 * z_u_kutovima) - fi_o_m;
+    let maxDodatnihUPrvomRedu = 0;
+    if (clearSpace_0 > s_min_m) {
+        maxDodatnihUPrvomRedu = Math.floor((clearSpace_0 - s_min_m) / (fi_d_m + s_min_m));
+    }
+    if (maxDodatnihUPrvomRedu < 0) maxDodatnihUPrvomRedu = 0;
+
+    let trenutniPrioritet = 2;
+    let etaza = 0;
+    let parBrojac = 1;
+
+    while(preostalo > 0) {
+        let maxURedu = (etaza === 0) ? maxDodatnihUPrvomRedu : Math.floor(((2 * z_u_kutovima) + s_min_m) / (fi_d_m + s_min_m));
+        if (etaza > 0 && maxURedu < 2) maxURedu = 2;
+
+        let sipkiZaOvajRed = Math.min(preostalo, maxURedu);
+
+        if (sipkiZaOvajRed <= 0) {
+            etaza++;
+            continue;
+        }
+
+        let y_sloj = y_donja_zona + etaza * (Math.max(fi_o_m, fi_d_m) + s_min_m);
+
+        if (sipkiZaOvajRed === 1) {
+            rasporedSipki.push({ z: 0, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+            trenutniPrioritet++;
+            parBrojac++;
+            preostalo -= 1;
+        } else {
+            let imaSredisnja = (sipkiZaOvajRed % 2 !== 0);
+            let brojParova = Math.floor(sipkiZaOvajRed / 2);
+            let z_max_zona = (etaza === 0) ? (z_u_kutovima - fi_o_m/2 - s_min_m - fi_d_m/2) : z_u_kutovima;
+
+            if (brojParova === 1 && !imaSredisnja) {
+                rasporedSipki.push({ z: -z_max_zona, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+                rasporedSipki.push({ z: z_max_zona, y: y_sloj, prioritet: trenutniPrioritet + 1, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+                trenutniPrioritet += 2;
+                parBrojac++;
+            } else {
+                for (let p = 0; p < brojParova; p++) {
+                    let zPos = z_max_zona - p * (fi_d_m + s_min_m);
+                    if (zPos < 0) zPos = 0;
+                    rasporedSipki.push({ z: -zPos, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+                    rasporedSipki.push({ z: zPos, y: y_sloj, prioritet: trenutniPrioritet + 1, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+                    trenutniPrioritet += 2;
+                    parBrojac++;
+                }
+            }
+
+            if (imaSredisnja) {
+                rasporedSipki.push({ z: 0, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
+                trenutniPrioritet++;
+                parBrojac++;
+            }
+            preostalo -= sipkiZaOvajRed;
+        }
+        etaza++;
+    }
+
+    let parGranice = {};
+    rasporedSipki.forEach(sInfo => {
+        if (sInfo.tip === 'osnovna') return;
+
+        let pripadajuciPrioritet = sInfo.prioritet;
+        let validX = [];
+
+        globalStacionaze.forEach(st => {
+            if ((pripadajuciPrioritet - 2) < st.komada_dodatnih) {
+                validX.push(st.absX);
+            }
+        });
+
+        if (validX.length > 0) {
+            let tStart = Math.min(...validX);
+            let tEnd = Math.max(...validX);
+
+            if (!parGranice[sInfo.parId]) {
+                parGranice[sInfo.parId] = { start: tStart, end: tEnd };
+            } else {
+                parGranice[sInfo.parId].start = Math.min(parGranice[sInfo.parId].start, tStart);
+                parGranice[sInfo.parId].end = Math.max(parGranice[sInfo.parId].end, tEnd);
+            }
+        }
+    });
+
+    for(let sInfo of rasporedSipki) {
+        let yReal = (support === 'konzola' && globalStacionaze[n_seg/2].My < 0) ? y_gornja_zona : sInfo.y;
+        let finalStart = 0;
+        let finalEnd = L;
+        let prikaziKuke = false;
+
+        if (sInfo.tip === 'osnovna') {
+            finalStart = c_m;
+            finalEnd = L - c_m;
+            prikaziKuke = true;
+        } else if (parGranice[sInfo.parId]) {
+            let teorijskiStart = parGranice[sInfo.parId].start;
+            let teorijskiEnd = parGranice[sInfo.parId].end;
+
+            let l_bd = 30 * (sInfo.fi / 1000);
+            let al = 0.9 * (d_mm / 1000);
+            let ukupniPrepust = al + l_bd;
+
+            finalStart = Math.max(c_m, teorijskiStart - ukupniPrepust);
+            finalEnd = Math.min(L - c_m, teorijskiEnd + ukupniPrepust);
+
+            if (finalStart <= c_m + 0.01) { finalStart = c_m; prikaziKuke = true; }
+            if (finalEnd >= L - c_m - 0.01) { finalEnd = L - c_m; prikaziKuke = true; }
+        } else {
+            continue;
+        }
+
+        globalRasporedSipki.push({ z: sInfo.z, prioritet: sInfo.prioritet, yReal: yReal, xStart: finalStart, xEnd: finalEnd, fi: sInfo.fi, tip: sInfo.tip });
+        iscrtajSipku3D(finalStart - L/2, finalEnd - L/2, yReal, sInfo.z, sInfo.fi/1000, false, globalGeometrija, prikaziKuke);
+    }
+
+    iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, -z_u_kutovima, 0.012, true, globalGeometrija, true);
+    iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, z_u_kutovima, 0.012, true, globalGeometrija, true);
+
+    let tekuciX = c_m;
+    while(tekuciX <= L-c_m) {
+        let rel = tekuciX / L; let idx = Math.floor(rel * n_seg); if(idx > n_seg) idx = n_seg;
+        let totalSila = globalStacionaze[idx] ? globalStacionaze[idx].Vz : 0;
+        let korak = (totalSila > 120) ? 0.05 : ((totalSila > 60) ? 0.10 : 0.15);
+        crtajSavijenuVilicu(tekuciX - L/2, b_m - 2*c_m, h_m - 2*c_m);
+        tekuciX += korak;
+    }
+
+    if (typeof render === "function") {
+        render(); // ili kako god da ti se zove glavna funkcija za renderer.render(scene, camera)
+    } else if (typeof animate === "function") {
+        animate();
+    }
+}
+
+function crtaj3DDijagramMomenta(stacionaze, L, h_m) {
+    let maxM = Math.max(...stacionaze.map(st => Math.abs(st.My))); if (maxM === 0) maxM = 1;
+    let scale = 1.0 / maxM; let y_base = -(h_m / 2) - 0.4;
+    const shape = new THREE.Shape(); shape.moveTo(-L/2, 0);
+    const linePoints = [new THREE.Vector3(-L/2, y_base, 0)];
+    let extremPoint = null;
+
+    for(let st of stacionaze) {
+        let y_val = -st.My * scale; shape.lineTo(st.x, y_val);
+        let pt = new THREE.Vector3(st.x, y_base + y_val, 0); linePoints.push(pt);
+        if (Math.abs(st.My) === maxM) extremPoint = { pos: pt, val: st.My };
+    }
+    shape.lineTo(L/2, 0); shape.closePath();
+
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.25, side: THREE.DoubleSide }));
+    mesh.position.set(0, y_base, 0); dijagramGroup.add(mesh);
+    dijagramGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePoints), new THREE.LineBasicMaterial({ color: 0xdc2626, linewidth: 2 })));
+    dijagramGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-L/2, y_base, 0), new THREE.Vector3(L/2, y_base, 0)]), new THREE.LineBasicMaterial({color: 0x333333})));
+
+    if (extremPoint) {
+        const div = document.createElement('div'); div.className = 'diagram-label'; div.innerText = extremPoint.val.toFixed(2) + ' kNm';
+        document.getElementById('view-3d').appendChild(div); diagramLabels.push({ el: div, pos: extremPoint.pos });
+    }
+}
+
+function dohvatiPresjekNaPozicijiX(trazenoX) {
+    const L = parseFloat(document.getElementById('L').value);
+    const c_mm = parseFloat(document.getElementById('c').value);
+    const support = document.getElementById('support').value;
+    let h_mm = parseFloat(document.getElementById('h').value) * 10;
+    let b_mm = parseFloat(document.getElementById('b').value) * 10;
+    
+    let fcd = (0.85 * 25) / 1.5; 
+    let fyd = 500 / 1.15; 
+    let fctm = 2.6;
+    let fi_vilice = 8;
+    let fi_osnovno = 20;
+    let d_mm = h_mm - c_mm - fi_vilice - fi_osnovno / 2;
+
+    // Ponovo pročitaj opterećenja sa forme radi tačnog proračuna sile na koordinati X
+    let kontinuirana = [], tockasta = [];
+    for(let r of document.getElementById('poly-load-table').getElementsByTagName('tbody')[0].rows) kontinuirana.push({ q: parseFloat(r.cells[0].getElementsByTagName('input')[0].value), x1: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x2: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
+    for(let r of document.getElementById('point-load-table').getElementsByTagName('tbody')[0].rows) tockasta.push({ tip: r.cells[0].getElementsByTagName('select')[0].value, val: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
+
+    let Ra = 0, Ma = 0;
+    for(let k of kontinuirana) { let sila = k.q*(k.x2-k.x1); let tez = (k.x1+k.x2)/2; if(support === 'greda' || support === 'obostrano') Ra += sila*(L-tez)/L; else if(support === 'konzola') { Ra += sila; Ma += sila*tez; } }
+    for(let t of tockasta) { if(t.tip === 'F') { if(support === 'greda' || support === 'obostrano') Ra += t.val*(L-t.x)/L; else if(support === 'konzola') { Ra += t.val; Ma += t.val*t.x; } } }
+
+    // Analitički proračun uticaja u tačnoj koordinati trazenoX
+    let V_z = Ra; 
+    let M_y = (support === 'konzola') ? (Ra * trazenoX - Ma) : (Ra * trazenoX);
+    
+    for(let k of kontinuirana) { 
+        if (trazenoX > k.x1) { 
+            let len = Math.min(trazenoX, k.x2) - k.x1; 
+            let silaLijevo = k.q * len; 
+            V_z -= silaLijevo; 
+            M_y -= silaLijevo * (trazenoX - (k.x1 + len / 2)); 
+        } 
+    }
+    for(let t of tockasta) if(t.tip === 'F' && trazenoX > t.x) { V_z -= t.val; M_y -= t.val * (trazenoX - t.x); }
+
+    let M_nmm = Math.abs(M_y) * 1000000;
+    let mu_Eds = M_nmm / (b_mm * d_mm * d_mm * fcd);
+    let tab = ocitajIzTabele(mu_Eds);
+
+    let As_req = (1 / fyd) * tab.omega * b_mm * d_mm * fcd;
+    let As_min = Math.max(0.26 * (fctm / 500) * b_mm * d_mm, 0.0013 * b_mm * d_mm);
+    if (As_req < As_min) As_req = As_min;
+
+    // Vraćamo čist objekat sa originalnom, nezaokruženom koordinatom absX
+    return {
+        x: trazenoX - L / 2, 
+        absX: trazenoX, 
+        My: M_y, 
+        Vz: Math.abs(V_z),
+        mu: mu_Eds, 
+        omega: tab.omega, 
+        zeta: tab.zeta, 
+        xi: tab.xi,
+        z_m: (tab.zeta * d_mm) / 1000, 
+        x_cm: (tab.xi * d_mm) / 10, 
+        As_req_cm2: As_req / 100
+    };
+}
+
+function crtajUvecaniKotiraniPresjek() {
+    if (!trenutniKliknutiPresjek) return;
+    const canvas = document.getElementById('canvas-uvecani-presjek');
+
+    const panel2D = document.getElementById('view-2d');
+    const sirinaPanela = panel2D.clientWidth;
+    const visinaPanela = panel2D.clientHeight - 40;
+
+    canvas.width = sirinaPanela;
+    canvas.height = visinaPanela;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const geom = globalGeometrija;
+    const presjek = trenutniKliknutiPresjek;
+
+    const marginV = 60;
+    const marginH = 60;
+    let scaleX = (canvas.width - 2 * marginH - 40) / geom.b;
+    let scaleY = (canvas.height - 2 * marginV - 40) / geom.h;
+    let scale = Math.min(scaleX, scaleY);
+
+    let cx = canvas.width / 2 + 15;
+    let cy = canvas.height / 2 - 15;
+
+    let b_px = geom.b * scale;
+    let h_px = geom.h * scale;
+    let c_px = (geom.c) * scale;
+    let fiV_px = (geom.fiV) * scale;
+
+    let x_lijeva = cx - b_px / 2;
+    let x_desna = cx + b_px / 2;
+    let y_gornja = cy - h_px / 2;
+    let y_donja = cy + h_px / 2;
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x_lijeva, y_gornja, b_px, h_px);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(x_lijeva, y_gornja, b_px, h_px);
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '11px Arial';
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+
+    let kotaY = y_donja + 25;
+    ctx.beginPath(); ctx.moveTo(x_lijeva, kotaY); ctx.lineTo(x_desna, kotaY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x_lijeva, kotaY - 4); ctx.lineTo(x_lijeva, kotaY + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x_desna, kotaY - 4); ctx.lineTo(x_desna, kotaY + 4); ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillText(`b = ${(geom.b / 10).toFixed(0)} cm`, cx, kotaY - 5);
+
+    let kotaX = x_lijeva - 25;
+    ctx.beginPath(); ctx.moveTo(kotaX, y_gornja); ctx.lineTo(kotaX, y_donja); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(kotaX - 4, y_gornja); ctx.lineTo(kotaX + 4, y_gornja); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(kotaX - 4, y_donja); ctx.lineTo(kotaX + 4, y_donja); ctx.stroke();
+    ctx.save();
+    ctx.translate(kotaX - 5, cy);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText(`h = ${(geom.h / 10).toFixed(0)} cm`, 0, 0);
+    ctx.restore();
+
+    let v_lijeva = x_lijeva + c_px;
+    let v_desna = x_desna - c_px;
+    let v_gornja = y_gornja + c_px;
+    let v_donja = y_donja - c_px;
+
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = Math.max(1.5, fiV_px);
+    ctx.strokeRect(v_lijeva, v_gornja, v_desna - v_lijeva, v_donja - v_gornja);
+
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 0.8;
+    ctx.font = '9px Arial'; ctx.fillStyle = '#dc2626'; ctx.textAlign = 'left';
+    ctx.fillText(`c=${geom.c}mm`, x_lijeva + 4, v_gornja - 5);
+
+    let etažeSipki = {};
+    globalRasporedSipki.forEach(sipka => {
+        if (presjek.absX >= sipka.xStart && presjek.absX <= sipka.xEnd) {
+            let yKey = sipka.yReal.toFixed(3);
+            if (!etažeSipki[yKey]) etažeSipki[yKey] = [];
+            etažeSipki[yKey].push(sipka);
+        }
+    });
+
+    ctx.fillStyle = '#2563eb';
+    Object.keys(etažeSipki).forEach(yKey => {
+        let red = etažeSipki[yKey].sort((a, b) => a.z - b.z);
+        let y_px = cy - parseFloat(yKey) * 1000 * scale;
+
+        red.forEach(s => {
+            let x_px = cx + s.z * 1000 * scale;
+            ctx.beginPath();
+            ctx.arc(x_px, y_px, (s.fi / 2) * scale, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
+        if (red.length > 1) {
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 0.8;
+            ctx.fillStyle = '#1d4ed8';
+            ctx.font = 'bold 9px Arial';
+            ctx.textAlign = 'center';
+
+            for (let i = 0; i < red.length - 1; i++) {
+                let x_trenutna = cx + red[i].z * 1000 * scale;
+                let x_sljedeca = cx + red[i+1].z * 1000 * scale;
+
+                let s_svijetli_mm = (red[i+1].z - red[i].z) * 1000 - (red[i].fi / 2 + red[i+1].fi / 2);
+
+                let k_x1 = x_trenutna + (red[i].fi / 2) * scale;
+                let k_x2 = x_sljedeca - (red[i+1].fi / 2) * scale;
+                let k_y = y_px - (red[i].fi / 2) * scale - 6;
+
+                ctx.beginPath(); ctx.moveTo(k_x1, k_y); ctx.lineTo(k_x2, k_y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(k_x1, k_y - 3); ctx.lineTo(k_x1, k_y + 3); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(k_x2, k_y - 3); ctx.lineTo(k_x2, k_y + 3); ctx.stroke();
+
+                ctx.fillText(`${s_svijetli_mm.toFixed(0)}`, (k_x1 + k_x2) / 2, k_y - 4);
+            }
+        }
+    });
+
+    ctx.fillStyle = '#94a3b8';
+    let pyK = cy - (geom.yKonstruktivno * 1000) * scale;
+    let kx1 = cx - (geom.z_kut * 1000) * scale;
+    let kx2 = cx + (geom.z_kut * 1000) * scale;
+    ctx.beginPath(); ctx.arc(kx1, pyK, (12 / 2) * scale, 0, 2 * Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(kx2, pyK, (12 / 2) * scale, 0, 2 * Math.PI); ctx.fill();
+}
+
+
+// UČITAVANJE PODATAKA IZ LINKA
+// Funkcija koja čita i procesira podatke iz URL-a
+function ucitajPodatkeIzURL() {
+    try {
+        // 1. Dohvatanje parametara iz URL-a
+        const urlParams = new URLSearchParams(window.location.search);
+        const enkodiraniPodaci = urlParams.get('data'); // Tražimo parametar "data"
+
+        if (!enkodiraniPodaci) {
+            console.log("Nema proslijeđenih podataka u URL-u.");
+            return;
+        }
+
+        // 2. Dekodiranje i parsiranje JSON-a back u objekat
+        const dekodiraniString = decodeURIComponent(enkodiraniPodaci);
+        const podaci = JSON.parse(dekodiraniString);
+
+        console.log("Uspješno učitani podaci:", podaci);
+
+        // 3. Procesiranje (popunjavanje tvojih input polja na stranici)
+        // Pretpostavimo da imaš inpute sa ovim ID-evima na stranici:
+        if(podaci.M) document.getElementById('input-moment').value = podaci.M;
+        if(podaci.V) document.getElementById('input-transverzalna').value = podaci.V;
+        if(podaci.N) document.getElementById('input-aksijalna').value = podaci.N;
+        
+        // Ako imaš i čvorove ili opterećenja kao nizove, ovdje ih šalješ u funkciju za iscrtavanje/proračun
+        if(podaci.cvorovi) {
+            // procesirajCvorove(podaci.cvorovi);
+        }
+
+        // Ovdje možeš automatski pokrenuti i proračun ako želiš
+        // pokreniDimenzioniranje();
+
+    } catch (error) {
+        console.error("Greška pri čitanju podataka iz URL-a:", error);
+    }
+}
+
+// Pokreni funkciju čim se stranica učita
+// Listener za učitavanje preko URL-a (za lokalni rad sa diska)
+window.addEventListener('DOMContentLoaded', function() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const femDataParam = urlParams.get('fem_data');
+
+        if (femDataParam) {
+            // Eksplicitno čistimo tabele prije ubacivanja novih podataka da uklonimo HTML default-e
+            const polyTable = document.getElementById('poly-load-table');
+            const pointTable = document.getElementById('point-load-table');
+            
+            if (polyTable) polyTable.getElementsByTagName('tbody')[0].innerHTML = "";
+            if (pointTable) pointTable.getElementsByTagName('tbody')[0].innerHTML = "";
+
+            const čistNiz = JSON.parse(decodeURIComponent(femDataParam));
+            if (Array.isArray(čistNiz)) {
+                console.log("Podaci uspješno pročitani iz URL-a:", čistNiz);
+                procesirajNizPodataka(čistNiz);
+            }
+        } else {
+            console.log("Stranica je otvorena bez popunjenih FEM podataka u URL-u.");
+        }
+    } catch (e) {
+        console.error("Greška pri čitanju URL parametara:", e);
+    }
+});
+
+// Zadržavamo i message listener za rad na serveru
+window.addEventListener('message', function(event) {
+    if (event.data && Array.isArray(event.data)) {
+        const polyTable = document.getElementById('poly-load-table');
+        const pointTable = document.getElementById('point-load-table');
+        if (polyTable) polyTable.getElementsByTagName('tbody')[0].innerHTML = "";
+        if (pointTable) pointTable.getElementsByTagName('tbody')[0].innerHTML = "";
+        
+        procesirajNizPodataka(event.data);
+    }
+});
+
+
+function procesirajNizPodataka(skupPodataka) {
+    console.log("🚀 --- PRIMLJENI FEM PODACI ZA DIMENZIONIRANJE ---", skupPodataka);
+    
+    try {
+        let pointer = 0;
+
+        // 1. Geometrija (4)
+        const L = skupPodataka[pointer++];
+        const b = skupPodataka[pointer++];
+        const h = skupPodataka[pointer++];
+        const c = skupPodataka[pointer++];
+
+        // 2. Sile u čvorovima (6)
+        const M_A = skupPodataka[pointer++];
+        console.log("dof_MA:", skupPodataka[pointer-1]);
+        const V_A = skupPodataka[pointer++];
+        console.log("dof_VA:", skupPodataka[pointer-1]);
+        const N_A = skupPodataka[pointer++];
+        const M_B = skupPodataka[pointer++];
+        const V_B = skupPodataka[pointer++];
+        const N_B = skupPodataka[pointer++];
+
+        // 3. DOF-ovi (6) - SADA ISPRAVNO ČITAMO SVIH 6
+        const dof_A_x = skupPodataka[pointer++];
+        console.log("dof_A_x:", skupPodataka[pointer-1]);
+        const dof_A_y = skupPodataka[pointer++];
+        console.log("dof_A_y:", skupPodataka[pointer-1]);
+        const dof_A_rot = skupPodataka[pointer++];
+        console.log("dof_A_r:", skupPodataka[pointer-1]);
+        const dof_B_x = skupPodataka[pointer++];
+        console.log("dof_B_x:", skupPodataka[pointer-1]);
+        const dof_B_y = skupPodataka[pointer++];
+        console.log("dof_B_y:", skupPodataka[pointer-1]);
+        const dof_B_rot = skupPodataka[pointer++];
+        console.log("dof_B_r:", skupPodataka[pointer-1]);
+
+        // 4. Određivanje tipa oslonca na osnovu DOF-ova
+        let prepoznatiSistem = 'greda';
+        if (dof_A_y === 1 && dof_A_rot === 1 && dof_B_y === 0 && dof_B_rot === 0) {
+            prepoznatiSistem = 'konzola';
+        } else if (dof_A_y === 1 && dof_A_rot === 1 && dof_B_y === 1 && dof_B_rot === 1) {
+            prepoznatiSistem = 'obostrano';
+        } else if (dof_A_y === 1 && dof_B_y === 1 && dof_A_rot === 0 && dof_B_rot === 0) {
+            prepoznatiSistem = 'greda';
+        }
+
+        document.getElementById('support').value = prepoznatiSistem;
+
+
+        // Keširanje
+        window.global_M_A = M_A; window.global_V_A = V_A; window.global_N_A = N_A;
+        window.global_M_B = M_B; window.global_V_B = V_B; window.global_N_B = N_B;
+
+        document.getElementById('L').value = L; document.getElementById('b').value = b;
+        document.getElementById('h').value = h; document.getElementById('c').value = c;
+
+        document.getElementById('poly-load-table').getElementsByTagName('tbody')[0].innerHTML = "";
+        document.getElementById('point-load-table').getElementsByTagName('tbody')[0].innerHTML = "";
+
+        // 5. Opterećenja (Kontinuirana)
+        const broj_q = skupPodataka[pointer++];
+        let tbody_q = document.getElementById('poly-load-table').getElementsByTagName('tbody')[0];
+        for (let i = 0; i < broj_q; i++) {
+            let q_val = skupPodataka[pointer++];
+            let q_x1  = skupPodataka[pointer++];
+            let q_x2  = L - skupPodataka[pointer++]; 
+            
+            let row = tbody_q.insertRow();
+            row.innerHTML = `<td><input type="number" value="${q_val}" style="max-width:50px;"></td>
+                             <td><input type="number" value="${q_x1}" style="max-width:50px;"></td>
+                             <td><input type="number" value="${q_x2}" style="max-width:50px;"></td>
+                             <td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td>`;
+        }
+
+        // 6. Opterećenja (Koncentrisana)
+        const broj_F = skupPodataka[pointer++];
+        let tbody_F = document.getElementById('point-load-table').getElementsByTagName('tbody')[0];
+        for (let i = 0; i < broj_F; i++) {
+            let F_val = skupPodataka[pointer++];
+            let F_x   = skupPodataka[pointer++];
+
+            let row = tbody_F.insertRow();
+            row.innerHTML = `<td><select style="max-width:60px;"><option value="F">F (kN)</option></select></td>
+                             <td><input type="number" value="${F_val}" style="max-width:50px;"></td>
+                             <td><input type="number" value="${F_x}" style="max-width:50px;"></td>
+                             <td><button class="btn-sm" onclick="obrisiRed(this)">X</button></td>`;
+        }
+
+        // Konačan ispis za potvrdu uspješnog parsiranja
+        console.log(`✅ Učitano: ${prepoznatiSistem} | L=${L}m | ${broj_q} kont. | ${broj_F} konc.`);
+
+        osvjeziBeton();
+        izvrsiDimenzioniranje();
+
+    } catch (error) {
+        console.error("Greška pri proračunu unutar parsera:", error);
+    }
+}
+
+    </script>
+</body>
+</html>

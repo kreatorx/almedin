@@ -318,6 +318,8 @@ function handleStart(cx, cy) {
                 let newLoad = { q: 0, x1: 0, x2: 0, type: 'gravity', Fx: 0, Fy: 0, M: 0, px: 0 };
                 selectedElement.loads.push(newLoad); selectedLoad = newLoad;
                 document.getElementById('load-modal-title').innerText = "Dodaj Opterećenje";
+                // Primjer poziva na klik dugmeta u tvom modalnom prozoru elementa
+                  if (selectedElement) { posaljiPodatkeZaDimenzioniranje(selectedElement); }
                 openElementModal(selectedElement, newLoad, cx, cy); draw(); return;
             }
         }
@@ -1032,3 +1034,112 @@ async function generateAI() {
         btn.disabled = false;
     }
 }
+
+
+
+// -----------------------------------
+// SLANJE PODATAKA ZA DIMENZIONIRANJE
+// -----------------------------------
+
+// Sigurno vezivanje eventa na dugme tek nakon što se stranica učita
+document.addEventListener('DOMContentLoaded', () => {
+    const btnDim = document.getElementById('btn-pokreni-dimenzioniranje');
+    if (btnDim) {
+        btnDim.addEventListener('click', function(e) {
+            e.preventDefault(); // Zaustavlja bilo kakvo automatsko ponašanje forme
+            posaljiPodatkeZaDimenzioniranje();
+        });
+    }
+});
+
+function posaljiPodatkeZaDimenzioniranje() {
+    const el = selectedElement;
+
+    if (!el || !el.FEM_DATA || !el.DIAG) {
+        alert("Ovaj element nema izračunate rezultate. Prvo klikni na dugme 'PRORAČUNAJ' u gornjem meniju!");
+        return;
+    }
+
+    try {
+        const L = el.FEM_DATA.L;
+        const b = 30;
+        const h = 50;
+        const c = 35;
+
+        const M_A = el.DIAG.M[0];
+        const V_A = el.DIAG.V[0];
+        const N_A = el.DIAG.N[0];
+
+        const zadnjiIdx = el.DIAG.M.length - 1;
+        const M_B = el.DIAG.M[zadnjiIdx];
+        const V_B = el.DIAG.V[zadnjiIdx];
+        const N_B = el.DIAG.N[zadnjiIdx];
+
+        // --- NOVO: Čitanje čvorova za DOF ---
+        const nodeA = nodes[el.n1];
+        const nodeB = nodes[el.n2];
+
+        const getDOF = (res) => {
+            if (res === 'fixed') return [1, 1, 1];
+            if (res === 'pinned') return [1, 1, 0];
+            if (res === 'roller-x') return [0, 1, 0];
+            return [0, 0, 0];
+        };
+
+        const dof_A = getDOF(nodeA.res);
+        const dof_B = getDOF(nodeB.res);
+
+        let kontinuiranaQ = [];
+        let koncentrisanaF = [];
+
+        if (el.loads) {
+            el.loads.forEach(ld => {
+                if (ld.q && ld.q !== 0) {
+                    kontinuiranaQ.push(parseFloat(ld.q));
+                    kontinuiranaQ.push(parseFloat(ld.x1 || 0));
+                    kontinuiranaQ.push(parseFloat(ld.x2 || 0));
+                }
+                if (ld.Fy && ld.Fy !== 0) {
+                    koncentrisanaF.push(Math.abs(parseFloat(ld.Fy)));
+                    koncentrisanaF.push(parseFloat(ld.px || 0));
+                } else if (ld.Fx && ld.Fx !== 0) {
+                    koncentrisanaF.push(Math.abs(parseFloat(ld.Fx)));
+                    koncentrisanaF.push(parseFloat(ld.px || 0));
+                }
+            });
+        }
+
+        const broj_q = kontinuiranaQ.length / 3;
+        const broj_F = koncentrisanaF.length / 2;
+
+        let paketNiz = [
+            parseFloat(L.toFixed(2)), b, h, c,
+            parseFloat(M_A.toFixed(2)), parseFloat(V_A.toFixed(2)), parseFloat(N_A.toFixed(2)),
+            parseFloat(M_B.toFixed(2)), parseFloat(V_B.toFixed(2)), parseFloat(N_B.toFixed(2)),
+            
+            // PAKOVANJE DOF-ova U NIZ (ovo ti je nedostajalo)
+            dof_A[0], dof_A[1], dof_A[2],
+            dof_B[0], dof_B[1], dof_B[2],
+
+            console.log("dof_A:", dof_A);
+            console.log("dof_B:", dof_B);
+
+            broj_q
+        ];
+
+        paketNiz = paketNiz.concat(kontinuiranaQ);
+        paketNiz.push(broj_F);
+        paketNiz = paketNiz.concat(koncentrisanaF);
+
+        const stringNiz = JSON.stringify(paketNiz);
+        const url = `dimenzioniranje.html?fem_data=${encodeURIComponent(stringNiz)}`;
+        
+        window.open(url, '_blank');
+
+    } catch (error) {
+        console.error("Greška prilikom pripreme podataka:", error);
+    }
+}
+
+        //--- KRAJ SLANJA PODATAKA ZA DIMENZIONIRANJE ---
+        // ---------------------------------------------

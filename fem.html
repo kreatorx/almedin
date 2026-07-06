@@ -110,8 +110,12 @@
             <div class="input-row">
                 <label>Udaljenost x (m):</label><input type="number" id="elem-px" step="0.1" style="width:60px">
             </div>
-            <div class="actions">
-                <button onclick="saveElementLoad()">Spasi</button><button class="delete" onclick="deleteElementLoad()">Obriši</button>
+            <div class="actions" style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <button onclick="saveElementLoad()" style="flex: 1;">Spasi</button>
+                    <button class="delete" onclick="deleteElementLoad()" style="flex: 1;">Obriši</button>
+                </div>
+                <button id="btn-pokreni-dimenzioniranje" style="background: #da70d6; color: #fff; width: 100%; font-weight: bold;">Dimenzioniranje</button>
             </div>
         </div>
         <div class="signature">
