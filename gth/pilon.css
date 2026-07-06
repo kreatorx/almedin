@@ -1,163 +1,222 @@
-/* style.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+ @import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+        * {
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0b1120;
+            color: #e2e8f0;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 6px;
+        }
 
-* {
-    font-family: 'Inter', sans-serif;
-    box-sizing: border-box;
-}
+        /* SIDEBAR - fiksna širina */
+        #sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: #0f172a;
+            border-right: 1px solid #1e293b;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 12px;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+            z-index: 50;
+        }
 
-body {
-    background: #0b1120;
-    color: #e2e8f0;
-    margin: 0;
-    padding: 12px;
-}
+        /* Glavni sadržaj */
+        #main-content {
+            flex: 1;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 16px 20px 20px 20px;
+            background: #0b1120;
+        }
 
-::-webkit-scrollbar {
-    width: 5px;
-}
+        .card {
+            background: #0f172a;
+            border-radius: 10px;
+            border: 1px solid #1e293b;
+            padding: 10px 12px;
+        }
+        .label-sm {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #94a3b8;
+        }
+        .sidebar-input {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            color: #f1f5f9;
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-size: 0.7rem;
+            width: 100%;
+        }
+        .sidebar-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+        .sidebar-label {
+            font-size: 0.55rem;
+            color: #94a3b8;
+        }
+        .sidebar-card {
+            padding: 8px 10px;
+        }
+        .btn {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:hover {
+            background: #334155;
+            border-color: #475569;
+        }
+        .btn-primary {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 380px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #0b1120;
+        }
+        .status-badge {
+            padding: 1px 10px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.65rem;
+            display: inline-block;
+        }
+        .approach-card {
+            background: #0f172a;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            padding: 6px 10px;
+            transition: border-color 0.2s;
+        }
+        .approach-card:hover {
+            border-color: #3b82f6;
+        }
+        .approach-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .approach-value {
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .approach-label {
+            font-size: 0.55rem;
+            color: #94a3b8;
+        }
+        .sloj-card {
+            padding: 6px 8px;
+            font-size: 0.65rem;
+        }
+        .sloj-card input {
+            font-size: 0.65rem;
+            padding: 2px 4px;
+        }
 
-::-webkit-scrollbar-track {
-    background: #1e293b;
-}
+        /* Dugme za otvaranje sidebara na mobitelu */
+        #sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 60;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        #sidebar-toggle:hover {
+            background: #334155;
+        }
 
-::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 6px;
-}
+        /* Overlay za mobitel */
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 40;
+        }
 
-input,
-select {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    color: #f1f5f9;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    width: 100%;
-}
+        /* Responzivnost */
+        @media (max-width: 1024px) {
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%);
+                height: 100vh;
+                z-index: 50;
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #sidebar-overlay.open {
+                display: block;
+            }
+            #sidebar-toggle {
+                display: block;
+            }
+            #main-content {
+                padding: 16px 12px 12px 12px;
+            }
+            .grid-2cols {
+                grid-template-columns: 1fr !important;
+            }
+        }
 
-    input:focus,
-    select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-    }
+        @media (min-width: 1025px) {
+            #sidebar-toggle {
+                display: none !important;
+            }
+            #sidebar-overlay {
+                display: none !important;
+            }
+        }
 
-.label-sm {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #94a3b8;
-}
-
-.card {
-    background: #0f172a;
-    border-radius: 10px;
-    border: 1px solid #1e293b;
-    padding: 12px;
-}
-
-.btn {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #e2e8f0;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-size: 0.7rem;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-    .btn:hover {
-        background: #334155;
-        border-color: #475569;
-    }
-
-.btn-primary {
-    background: #2563eb;
-    border-color: #3b82f6;
-    color: white;
-}
-
-    .btn-primary:hover {
-        background: #1d4ed8;
-    }
-
-#canvas-container {
-    width: 100%;
-    height: 380px;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #0b1120;
-}
-
-.status-badge {
-    padding: 1px 10px;
-    border-radius: 16px;
-    font-weight: 600;
-    font-size: 0.65rem;
-    display: inline-block;
-}
-
-.approach-card {
-    background: #0f172a;
-    border-radius: 8px;
-    border: 1px solid #1e293b;
-    padding: 8px 10px;
-    transition: border-color 0.2s;
-}
-
-    .approach-card:hover {
-        border-color: #3b82f6;
-    }
-
-.approach-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.approach-value {
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.approach-label {
-    font-size: 0.55rem;
-    color: #94a3b8;
-}
-
-@media (max-width: 768px) {
-    .grid-2cols {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* sidebar kompaktnost */
-.sidebar-input {
-    padding: 3px 6px;
-    font-size: 0.7rem;
-}
-
-.sidebar-label {
-    font-size: 0.55rem;
-    color: #94a3b8;
-}
-
-.sidebar-card {
-    padding: 8px 10px;
-}
-
-.sloj-card {
-    padding: 6px 8px;
-    font-size: 0.65rem;
-}
-
-    .sloj-card input {
-        font-size: 0.65rem;
-        padding: 2px 4px;
-    }
-
-    .sloj-card .tip-radio {
-        font-size: 0.6rem;
-    }
+        /* 2 kolone za pristupe */
+        .grid-2cols {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 12px;
+        }
+        @media (max-width: 768px) {
+            .grid-2cols {
+                grid-template-columns: 1fr !important;
+            }
+        }

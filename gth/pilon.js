@@ -565,3 +565,19 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
 });
+
+
+// ============================================================
+// TOGGLE SIDEBAR
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('sidebar-toggle')?.addEventListener('click', function() {
+        document.getElementById('sidebar')?.classList.toggle('open');
+        document.getElementById('sidebar-overlay')?.classList.toggle('open');
+    });
+    
+    document.getElementById('sidebar-overlay')?.addEventListener('click', function() {
+        document.getElementById('sidebar')?.classList.remove('open');
+        document.getElementById('sidebar-overlay')?.classList.remove('open');
+    });
+});
+
