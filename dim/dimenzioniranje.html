@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D AB Dimenzionator - Optimizirana Armatura & Presjek</title>
+    <title>AB Dimenzioniranje (test)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
@@ -1204,36 +1204,61 @@ function izvrsiDimenzioniranje() {
         }
     });
 
+
+
     for(let sInfo of rasporedSipki) {
-        let yReal = (support === 'konzola' && globalStacionaze[n_seg/2].My < 0) ? y_gornja_zona : sInfo.y;
-        let finalStart = 0;
-        let finalEnd = L;
-        let prikaziKuke = false;
+    let finalStart = 0;
+    let finalEnd = L;
+    let prikaziKuke = false;
 
-        if (sInfo.tip === 'osnovna') {
-            finalStart = c_m;
-            finalEnd = L - c_m;
-            prikaziKuke = true;
-        } else if (parGranice[sInfo.parId]) {
-            let teorijskiStart = parGranice[sInfo.parId].start;
-            let teorijskiEnd = parGranice[sInfo.parId].end;
-
-            let l_bd = 30 * (sInfo.fi / 1000);
-            let al = 0.9 * (d_mm / 1000);
-            let ukupniPrepust = al + l_bd;
-
-            finalStart = Math.max(c_m, teorijskiStart - ukupniPrepust);
-            finalEnd = Math.min(L - c_m, teorijskiEnd + ukupniPrepust);
-
-            if (finalStart <= c_m + 0.01) { finalStart = c_m; prikaziKuke = true; }
-            if (finalEnd >= L - c_m - 0.01) { finalEnd = L - c_m; prikaziKuke = true; }
-        } else {
-            continue;
-        }
-
-        globalRasporedSipki.push({ z: sInfo.z, prioritet: sInfo.prioritet, yReal: yReal, xStart: finalStart, xEnd: finalEnd, fi: sInfo.fi, tip: sInfo.tip });
-        iscrtajSipku3D(finalStart - L/2, finalEnd - L/2, yReal, sInfo.z, sInfo.fi/1000, false, globalGeometrija, prikaziKuke);
+    // Odredi granice šipke (kao prije)
+    if (sInfo.tip === 'osnovna') {
+        finalStart = c_m;
+        finalEnd = L - c_m;
+        prikaziKuke = true;
+    } else if (parGranice[sInfo.parId]) {
+        let teorijskiStart = parGranice[sInfo.parId].start;
+        let teorijskiEnd = parGranice[sInfo.parId].end;
+        let l_bd = 30 * (sInfo.fi / 1000);
+        let al = 0.9 * (d_mm / 1000);
+        let ukupniPrepust = al + l_bd;
+        finalStart = Math.max(c_m, teorijskiStart - ukupniPrepust);
+        finalEnd = Math.min(L - c_m, teorijskiEnd + ukupniPrepust);
+        if (finalStart <= c_m + 0.01) { finalStart = c_m; prikaziKuke = true; }
+        if (finalEnd >= L - c_m - 0.01) { finalEnd = L - c_m; prikaziKuke = true; }
+    } else {
+        continue;
     }
+
+    // Odredi zonu na osnovu predznaka momenta
+    let yReal;
+    if (sInfo.tip === 'osnovna') {
+        // Osnovne šipke su kontinuirane – koristi moment na sredini raspona
+        let midSt = globalStacionaze.reduce((a, b) => 
+            Math.abs(a.absX - L/2) < Math.abs(b.absX - L/2) ? a : b
+        );
+        yReal = midSt.My < 0 ? y_gornja_zona : y_donja_zona;
+    } else {
+        // Dodatne šipke – koristi moment na sredini njihovog aktivnog intervala
+        let xMid = (finalStart + finalEnd) / 2;
+        let closestSt = globalStacionaze.reduce((a, b) => 
+            Math.abs(a.absX - xMid) < Math.abs(b.absX - xMid) ? a : b
+        );
+        yReal = closestSt.My < 0 ? y_gornja_zona : y_donja_zona;
+    }
+
+    // Dodaj šipku u globalni niz i iscrtaj je
+    globalRasporedSipki.push({ 
+        z: sInfo.z, 
+        prioritet: sInfo.prioritet, 
+        yReal: yReal, 
+        xStart: finalStart, 
+        xEnd: finalEnd, 
+        fi: sInfo.fi, 
+        tip: sInfo.tip 
+    });
+    iscrtajSipku3D(finalStart - L/2, finalEnd - L/2, yReal, sInfo.z, sInfo.fi/1000, false, globalGeometrija, prikaziKuke);
+}
 
     iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, -z_u_kutovima, 0.012, true, globalGeometrija, true);
     iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, z_u_kutovima, 0.012, true, globalGeometrija, true);
