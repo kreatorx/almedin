@@ -1121,9 +1121,6 @@ function posaljiPodatkeZaDimenzioniranje() {
             dof_A[0], dof_A[1], dof_A[2],
             dof_B[0], dof_B[1], dof_B[2],
 
-            console.log("dof_A:", dof_A);
-            console.log("dof_B:", dof_B);
-
             broj_q
         ];
 
