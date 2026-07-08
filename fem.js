@@ -318,8 +318,8 @@ function handleStart(cx, cy) {
                 let newLoad = { q: 0, x1: 0, x2: 0, type: 'gravity', Fx: 0, Fy: 0, M: 0, px: 0 };
                 selectedElement.loads.push(newLoad); selectedLoad = newLoad;
                 document.getElementById('load-modal-title').innerText = "Dodaj Opterećenje";
-                // Primjer poziva na klik dugmeta u tvom modalnom prozoru elementa
-                  if (selectedElement) { posaljiPodatkeZaDimenzioniranje(selectedElement); }
+                // Primjer poziva na klik dugmeta u modalnom prozoru elementa
+                 // if (selectedElement) { posaljiPodatkeZaDimenzioniranje(selectedElement); }
                 openElementModal(selectedElement, newLoad, cx, cy); draw(); return;
             }
         }
@@ -1036,7 +1036,6 @@ async function generateAI() {
 }
 
 
-
 // -----------------------------------
 // SLANJE PODATAKA ZA DIMENZIONIRANJE
 // -----------------------------------
@@ -1045,7 +1044,7 @@ async function generateAI() {
 document.addEventListener('DOMContentLoaded', () => {
     const btnDim = document.getElementById('btn-pokreni-dimenzioniranje');
     if (btnDim) {
-        btnDim.addEventListener('click', function(e) {
+        btnDim.addEventListener('click', function (e) {
             e.preventDefault(); // Zaustavlja bilo kakvo automatsko ponašanje forme
             posaljiPodatkeZaDimenzioniranje();
         });
@@ -1116,7 +1115,7 @@ function posaljiPodatkeZaDimenzioniranje() {
             parseFloat(L.toFixed(2)), b, h, c,
             parseFloat(M_A.toFixed(2)), parseFloat(V_A.toFixed(2)), parseFloat(N_A.toFixed(2)),
             parseFloat(M_B.toFixed(2)), parseFloat(V_B.toFixed(2)), parseFloat(N_B.toFixed(2)),
-            
+
             // PAKOVANJE DOF-ova U NIZ (ovo ti je nedostajalo)
             dof_A[0], dof_A[1], dof_A[2],
             dof_B[0], dof_B[1], dof_B[2],
@@ -1129,8 +1128,8 @@ function posaljiPodatkeZaDimenzioniranje() {
         paketNiz = paketNiz.concat(koncentrisanaF);
 
         const stringNiz = JSON.stringify(paketNiz);
-        const url = `dim/dimenzioniranje.html?fem_data=${encodeURIComponent(stringNiz)}`;
-        
+        const url = `dimenzioniranje.html?fem_data=${encodeURIComponent(stringNiz)}`;
+
         window.open(url, '_blank');
 
     } catch (error) {
@@ -1138,5 +1137,5 @@ function posaljiPodatkeZaDimenzioniranje() {
     }
 }
 
-        //--- KRAJ SLANJA PODATAKA ZA DIMENZIONIRANJE ---
-        // ---------------------------------------------
+//--- KRAJ SLANJA PODATAKA ZA DIMENZIONIRANJE ---
+// ---------------------------------------------

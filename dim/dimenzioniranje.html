@@ -277,6 +277,11 @@
         <div class="compact-row">
             <div class="input-group"><label>Beton:</label><select id="fck"><option value="25">C25/30</option><option value="30">C30/37</option></select></div>
             <div class="input-group"><label>Armatura (Dodatna):</label><select id="fyk"><option value="500">B500B</option></select></div>
+            
+            <div class="input-group">
+                <label>Min. prečnik (mm):</label>
+                <input type="number" id="fi-min" value="16" min="10" max="32" step="2">
+            </div>
             <div class="input-group"><label>c (mm):</label><input type="number" id="c" value="35" step="1"></div>
             <div class="input-group"><label title="Dodatak (+x) na EC2 minimalni razmak">Razmak +x (mm):</label><input type="number" id="s_min_tol" value="0.0" step="1" style="border-color: var(--accent); background-color: #eff6ff;"></div>
             <div class="input-group"><label>Oslonci:</label><select id="support"><option value="greda">Slobodno oslonjena greda</option><option value="konzola">Uklještena konzola (lijevo)</option><option value="obostrano">Obostrano upeta greda</option></select></div>
@@ -945,73 +950,56 @@ function izvrsiDimenzioniranje() {
     const L = parseFloat(document.getElementById('L').value);
     const c_mm = parseFloat(document.getElementById('c').value);
     const support = document.getElementById('support').value;
-    let h_mm = parseFloat(document.getElementById('h').value)*10;
-    let b_mm = parseFloat(document.getElementById('b').value)*10;
+    let h_mm = parseFloat(document.getElementById('h').value) * 10;
+    let b_mm = parseFloat(document.getElementById('b').value) * 10;
 
     let kontinuirana = [], tockasta = [];
     for(let r of document.getElementById('poly-load-table').getElementsByTagName('tbody')[0].rows) kontinuirana.push({ q: parseFloat(r.cells[0].getElementsByTagName('input')[0].value), x1: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x2: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
     for(let r of document.getElementById('point-load-table').getElementsByTagName('tbody')[0].rows) tockasta.push({ tip: r.cells[0].getElementsByTagName('select')[0].value, val: parseFloat(r.cells[1].getElementsByTagName('input')[0].value), x: parseFloat(r.cells[2].getElementsByTagName('input')[0].value) });
 
-    crtajOpterecenja(kontinuirana, tockasta, L, h_mm/1000);
+    crtajOpterecenja(kontinuirana, tockasta, L, h_mm / 1000);
 
     const n_seg = 60; const dx = L / n_seg;
     let fcd = (0.85 * 25) / 1.5; let fyd = 500 / 1.15; let fctm = 2.6;
     let fi_vilice = 8;
 
-    let fi_osnovno = 20;
-    let fi_dodatno = 14;
+    // --- DINAMIČKI ALGORITAM ODREĐIVANJA ARMATURE (Prema zahtjevu) ---
+    let fi_start = parseInt(document.getElementById('fi-min').value) || 16;
+    let standard_fis = [10, 12, 14, 16, 18, 20, 22, 25, 28, 32].filter(f => f >= fi_start);
 
-    let d_mm = h_mm - c_mm - fi_vilice - fi_osnovno/2;
+    let d_mm = h_mm - c_mm - fi_vilice - fi_start / 2;
     let d_m = d_mm / 1000;
 
-    // Dohvatanje uvezenih stvarnih sila iz čvorova (iz globalnog window objekta)
     let M_A_stvarno = typeof window.global_M_A !== 'undefined' ? window.global_M_A : undefined;
-    let V_A_stvarno = typeof window.global_V_A !== 'undefined' ? window.global_V_A : undefined;
+    let V_A_stvarno = typeof window.window.global_V_A !== 'undefined' ? window.global_V_A : undefined;
     let N_A_stvarno = window.global_N_A || 0;
     let N_B_stvarno = window.global_N_B || 0;
 
-    // NOVO: Ako nemamo uvezene FEM sile (rad na web interfejsu), računamo statičke reakcije!
     if (V_A_stvarno === undefined) {
         let Ra = 0, Ma = 0;
-        
-        // Reakcije od kontinuiranih opterećenja
         for(let k of kontinuirana) {
             let sila = k.q * (k.x2 - k.x1);
             let tez = (k.x1 + k.x2) / 2;
-            if(support === 'greda' || support === 'obostrano') {
-                Ra += sila * (L - tez) / L;
-            } else if(support === 'konzola') {
-                Ra += sila;
-                Ma += sila * tez;
-            }
+            if(support === 'greda' || support === 'obostrano') Ra += sila * (L - tez) / L;
+            else if(support === 'konzola') { Ra += sila; Ma += sila * tez; }
         }
-        
-        // Reakcije od koncentrisanih opterećenja
         for(let t of tockasta) {
             if(t.tip === 'F') {
-                if(support === 'greda' || support === 'obostrano') {
-                    Ra += t.val * (L - t.x) / L;
-                } else if(support === 'konzola') {
-                    Ra += t.val;
-                    Ma += t.val * t.x;
-                }
+                if(support === 'greda' || support === 'obostrano') Ra += t.val * (L - t.x) / L;
+                else if(support === 'konzola') { Ra += t.val; Ma += t.val * t.x; }
             }
         }
-        
-        // Dodjeljujemo izračunate reakcije za integraciju
         V_A_stvarno = Ra;
         M_A_stvarno = (support === 'konzola') ? Ma : 0;
     }
 
-    // --- KORAK 1: ANALITIČKA INTEGRACIJA UTICAJA DUŽ NOSAČA ---
+    // Integracija i EC2 proračun potrebnih površina
     for(let i = 0; i <= n_seg; i++) {
         let x = i * dx;
-        
         let V_z = V_A_stvarno; 
         let M_y = M_A_stvarno + V_A_stvarno * x; 
         let N_x = N_A_stvarno + ((N_B_stvarno - N_A_stvarno) / L) * x; 
 
-        // Superpozicija kontinuiranih opterećenja
         for(let k of kontinuirana) { 
             if (x > k.x1) { 
                 let len = Math.min(x, k.x2) - k.x1; 
@@ -1022,261 +1010,289 @@ function izvrsiDimenzioniranje() {
                 }
             } 
         }
-        
-        // Superpozicija koncentrisanih opterećenja
         for(let t of tockasta) {
-            if(t.tip === 'F' && x > t.x) { 
-                V_z -= t.val; 
-                M_y -= t.val * (x - t.x); 
-            }
+            if(t.tip === 'F' && x > t.x) { V_z -= t.val; M_y -= t.val * (x - t.x); }
         }
 
-        // Privremeno punjenje niza sa čistom statikom
+        let z_priblizno = 0.9 * d_m; 
+        let a_l = 0.5 * z_priblizno; 
         globalStacionaze.push({
-            x: x - L/2, absX: x, My: M_y, Vz: Math.abs(V_z), Nx: N_x,
+            x: x - L/2, absX: x, My: M_y, Vz: Math.abs(V_z), Nx: N_x, a_l: a_l,
             M_design: 0, mu: 0, omega: 0, zeta: 0, xi: 0, z_m: 0, x_cm: 0, As_req_cm2: 0
         });
-    
-        }
+    }
 
-    // --- KORAK 2: POKRIVANJE DIJAGRAMA MOMENATA (ZATEZUĆA LINIJA AL) I DIMENZIONISANJE ---
+    // Pomjeranje dijagrama (Zatežuća linija)
     globalStacionaze.forEach((st) => {
-        let z_priblizno = 0.9 * d_m; 
-        let a_l = 0.5 * z_priblizno; // Shift prslina (cotTheta = 1.0)
-
-        // Traženje maksimalnog momenta u zoni [x - al, x + al]
         let max_M_u_zoni = Math.abs(st.My);
         globalStacionaze.forEach(provjeraSt => {
-            if (provjeraSt.absX >= (st.absX - a_l) && provjeraSt.absX <= (st.absX + a_l)) {
-                if (Math.abs(provjeraSt.My) > max_M_u_zoni) {
-                    max_M_u_zoni = Math.abs(provjeraSt.My);
-                }
+            if (provjeraSt.absX >= (st.absX - st.a_l) && provjeraSt.absX <= (st.absX + st.a_l)) {
+                if (Math.abs(provjeraSt.My) > max_M_u_zoni) max_M_u_zoni = Math.abs(provjeraSt.My);
             }
         });
 
         st.M_design = max_M_u_zoni;
-
-        // Pokretanje EC2 proračuna na bazi mjerodavnog M_design
         let M_nmm = st.M_design * 1000000;
         let mu_Eds = M_nmm / (b_mm * d_mm * d_mm * fcd);
         let tab = ocitajIzTabele(mu_Eds);
 
         let As_req = (1 / fyd) * tab.omega * b_mm * d_mm * fcd;
-        
-        // Dodavanje uticaja aksijalne zatežuće sile (ako postoji)
-        if (st.Nx > 0) {
-            As_req += (st.Nx * 1000) / fyd; 
-        }
+        if (st.Nx > 0) As_req += (st.Nx * 1000) / fyd; 
 
         let As_min = Math.max(0.26 * (fctm / 500) * b_mm * d_mm, 0.0013 * b_mm * d_mm);
         if (As_req < As_min) As_req = As_min;
 
-        st.mu = mu_Eds;
-        st.omega = tab.omega;
-        st.zeta = tab.zeta;
-        st.xi = tab.xi;
-        st.z_m = (tab.zeta * d_mm) / 1000;
-        st.x_cm = (tab.xi * d_mm) / 10;
+        st.mu = mu_Eds; st.omega = tab.omega; st.zeta = tab.zeta; st.xi = tab.xi;
+        st.z_m = (tab.zeta * d_mm) / 1000; st.x_cm = (tab.xi * d_mm) / 10;
         st.As_req_cm2 = As_req / 100;
     });
 
-    setTimeout(() => {
-        azuriraj2DNacrt();
-    }, 100);
-
-    crtaj3DDijagramMomenta(globalStacionaze, L, h_mm / 1000);
-
     let maxAsReq = Math.max(...globalStacionaze.map(s => s.As_req_cm2));
-    let povrsina_osnovno = (Math.PI * Math.pow(fi_osnovno, 2)) / 400;
-    let As_ugradjeno_osnovno = 2 * povrsina_osnovno;
-    let povrsina_dodatno = (Math.PI * Math.pow(fi_dodatno, 2)) / 400;
 
-    globalStacionaze.forEach(st => {
-        let As_preostalo = Math.max(0, st.As_req_cm2 - As_ugradjeno_osnovno);
-        st.komada_dodatnih = Math.ceil(As_preostalo / povrsina_dodatno);
-    });
-
+    // Geometrijske granice šipki u presjeku
     let h_m = h_mm / 1000; let b_m = b_mm / 1000; let c_m = c_mm / 1000;
-    const z_u_kutovima = (b_m / 2) - c_m - (fi_vilice/1000) - (fi_osnovno/1000)/2;
-    const y_donja_zona = -(h_m / 2) + c_m + (fi_vilice/1000) + (fi_osnovno/1000)/2;
-    const y_gornja_zona = (h_m / 2) - c_m - (fi_vilice/1000) - (12/2000);
-    let yKonstruktivno = (support === 'konzola') ? y_donja_zona : y_gornja_zona;
+    let k_tol = parseFloat(document.getElementById('s_min_tol').value) / 1000;
+    let clearSpace_total = b_m - 2 * c_m - 2 * (fi_vilice / 1000);
 
-    globalGeometrija = { b: b_mm, h: h_mm, c: c_mm, fiV: fi_vilice, fiS: fi_osnovno, support: support, y_donja: y_donja_zona, y_gornja: y_gornja_zona, z_kut: z_u_kutovima, yKonstruktivno: yKonstruktivno };
+    // Iterativni proračun optimalne konfiguracije šipki na kritičnom mjestu nosača
+    let corner_fi = fi_start;
+    let inner_bars = [];
+    let row1_bars = [];
+    let rasporedZavrsen = false;
 
-    let rasporedSipki = [];
-
-    rasporedSipki.push({ z: -z_u_kutovima, y: y_donja_zona, prioritet: 0, fi: fi_osnovno, tip: 'osnovna', parId: 0 });
-    rasporedSipki.push({ z: z_u_kutovima, y: y_donja_zona, prioritet: 1, fi: fi_osnovno, tip: 'osnovna', parId: 0 });
-
-    let maxDodatnih = Math.max(...globalStacionaze.map(s => s.komada_dodatnih));
-    let preostalo = maxDodatnih;
-
-    let fi_o_m = fi_osnovno / 1000;
-    let fi_d_m = fi_dodatno / 1000;
-
-    let k = parseFloat(document.getElementById('s_min_tol').value) / 1000;
-    let s_min_m = Math.max(fi_o_m, 0.020) + k;
-
-    let clearSpace_0 = (2 * z_u_kutovima) - fi_o_m;
-    let maxDodatnihUPrvomRedu = 0;
-    if (clearSpace_0 > s_min_m) {
-        maxDodatnihUPrvomRedu = Math.floor((clearSpace_0 - s_min_m) / (fi_d_m + s_min_m));
+    function proveriSlobodanRazmak(red_sipki) {
+        if (red_sipki.length <= 1) return true;
+        let ukupni_dijam_m = red_sipki.reduce((a, b) => a + b, 0) / 1000;
+        let max_fi = Math.max(...red_sipki);
+        let s_min_m = Math.max(0.020, 0.021, max_fi / 1000) + k_tol;
+        let potreban_razmak_total = (red_sipki.length - 1) * s_min_m;
+        return (clearSpace_total - ukupni_dijam_m) >= potreban_razmak_total;
     }
-    if (maxDodatnihUPrvomRedu < 0) maxDodatnihUPrvomRedu = 0;
 
-    let trenutniPrioritet = 2;
-    let etaza = 0;
-    let parBrojac = 1;
+    function racunajPovrsinu(uglovi_fi, unutrasnje_niz, red1_niz) {
+        let as = 2 * (Math.PI * Math.pow(uglovi_fi, 2) / 400);
+        unutrasnje_niz.forEach(f => { as += (Math.PI * Math.pow(f, 2) / 400); });
+        red1_niz.forEach(f => { as += (Math.PI * Math.pow(f, 2) / 400); });
+        return as;
+    }
 
-    while(preostalo > 0) {
-        let maxURedu = (etaza === 0) ? maxDodatnihUPrvomRedu : Math.floor(((2 * z_u_kutovima) + s_min_m) / (fi_d_m + s_min_m));
-        if (etaza > 0 && maxURedu < 2) maxURedu = 2;
-
-        let sipkiZaOvajRed = Math.min(preostalo, maxURedu);
-
-        if (sipkiZaOvajRed <= 0) {
-            etaza++;
-            continue;
+    // Korak 1: Povećavaj samo uglove do prečnika 24 (ili maksimalnog dostupnog standardnog do 25)
+    for (let f of standard_fis) {
+        if (f <= 25) {
+            corner_fi = f;
+            if (racunajPovrsinu(corner_fi, [], []) >= maxAsReq) {
+                rasporedZavrsen = true;
+                break;
+            }
         }
+    }
 
-        let y_sloj = y_donja_zona + etaza * (Math.max(fi_o_m, fi_d_m) + s_min_m);
-
-        if (sipkiZaOvajRed === 1) {
-            rasporedSipki.push({ z: 0, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-            trenutniPrioritet++;
-            parBrojac++;
-            preostalo -= 1;
-        } else {
-            let imaSredisnja = (sipkiZaOvajRed % 2 !== 0);
-            let brojParova = Math.floor(sipkiZaOvajRed / 2);
-            let z_max_zona = (etaza === 0) ? (z_u_kutovima - fi_o_m/2 - s_min_m - fi_d_m/2) : z_u_kutovima;
-
-            if (brojParova === 1 && !imaSredisnja) {
-                rasporedSipki.push({ z: -z_max_zona, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-                rasporedSipki.push({ z: z_max_zona, y: y_sloj, prioritet: trenutniPrioritet + 1, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-                trenutniPrioritet += 2;
-                parBrojac++;
+    // Korak 2: Ako uglovi do 24/25 nisu dovoljni, ubacuj unutrašnje šipke u 1. red (počevši od fi_min)
+    if (!rasporedZavrsen) {
+        let trenutni_unutrasnji_fi = fi_start;
+        for (let komada = 1; komada <= 12; komada++) {
+            let test_inner = Array(komada).fill(trenutni_unutrasnji_fi);
+            if (proveriSlobodanRazmak([corner_fi, corner_fi].concat(test_inner))) {
+                if (racunajPovrsinu(corner_fi, test_inner, []) >= maxAsReq) {
+                    inner_bars = test_inner;
+                    rasporedZavrsen = true;
+                    break;
+                }
             } else {
-                for (let p = 0; p < brojParova; p++) {
-                    let zPos = z_max_zona - p * (fi_d_m + s_min_m);
-                    if (zPos < 0) zPos = 0;
-                    rasporedSipki.push({ z: -zPos, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-                    rasporedSipki.push({ z: zPos, y: y_sloj, prioritet: trenutniPrioritet + 1, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-                    trenutniPrioritet += 2;
-                    parBrojac++;
+                break; // Prvi red je geometrijski pun
+            }
+        }
+    }
+
+    // Korak 3: Ako je prvi red pun šipkama, a površina fali, povećaj uglove do maksimalno 32
+    if (!rasporedZavrsen) {
+        let max_komada_prvog_reda = 0;
+        for (let komada = 1; komada <= 12; komada++) {
+            if (proveriSlobodanRazmak([corner_fi, corner_fi].concat(Array(komada).fill(fi_start)))) {
+                max_komada_prvog_reda = komada;
+            } else break;
+        }
+        inner_bars = Array(max_komada_prvog_reda).fill(fi_start);
+
+        for (let f of standard_fis) {
+            if (f > corner_fi && f <= 32) {
+                corner_fi = f;
+                if (racunajPovrsinu(corner_fi, inner_bars, []) >= maxAsReq) {
+                    rasporedZavrsen = true;
+                    break;
                 }
             }
-
-            if (imaSredisnja) {
-                rasporedSipki.push({ z: 0, y: y_sloj, prioritet: trenutniPrioritet, fi: fi_dodatno, tip: 'dodatna', parId: parBrojac });
-                trenutniPrioritet++;
-                parBrojac++;
-            }
-            preostalo -= sipkiZaOvajRed;
         }
-        etaza++;
     }
 
-    let parGranice = {};
-    rasporedSipki.forEach(sInfo => {
-        if (sInfo.tip === 'osnovna') return;
-
-        let pripadajuciPrioritet = sInfo.prioritet;
-        let validX = [];
-
-        globalStacionaze.forEach(st => {
-            if ((pripadajuciPrioritet - 2) < st.komada_dodatnih) {
-                validX.push(st.absX);
+    // Korak 4: Ako su uglovi na 32, a i dalje fali površina, sukcesivno povećavaj unutrašnje šipke u 1. redu do 32
+    if (!rasporedZavrsen) {
+        for (let f of standard_fis) {
+            if (f >= inner_bars[0]) {
+                let test_inner = Array(inner_bars.length).fill(f);
+                if (proveriSlobodanRazmak([corner_fi, corner_fi].concat(test_inner))) {
+                    inner_bars = test_inner;
+                    if (racunajPovrsinu(corner_fi, inner_bars, []) >= maxAsReq) {
+                        rasporedZavrsen = true;
+                        break;
+                    }
+                } else break;
             }
+        }
+    }
+
+    // Korak 5: Ako je prvi red apsolutno popunjen i iskorišten, prelazi se u drugi red (etažu 1)
+    if (!rasporedZavrsen) {
+        let trenutni_r1_fi = fi_start;
+        for (let komada = 1; komada <= 12; komada++) {
+            let test_r1 = Array(komada).fill(trenutni_r1_fi);
+            if (proveriSlobodanRazmak(test_r1)) {
+                if (racunajPovrsinu(corner_fi, inner_bars, test_r1) >= maxAsReq) {
+                    row1_bars = test_r1;
+                    rasporedZavrsen = true;
+                    break;
+                }
+            } else break;
+        }
+
+        // Ako i u drugom redu zafali površina, povećaj prečnike u drugom redu
+        if (!rasporedZavrsen && row1_bars.length > 0) {
+            for (let f of standard_fis) {
+                let test_r1 = Array(row1_bars.length).fill(f);
+                if (proveriSlobodanRazmak(test_r1)) {
+                    row1_bars = test_r1;
+                    if (racunajPovrsinu(corner_fi, inner_bars, row1_bars) >= maxAsReq) {
+                        rasporedZavrsen = true;
+                        break;
+                    }
+                } else break;
+            }
+        }
+    }
+
+    // Generisanje finalne sekvence šipki sa prioritetima za obustavljanje (Curtailment)
+    let z_u_kutovima = b_m / 2 - c_m - (fi_vilice / 1000) - (corner_fi / 2000);
+    let y_donja_zona = -(h_m / 2) + c_m + (fi_vilice / 1000) + (corner_fi / 2000);
+    let y_gornja_zona = (h_m / 2) - c_m - (fi_vilice / 1000) - (12 / 2000);
+    let yKonstruktivno = (support === 'konzola') ? y_donja_zona : y_gornja_zona;
+
+    globalGeometrija = { b: b_mm, h: h_mm, c: c_mm, fiV: fi_vilice, fiS: corner_fi, support: support, y_donja: y_donja_zona, y_gornja: y_gornja_zona, z_kut: z_u_kutovima, yKonstruktivno: yKonstruktivno };
+
+    let master_izgled_presjeka = [];
+    let p_idx = 0;
+
+    // Uglovne (Osnovne) šipke - idu cijelom dužinom
+    master_izgled_presjeka.push({ z: -z_u_kutovima, etaža: 0, prioritet: p_idx++, fi: corner_fi, tip: 'osnovna', parId: 0 });
+    master_izgled_presjeka.push({ z: z_u_kutovima, etaža: 0, prioritet: p_idx++, fi: corner_fi, tip: 'osnovna', parId: 0 });
+
+    // Unutrašnje šipke prvog reda (Etaža 0)
+    if (inner_bars.length > 0) {
+        let n_in = inner_bars.length;
+        let step_z = (2 * z_u_kutovima) / (n_in + 1);
+        let par_brojac = 1;
+        for (let i = 1; i <= n_in; i++) {
+            let z_pos = -z_u_kutovima + i * step_z;
+            master_izgled_presjeka.push({ z: z_pos, etaža: 0, prioritet: p_idx++, fi: inner_bars[0], tip: 'dodatna', parId: par_brojac++ });
+        }
+    }
+
+    // Šipke drugog reda (Etaža 1)
+    if (row1_bars.length > 0) {
+        let n_r1 = row1_bars.length;
+        let step_z = n_r1 > 1 ? (2 * z_u_kutovima) / (n_r1 - 1) : 0;
+        let par_brojac_r1 = 100;
+        for (let i = 0; i < n_r1; i++) {
+            let z_pos = n_r1 > 1 ? (-z_u_kutovima + i * step_z) : 0;
+            master_izgled_presjeka.push({ z: z_pos, etaža: 1, prioritet: p_idx++, fi: row1_bars[0], tip: 'dodatna', parId: par_brojac_r1++ });
+        }
+    }
+
+    // Određivanje broja potrebnih šipki na svakom pojedinačnom segmentu duž grede
+    globalStacionaze.forEach(st => {
+        let ugradjena_povrsina = 0;
+        let brojac_potrebnih = 0;
+        for (let s of master_izgled_presjeka) {
+            ugradjena_povrsina += (Math.PI * Math.pow(s.fi, 2) / 400);
+            brojac_potrebnih++;
+            if (ugradjena_povrsina >= st.As_req_cm2) break;
+        }
+        st.broj_potrebnih_sipki = brojac_potrebnih;
+    });
+
+    // Proračun granica (sidrenja i rasporeda) za svaku šipku pojedinačno
+    let parGranice = {};
+    master_izgled_presjeka.forEach(sInfo => {
+        if (sInfo.tip === 'osnovna') return;
+        let validX = [];
+        globalStacionaze.forEach(st => {
+            if (st.broj_potrebnih_sipki > sInfo.prioritet) validX.push(st.absX);
         });
 
         if (validX.length > 0) {
             let tStart = Math.min(...validX);
             let tEnd = Math.max(...validX);
-
-            if (!parGranice[sInfo.parId]) {
-                parGranice[sInfo.parId] = { start: tStart, end: tEnd };
-            } else {
+            if (!parGranice[sInfo.parId]) parGranice[sInfo.parId] = { start: tStart, end: tEnd };
+            else {
                 parGranice[sInfo.parId].start = Math.min(parGranice[sInfo.parId].start, tStart);
                 parGranice[sInfo.parId].end = Math.max(parGranice[sInfo.parId].end, tEnd);
             }
         }
     });
 
+    // Finalno kartiranje koordinata i iscrtavanje u 3D prostoru nosača
+    master_izgled_presjeka.forEach(sInfo => {
+        let finalStart = 0;
+        let finalEnd = L;
+        let prikaziKuke = false;
 
+        if (sInfo.tip === 'osnovna') {
+            finalStart = c_m; finalEnd = L - c_m; prikaziKuke = true;
+        } else if (parGranice[sInfo.parId]) {
+            let l_bd = 30 * (sInfo.fi / 1000);
+            let al = 0.9 * (d_mm / 1000);
+            finalStart = Math.max(c_m, parGranice[sInfo.parId].start - (al + l_bd));
+            finalEnd = Math.min(L - c_m, parGranice[sInfo.parId].end + (al + l_bd));
+            if (finalStart <= c_m + 0.01) { finalStart = c_m; prikaziKuke = true; }
+            if (finalEnd >= L - c_m - 0.01) { finalEnd = L - c_m; prikaziKuke = true; }
+        } else return; // Šipka nije potrebna ni u jednom presjeku
 
-    for(let sInfo of rasporedSipki) {
-    let finalStart = 0;
-    let finalEnd = L;
-    let prikaziKuke = false;
-
-    // Odredi granice šipke (kao prije)
-    if (sInfo.tip === 'osnovna') {
-        finalStart = c_m;
-        finalEnd = L - c_m;
-        prikaziKuke = true;
-    } else if (parGranice[sInfo.parId]) {
-        let teorijskiStart = parGranice[sInfo.parId].start;
-        let teorijskiEnd = parGranice[sInfo.parId].end;
-        let l_bd = 30 * (sInfo.fi / 1000);
-        let al = 0.9 * (d_mm / 1000);
-        let ukupniPrepust = al + l_bd;
-        finalStart = Math.max(c_m, teorijskiStart - ukupniPrepust);
-        finalEnd = Math.min(L - c_m, teorijskiEnd + ukupniPrepust);
-        if (finalStart <= c_m + 0.01) { finalStart = c_m; prikaziKuke = true; }
-        if (finalEnd >= L - c_m - 0.01) { finalEnd = L - c_m; prikaziKuke = true; }
-    } else {
-        continue;
-    }
-
-    // Odredi zonu na osnovu predznaka momenta
-    let yReal;
-    if (sInfo.tip === 'osnovna') {
-        // Osnovne šipke su kontinuirane – koristi moment na sredini raspona
-        let midSt = globalStacionaze.reduce((a, b) => 
-            Math.abs(a.absX - L/2) < Math.abs(b.absX - L/2) ? a : b
-        );
-        yReal = midSt.My < 0 ? y_gornja_zona : y_donja_zona;
-    } else {
-        // Dodatne šipke – koristi moment na sredini njihovog aktivnog intervala
+        // Određivanje tačne vertikalne pozicije na osnovu zone zatezanja (moment savijanja)
         let xMid = (finalStart + finalEnd) / 2;
-        let closestSt = globalStacionaze.reduce((a, b) => 
-            Math.abs(a.absX - xMid) < Math.abs(b.absX - xMid) ? a : b
-        );
-        yReal = closestSt.My < 0 ? y_gornja_zona : y_donja_zona;
-    }
+        let closestSt = globalStacionaze.reduce((a, b) => Math.abs(a.absX - xMid) < Math.abs(b.absX - xMid) ? a : b);
+        
+        let mjerodavna_zona_y = closestSt.My < 0 ? y_gornja_zona : y_donja_zona;
+        let smjer_orijentacije = closestSt.My < 0 ? -1 : 1;
 
-    // Dodaj šipku u globalni niz i iscrtaj je
-    globalRasporedSipki.push({ 
-        z: sInfo.z, 
-        prioritet: sInfo.prioritet, 
-        yReal: yReal, 
-        xStart: finalStart, 
-        xEnd: finalEnd, 
-        fi: sInfo.fi, 
-        tip: sInfo.tip 
+        // Pomak za drugu etažu (ako je šipka u redu 2)
+        let s_min_m = Math.max(0.020, 0.021, sInfo.fi / 1000) + k_tol;
+        let yReal = mjerodavna_zona_y + (sInfo.etaža * ( (sInfo.fi / 1000) + s_min_m ) * smjer_orijentacije);
+
+        globalRasporedSipki.push({ 
+            z: sInfo.z, prioritet: sInfo.prioritet, yReal: yReal, 
+            xStart: finalStart, xEnd: finalEnd, fi: sInfo.fi, tip: sInfo.tip 
+        });
+
+        iscrtajSipku3D(finalStart - L/2, finalEnd - L/2, yReal, sInfo.z, sInfo.fi / 1000, false, globalGeometrija, prikaziKuke);
     });
-    iscrtajSipku3D(finalStart - L/2, finalEnd - L/2, yReal, sInfo.z, sInfo.fi/1000, false, globalGeometrija, prikaziKuke);
-}
 
+    // Iscrtavanje konstruktivne armature i vilica
     iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, -z_u_kutovima, 0.012, true, globalGeometrija, true);
     iscrtajSipku3D(-L/2 + c_m, L/2 - c_m, yKonstruktivno, z_u_kutovima, 0.012, true, globalGeometrija, true);
 
     let tekuciX = c_m;
-    while(tekuciX <= L-c_m) {
+    while(tekuciX <= L - c_m) {
         let rel = tekuciX / L; let idx = Math.floor(rel * n_seg); if(idx > n_seg) idx = n_seg;
         let totalSila = globalStacionaze[idx] ? globalStacionaze[idx].Vz : 0;
         let korak = (totalSila > 120) ? 0.05 : ((totalSila > 60) ? 0.10 : 0.15);
-        crtajSavijenuVilicu(tekuciX - L/2, b_m - 2*c_m, h_m - 2*c_m);
+        crtajSavijenuVilicu(tekuciX - L/2, b_m - 2 * c_m, h_m - 2 * c_m);
         tekuciX += korak;
     }
 
-    if (typeof render === "function") {
-        render(); // ili kako god da ti se zove glavna funkcija za renderer.render(scene, camera)
-    } else if (typeof animate === "function") {
-        animate();
-    }
+    setTimeout(() => { azuriraj2DNacrt(); }, 100);
+    crtaj3DDijagramMomenta(globalStacionaze, L, h_mm / 1000);
+
+    if (typeof render === "function") render();
+    else if (typeof animate === "function") animate();
 }
 
 function crtaj3DDijagramMomenta(stacionaze, L, h_m) {
