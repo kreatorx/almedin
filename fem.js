@@ -1128,7 +1128,7 @@ function posaljiPodatkeZaDimenzioniranje() {
         paketNiz = paketNiz.concat(koncentrisanaF);
 
         const stringNiz = JSON.stringify(paketNiz);
-        const url = `dimenzioniranje.html?fem_data=${encodeURIComponent(stringNiz)}`;
+        const url = `dim/dimenzioniranje.html?fem_data=${encodeURIComponent(stringNiz)}`;
 
         window.open(url, '_blank');
 
