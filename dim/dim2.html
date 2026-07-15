@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <title>Dimenzionisanje Grede - EC2</title>
+    <style>
+
+        .main-div {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 30px; /* Razmak između kolona */
+            padding: 20px;
+        }
+
+
+        .input-container {
+            display: grid;
+            grid-template-columns: 90px 1fr;
+            gap: 0px;
+            align-content: start;
+        }
+
+            .input-container label {
+                display: flex;
+                align-items: center;
+                font-weight: bold;
+            }
+
+            .input-container input, .input-container select {
+                width: 80px;
+                padding: 4px;
+                box-sizing: border-box;
+            }
+
+        .results {
+            display: grid;
+            /* Prva kolona fiksno 100px za nazive, druga kolona se prilagođava brojevima */
+            grid-template-columns: 100px minmax(50px, max-content);
+            gap: 0px;
+            align-content: start; /* Sprečava vertikalno razvlačenje redova */
+        }
+
+.armatura-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-width: 280px;
+    border-left: 2px solid #ddd;
+    padding-left: 20px;
+}
+
+.armatura-zona {
+    flex: 1; /* Svaka zona zauzima 50% */
+    min-height: 0;
+    padding: 10px;
+    border: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+}
+
+.arm-lista-redova {
+    flex: 1;
+    min-height: 0;
+    padding-right: 5px;
+}
+.armatura {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.arm_red {
+    display: grid;
+    grid-template-columns: 25px 60px 60px 60px 20px;
+    margin-left: 5px;
+    gap: 8px;
+    align-items: center;
+}
+
+.arm_red input {
+    width: 50px;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.arm-procenat {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    gap: 2px;
+    margin-top: 0px;    
+}
+
+.btn_add_arm {
+    background-color: rgb(228, 227, 226);
+    color: rgb(107, 107, 107);
+    border: none;
+    cursor: pointer;
+    padding: 0px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+
+.btn-obrisi {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.lab_arm {
+    font-family: monospace;
+    font-weight: bold;
+    color: #333;
+}
+
+
+
+
+
+            .results span:nth-child(odd) {
+                font-weight: bold;
+                color: #333;
+            }
+
+            .results span:nth-child(even) {
+                color: #0056b3;
+                font-family: monospace;
+                font-size: 1.1em;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="main-div">
+
+        <div class="input-container">
+            <label for="inp-b">b (cm):</label>
+            <input id="inp-b" type="number" value="30">
+
+            <label for="inp-h">h (cm):</label>
+            <input id="inp-h" type="number" value="50">
+
+            <label for="inp-c">c (cm):</label>
+            <input id="inp-c" type="number" value="3">
+
+            <label for="inp-L">L (m):</label>
+            <input id="inp-L" type="number" value="5">
+
+            <label for="inp-q">q (kN/m):</label>
+            <input id="inp-q" type="number" value="20">
+
+            <label for="inp-M">M (kNm):</label>
+            <input id="inp-M" type="number" value="0">
+
+            <label for="inp-V">V (kN):</label>
+            <input id="inp-V" type="number" value="0">
+
+            <label for="inp-N">N (kN):</label>
+            <input id="inp-N" type="number" value="0">
+
+            <label for="inp-fiL">fiL (mm):</label>
+            <input id="inp-fiL" type="number" value="16">
+
+            <label for="inp-fiL2">fiL2 (mm):</label>
+            <input id="inp-fiL2" type="number" value="14">
+
+            <label for="inp-fiV">fiV (mm):</label>
+            <input id="inp-fiV" type="number" value="8">
+
+            <label for="inp-fyk">fyk (MPa):</label>
+            <input id="inp-fyk" type="number" value="500">
+
+            <label for="inp-g1">gamma_s:</label>
+            <input id="inp-g1" type="number" value="1.15" step="0.05">
+
+            <label for="inp-gc">gamma_c:</label>
+            <input id="inp-gc" type="number" value="1.5" step="0.05">
+
+            <label for="inp-fck">Klasa betona:</label>
+            <select id="inp-fck">
+                <!-- Standardni betoni -->
+                <option value="12">C12/15</option>
+                <option value="16">C16/20</option>
+                <option value="20" selected>C20/25</option>
+                <option value="25">C25/30</option>
+                <option value="30">C30/37</option>
+                <option value="35">C35/45</option>
+                <option value="40">C40/50</option>
+                <option value="45">C45/55</option>
+                <option value="50">C50/60</option>
+
+                <!-- Visokovrijedni (visokočvrsti) betoni prema EC2 -->
+                <option value="55">C55/67</option>
+                <option value="60">C60/75</option>
+                <option value="70">C70/85</option>
+                <option value="80">C80/95</option>
+                <option value="90">C90/105</option>
+            </select>
+
+            <input id="inp-E" type="hidden" value="30000">
+        </div>
+
+        <div class="results">
+            <span>Mmax:</span><span id="res_M">0.00</span>
+            <span>NEd:</span><span id="res_N">0.00</span>
+            <span>uEds:</span><span id="res_uEds">0.0000</span>
+            <span>vEd:</span><span id="res_vEd">0.0000</span>
+            <span>d (cm):</span><span id="res_d">0.00</span>
+            <span>x (cm):</span><span id="res_x">0.00</span>
+            <span>z (cm):</span><span id="res_z">0.00</span>
+            <span>xi:</span><span id="res_xi">0.00</span>
+            <span>zeta:</span><span id="res_zeta">0.00</span>
+            <span>xLim (cm):</span><span id="res_x_lim">0.00</span>
+            <span>zLim (cm):</span><span id="res_z_lim">0.00</span>
+            <span>xiLim:</span><span id="res_xi_lim">0.00</span>
+            <span>zetaLim:</span><span id="res_zeta_lim">0.00</span>
+            <span>E (GPa):</span><span id="res_E">0.00</span>
+            <span>fcd (MPa):</span><span id="res_fcd">0.00</span>
+            <span>fyd (MPa):</span><span id="res_fyd">0.00</span>
+            <span>lambda:</span><span id="res_lambdac">0.0000</span>
+            <span>eta (ni):</span><span id="res_eta">0.0000</span>
+            <span>sigmaSd:</span><span id="res_sigSd">0.00</span>
+            <span>omega (w1):</span><span id="res_w1">0.00</span>
+            <span>omega (w2):</span><span id="res_w2">0.00</span>
+            <span>As1 (cm²):</span><span id="res_As1">0.00</span>
+            <span>As2 (cm²):</span><span id="res_As2">0.00</span>
+       </div>
+
+<div class="armatura-container">
+    <!-- DONJA ZONA -->
+    <div class="armatura-zona">
+        <h4 style="margin: 10px 0 5px 0;">DONJA ZONA</h4>
+        <div class="armatura" id="armatura-kontejner-donja">
+            <div class="arm-lista-redova">
+                <div class="arm_red">
+                    <span class="redni-broj">1:</span>
+                    <input class="inp-precnik-d" type="number" min="8" max="50" value="18" placeholder="Ø (mm)">
+                    <input class="inp-broj-sipki-d" type="number" min="1" max="20" value="2" placeholder="kom">
+                    <span class="lab_arm_d">0.00 cm²</span>
+                    <button class="btn_add_arm_d" type="button">+</button>
+                </div>
+            </div>
+            <div class="arm_suma" style="margin-top: 10px; font-weight: bold;">
+                <span>Ukupno: </span>
+                <span class="arm-ukupno" style="color: #0056b3;">0.00 cm²</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- GORNJA ZONA -->
+    <div class="armatura-zona">
+        <h4 style="margin: 10px 0 5px 0;">GORNJA ZONA</h4>
+        <div class="armatura" id="armatura-kontejner-gornja">
+            <div class="arm-lista-redova">
+                <div class="arm_red">
+                    <span class="redni-broj">1:</span>
+                    <input class="inp-precnik-g" type="number" min="8" max="50" value="14" placeholder="Ø (mm)">
+                    <input class="inp-broj-sipki-g" type="number" min="1" max="20" value="2" placeholder="kom">
+                    <span class="lab_arm_g">0.00 cm²</span>
+                    <button class="btn_add_arm_g" type="button">+</button>
+                </div>
+            </div>
+            <div class="arm_suma" style="margin-top: 10px; font-weight: bold;">
+                <span>Ukupno: </span>
+                <span class="arm-ukupno" style="color: #dc3545;">0.00 cm²</span>
+            </div>
+        </div>
+    </div>
+    <div class="arm-procenat">
+    <span id="As_min">Minimalna armatura</span>
+    <div>Procenat armiranja zahtjevano: <span id="As_max">0.00%</span></div>
+    <div>Procenat armiranja dodijeljeno: <span id="As_max_">0.00%</span></div>
+    </div>
+</div>
+
+
+    </div>
+    <div class="canvas-container" style="padding: 20px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 4px;">
+        <canvas id="presjekCanvas" width="800" height="500"></canvas>
+    </div>
+    <script src="TextEdit.js"></script>
+    <script src="RasporedArmature.js"></script>
+    <script src="dim2.js" ></script>
+</body>
+</html>
