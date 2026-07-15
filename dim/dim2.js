@@ -549,7 +549,7 @@ function crtajPresjek() {
     const arrowStartY = y_start; // 10px iznad teksta
 
     //crtanje napona zategnute armature
-    if (Fs1 !== 0) {
+    if (rasporedDonja.some(x => x[0] > 0 && x[1] > 0)) {
     ctx.save();
     ctx.beginPath();
     ctx.lineWidth =5;          // Tanka linija
@@ -561,7 +561,7 @@ function crtajPresjek() {
     }
 
     //crtanje napona pritisnute armature
-     if (Fs2 !== 0 ) {
+     if (rasporedGornja.some(x => x[0] > 0 && x[1] > 0) ) {
     ctx.save();
     ctx.beginPath();
     ctx.lineWidth =5;          // Tanka linija
