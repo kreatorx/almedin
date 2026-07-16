@@ -134,6 +134,22 @@
                 font-family: monospace;
                 font-size: 1.1em;
             }
+
+   .placeholder {
+    width: 900px;
+    height: 500px;
+    padding: 20px;
+    box-sizing: border-box;
+    background: #fdfdfd;
+}
+
+#presjekCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #fdfdfd;
+}
+
     </style>
 </head>
 <body>
@@ -208,20 +224,29 @@
         </div>
 
         <div class="results">
-            <span>Mmax:</span><span id="res_M">0.00</span>
+            <span>MEds:</span><span id="res_M">0.00</span>
             <span>NEd:</span><span id="res_N">0.00</span>
             <span>uEds:</span><span id="res_uEds">0.0000</span>
             <span>vEd:</span><span id="res_vEd">0.0000</span>
             <span>d (cm):</span><span id="res_d">0.00</span>
+            <span>d1 (cm):</span><span id="res_d1">0.00</span>
+            <span>d2 (cm):</span><span id="res_d2">0.00</span>
             <span>x (cm):</span><span id="res_x">0.00</span>
             <span>z (cm):</span><span id="res_z">0.00</span>
+            <span>zs1 (cm):</span><span id="res_z1">0.00</span>
+            <span>zs2 (cm):</span><span id="res_z2">0.00</span>
+            <span style="margin-bottom:10px;"></span><span></span>
             <span>xi:</span><span id="res_xi">0.00</span>
             <span>zeta:</span><span id="res_zeta">0.00</span>
             <span>xLim (cm):</span><span id="res_x_lim">0.00</span>
             <span>zLim (cm):</span><span id="res_z_lim">0.00</span>
             <span>xiLim:</span><span id="res_xi_lim">0.00</span>
             <span>zetaLim:</span><span id="res_zeta_lim">0.00</span>
-            <span>E (GPa):</span><span id="res_E">0.00</span>
+            <span style="margin-bottom:10px;"></span><span></span>
+            <span>xiPivot:</span><span id="res_xi_p">0.00</span>
+       </div>
+       <div class="results">
+        <span>E (GPa):</span><span id="res_E">0.00</span>
             <span>fcd (MPa):</span><span id="res_fcd">0.00</span>
             <span>fyd (MPa):</span><span id="res_fyd">0.00</span>
             <span>lambda:</span><span id="res_lambdac">0.0000</span>
@@ -284,9 +309,9 @@
 
 
     </div>
-    <div class="canvas-container" style="padding: 20px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 4px;">
-        <canvas id="presjekCanvas" width="900" height="500"></canvas>
-    </div>
+    <div class="placeholder">
+    <canvas id="presjekCanvas"></canvas>
+</div>
     <script src="TextEdit.js"></script>
     <script src="RasporedArmature.js"></script>
     <script src="dim2.js" ></script>

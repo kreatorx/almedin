@@ -126,7 +126,8 @@ function proracun() {
     let Mq = q * L * L / 8;  //kNm
     let M_ = M;
     NEd = N;
-    MEds = Mq + M_ - NEd*zs1/100;
+    Mmax = Mq + M;
+    MEds = Mmax + NEd*zs1/100;
     let MEds_cm = MEds*100 //kNcm
     let fcd_cm = fcd/10;  //MPa = MN/m2 = N/mm2 = /10 = kN/cm2 
 
@@ -162,7 +163,7 @@ function proracun() {
 
     //bilinearni dijagram za čelik
     if (0 <= es && es <= eyd) {
-        sigS = fyd*fyd/Es;
+        sigS = es*Es;
     }
     else if(eyd < es && es <= eud) {
         sigS = fyd;
@@ -190,6 +191,7 @@ function proracun() {
         // jednostrano armiran
         if (xi < xi_lim) {
             As1 = 1/fyd_cm*(MEds_cm/zeta/d);
+            As2 = 0;
         }
         // dvostrano armiran
         else {
@@ -208,6 +210,7 @@ function proracun() {
         // jednostrano armiran
         if (xi < xi_lim) {
             As1 = 1/fyd_cm*(MEds_cm/zeta/d-NEd);
+            As2 = 0;
         }
         // dvostrano armiran
         else {
@@ -291,16 +294,19 @@ function proracun() {
             es1 = eud;
             ec = es1*xi/(1-xi);
             es2 = ec - (d2 / d) * (ec + es1);
+            console.log("1: " + es2.toFixed(2));
         }
         else if (xi > xi_pivot ) {
             ec = ecu3;
             es1 = ec*(1-xi)/xi;
             es2 = ec - (d2 / d) * (ec + es1);
+            console.log("2: " + es2.toFixed(2));
         }
         else if (xi > 1 ) {
             ec = ecu3;
             es1 = ec*(1-xi)/Math.abs(xi);
             es2 = ec - (d2 / d) * (ec + es1);
+            console.log("3: " + es2.toFixed(2));
         }
 
         sigSd1 = es1 <= eyd ? Es * es1 : fyd;
@@ -383,9 +389,14 @@ popuni("res_N", NEd, 2, "  kN");
 popuni("res_uEds", uEds, 4);
 popuni("res_vEd", vEd, 2);
 popuni("res_d", d, 2, "  cm");
+popuni("res_d1", d1, 2, "  cm");
+popuni("res_d2", d2, 2, "  cm");
 popuni("res_x", x, 2, "  cm");
 popuni("res_z", z, 2, "  cm");
+popuni("res_z1", zs1, 2, "  cm");
+popuni("res_z2", zs2, 2, "  cm");
 popuni("res_xi", xi, 3, "");
+popuni("res_xi_p", xi_pivot, 3, "");
 popuni("res_zeta", zeta, 3, "");
 popuni("res_x_lim", xi_lim*d, 2, "  cm");
 popuni("res_z_lim", zeta_lim*d, 2, "  cm");
@@ -408,11 +419,21 @@ popuni("res_As2", As2, 3, "  cm2");
 // FUNKCIJA ZA CRTANJE SVIH ELEMENATA (CANVAS)
 // ==========================================================================
 function crtajPresjek() {
-    const canvas = document.getElementById("presjekCanvas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const maxPixela = 300;
+     const canvasEl = document.getElementById("presjekCanvas");
+    if (!canvasEl) return;
+
+    const setup = rezolucija(canvasEl, window.devicePixelRatio || 2);
+    const ctx = setup.ctx;
+
+    const canvas = {
+        get width() {
+            return setup.width;
+        },
+        get height() {
+            return setup.height;
+        }
+    };
+   const maxPixela = 300;
     let skala = maxPixela / h;
 
     if (b * skala > canvas.width - 100) {
@@ -424,6 +445,8 @@ function crtajPresjek() {
 
     const x_start = 50;
     const y_start = 20;
+
+    
 
    // if (fck < 55) { const ecu3 = 0.0035; } else { const ecu3 = 0.0026 + 0.035 * ((90 - fck) / 100) ** 4; }                      
     
@@ -522,7 +545,7 @@ function crtajPresjek() {
     TextEdit.format(
             ctx, 
             `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 , 
+            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5, 
             y_start + h_px + 3 * skala, 
             14
         );
@@ -579,7 +602,7 @@ function crtajPresjek() {
     ctx.lineWidth =5;          // Tanka linija
     ctx.strokeStyle = "#333"; // Svjetlija siva boja
     ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + h_px - d1*skala);
-    ctx.lineTo(arrowStartX-(fcd/2+sigSd/100)*skala, arrowStartY + h_px - d1*skala);
+    ctx.lineTo(arrowStartX-(fcd/2+signs1*sigSd1/100)*skala, arrowStartY + h_px - d1*skala);
     ctx.stroke();
     ctx.restore();
     }
@@ -591,7 +614,7 @@ function crtajPresjek() {
     ctx.lineWidth =5;          // Tanka linija
     ctx.strokeStyle = "#333"; // Svjetlija siva boja
     ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + d2*skala);
-    ctx.lineTo(arrowStartX-(fcd/2-sigSd/100)*skala, arrowStartY + d2*skala);
+    ctx.lineTo(arrowStartX-(fcd/2-signs2*sigSd2/100)*skala, arrowStartY + d2*skala);
     ctx.stroke();
     ctx.restore();
      }
@@ -676,21 +699,24 @@ function crtajPresjek() {
     const skala_dijagrama = 5000; 
     const y_vrh = y_start;                      
     const y_osax = y_start + x * skala;         
-    const y_osas1 = y_start + d * skala;    
+    const y_osas1 = y_start + d * skala;  
+    console.log(y_osas1);  
     //const es1 = ecu3 * (d - x) / x;          // Sličnost trouglova
 
     ctx.beginPath();
-    ctx.moveTo(osa_ec, y_vrh); 
-    ctx.lineTo(osa_ec + (ec * skala_dijagrama), y_vrh);
-    ctx.lineTo(osa_ec, y_osax); 
-    ctx.lineTo(osa_ec - (es1 * skala_dijagrama), y_osas1);
-    ctx.lineTo(osa_ec , y_osas1); 
-    ctx.lineTo(osa_ec , y_vrh);
-    ctx.moveTo(osa_ec, y_vrh+d2*skala); //es2
-    ctx.lineTo(osa_ec + es2*skala, y_vrh+d2*skala); //es2
+    ctx.moveTo(osa_ec, y_vrh); //y_top
+    ctx.lineTo(osa_ec + (ec * skala_dijagrama), y_vrh); //y_top + ec
+    ctx.lineTo(osa_ec, y_osax);  //y_top + x
+    ctx.lineTo(osa_ec - (es1 * skala_dijagrama), y_osas1); //y_s1 - es1
+    ctx.lineTo(osa_ec , y_osas1);  // y_s1
+    console.log(y_osas1); 
+   // ctx.lineTo(osa_ec , y_vrh); //y_top
+    //ctx.moveTo(osa_ec, y_vrh+d2*skala); //es2
+   // ctx.lineTo(osa_ec + es2*skala, y_vrh+d2*skala); //es2
     ctx.fillStyle = "rgba(0, 128, 233, 0.1)";
     ctx.fill();
     ctx.stroke();
+    ctx.beginPath();
     ctx.strokeStyle = "#ff0040";
     ctx.setLineDash([5,5]); // Puna linija
     ctx.moveTo(osa_ec-eud*skala_dijagrama, y_vrh+h_px+10); //eud
@@ -705,7 +731,7 @@ function crtajPresjek() {
     ctx.fillStyle = "#000000";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "left";
-    TextEdit.format(ctx,`\u03b5_cu3 = ${(ec3).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 + 5, y_start -8,14);
+    TextEdit.format(ctx,`\u03b5_c3 = ${(ec).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 + 5, y_start -8,14);
 
     //textualni prikaz dilatacije zategnute armature
     ctx.fillStyle = "#000000";
@@ -1023,3 +1049,34 @@ window.addEventListener("DOMContentLoaded", () => {
     document.body.style.zoom = "80%";
 });
 
+
+function rezolucija(canvasEl, faktor = window.devicePixelRatio || 1) {
+    const ctx = canvasEl.getContext("2d");
+
+    // Logička CSS veličina canvasa
+    const cssW = Math.round(canvasEl.clientWidth);
+    const cssH = Math.round(canvasEl.clientHeight);
+
+    // Interna, stvarna rezolucija
+    const realW = Math.round(cssW * faktor);
+    const realH = Math.round(cssH * faktor);
+
+    // Podešavanje interne rezolucije samo ako se promijenila
+    if (canvasEl.width !== realW || canvasEl.height !== realH) {
+        canvasEl.width = realW;
+        canvasEl.height = realH;
+    }
+
+    // Reset transformacije - ovo sprječava gomilanje scale()
+    ctx.setTransform(faktor, 0, 0, faktor, 0, 0);
+
+    // Brisanje u logičkim CSS koordinatama
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    return {
+        ctx,
+        width: cssW,
+        height: cssH,
+        faktor
+    };
+}
