@@ -22,6 +22,8 @@ let Ec = 30000;  //MPa
 let Es = 210000; //MPa
 let E = 30000;   //MPa (Dodano za E)
 let sigSd = 435; //MPa
+let sigSd1 = 0;
+let sigSd2 = 0;
 let d = 0;
 let d1 = 0;
 let d2 = 0;
@@ -142,6 +144,7 @@ function proracun() {
     uEds = MEds_cm/(eta*b*d*d*fcd_cm);
     vEd = NEd/(b*d*fcd_cm);
     //zeta = Math.min(0.5*(1+Math.sqrt(1-2*uEds)),0.951);
+    uEds = Math.min(uEds,0.5);
     zeta = 0.5*(1+Math.sqrt(1-2*uEds));
     xi = 2/lambda*(1-zeta);
     x=xi*d;
@@ -172,14 +175,14 @@ function proracun() {
     //zeta = zeta_lim;
 
     //podrucje 5
-    if (MEds===0 && NEd!==0) {
+   /* if (MEds===0 && NEd!==0) {
     x=h;
     uEds = MEds_cm/(b*h*h*fcd_cm);
     vEd = NEd/(b*h*fcd_cm);
-    }
+    }*/
     
 
-    es1 = 0.0035*(d-x)/x;
+ //   es1 = 0.0035*(d-x)/x;
 
     //console.log(  uEds + "  Mmax  " + Mmax + "  fcd_  " + fcd_+ "  fcd  " + fcd );
 
@@ -198,7 +201,6 @@ function proracun() {
         }
     }
     else if (MEds === 0 && NEd !== 0) {
-        ec3 = 3.5/2000;
         As1 = (NEd - eta * fcd_cm * b * h)/fyd_cm/2;
         As2 = As1;
     }
@@ -295,6 +297,14 @@ function proracun() {
             es1 = ec*(1-xi)/xi;
             es2 = ec - (d2 / d) * (ec + es1);
         }
+        else if (xi > 1 ) {
+            ec = ecu3;
+            es1 = ec*(1-xi)/Math.abs(xi);
+            es2 = ec - (d2 / d) * (ec + es1);
+        }
+
+        sigSd1 = es1 <= eyd ? Es * es1 : fyd;
+        sigSd2 = es2 <= eyd ? Es * es2 : fyd;
 
         let sumN = -Fs1 + Fs2 + Fc - N;
         document.getElementById("Sum_N").innerText = -Fs1.toFixed(2) +" + " +  Fs2.toFixed(2) +" + " +  Fc.toFixed(2)  + " - " + (N).toFixed(2) +" = " + sumN.toFixed(2) + " kN";
@@ -436,10 +446,10 @@ function crtajPresjek() {
     ctx.lineTo(canvas.width - 20, y_start); // Ide do 20px pred desnu ivicu canvasa
     ctx.moveTo(x_start + b_px, y_start + h_px);
     ctx.lineTo(canvas.width - 20, y_start + h_px);
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start+h_px); // Ide do 20px pred desnu ivicu canvasa
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.8, y_start);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.8, y_start + h_px);
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start-20);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start+h_px+20); // Ide do 20px pred desnu ivicu canvasa
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start-20);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start + h_px+20);
     ctx.stroke();
     ctx.restore(); // Vraćamo stil na punu liniju za crtanje ostalih stvari
 
@@ -480,7 +490,7 @@ function crtajPresjek() {
     ctx.save();
     ctx.fillStyle = "#000000";
     ctx.textAlign = "left";
-    TextEdit.format( ctx, `x = ${(x).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + x * skala, 14 );
+    TextEdit.format( ctx, `\u03BB·x = ${(x).toFixed(2)} cm`, x_start + b_px + 3 * skala, Math.max(y_start+3*skala, Math.min(y_start+h_px-1*skala,y_start + x * skala)), 14 );
     TextEdit.format( ctx, `x_lim = ${(xi_lim*d).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xi_lim * d * skala, 14 );
     ctx.restore();
 
@@ -488,7 +498,7 @@ function crtajPresjek() {
     ctx.fillStyle = "#000000";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(`fcd*\u03B7 = ${(fcd*eta).toFixed(2)} MPa`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.3 + 5, y_start - 8);
+    ctx.fillText(`fcd·\u03B7 = ${(fcd*eta).toFixed(2)} MPa`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.3 + 5, y_start - 8);
     ctx.restore();
 
     //prikaz sile pritisnute zone
@@ -511,9 +521,22 @@ function crtajPresjek() {
     ctx.textAlign = "right";
     TextEdit.format(
             ctx, 
-            `\u03C3_s = ${(sigSd).toFixed(2)} MPa`, 
+            `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 , 
             y_start + h_px + 3 * skala, 
+            14
+        );
+    ctx.restore();
+
+    //prikaz napona pritisnute armature
+    ctx.save();
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "right";
+    TextEdit.format(
+            ctx, 
+            `\u03C3_s2 = ${(sigSd2).toFixed(2)} MPa`, 
+            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5 , 
+            y_start - 8, 
             14
         );
     ctx.restore();
@@ -524,7 +547,7 @@ function crtajPresjek() {
     ctx.textAlign = "left";
     TextEdit.format(
             ctx, 
-            `F_s = ${(As1 * sigSd/10).toFixed(2)} kN`, 
+            `F_s1 = ${(As1 * sigSd/10).toFixed(2)} kN`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
             y_start + h_px - (d1-0.6) * skala, 
             14
@@ -538,7 +561,7 @@ function crtajPresjek() {
     ctx.textAlign = "left";
     TextEdit.format(
             ctx, 
-            `F_s = ${(As2 * sigSd/10).toFixed(2)} kN`, 
+            `F_s2 = ${(As2 * sigSd/10).toFixed(2)} kN`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
             y_start + (d2+0.6) * skala, 
             14
@@ -649,8 +672,8 @@ function crtajPresjek() {
     ctx.strokeStyle = "#0080e9";
     ctx.setLineDash([]); // Puna linija
 
-    const osa_ec = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.8;
-    const skala_dijagrama = 1000; 
+    const osa_ec = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.9;
+    const skala_dijagrama = 5000; 
     const y_vrh = y_start;                      
     const y_osax = y_start + x * skala;         
     const y_osas1 = y_start + d * skala;    
@@ -668,6 +691,13 @@ function crtajPresjek() {
     ctx.fillStyle = "rgba(0, 128, 233, 0.1)";
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = "#ff0040";
+    ctx.setLineDash([5,5]); // Puna linija
+    ctx.moveTo(osa_ec-eud*skala_dijagrama, y_vrh+h_px+10); //eud
+    ctx.lineTo(osa_ec-eud*skala_dijagrama, y_vrh+h_px-40); //eud
+    ctx.moveTo(osa_ec-eyd*skala_dijagrama, y_vrh+h_px+10); //eud
+    ctx.lineTo(osa_ec-eyd*skala_dijagrama, y_vrh+h_px-40); //eud
+    ctx.stroke();
     ctx.restore();
     // kraj crtanja dijagrama dilatacija
 
@@ -675,13 +705,13 @@ function crtajPresjek() {
     ctx.fillStyle = "#000000";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "left";
-    TextEdit.format(ctx,`\u03b5_cu3 = ${(ec3).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.8 + 5, y_start -8,14);
+    TextEdit.format(ctx,`\u03b5_cu3 = ${(ec3).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 + 5, y_start -8,14);
 
     //textualni prikaz dilatacije zategnute armature
     ctx.fillStyle = "#000000";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "right";
-    TextEdit.format(ctx,`\u03b5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.8 + 5, y_start + h_px + 3 * skala,14);
+    TextEdit.format(ctx,`\u03b5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 - 5, y_start + h_px + 3 * skala,14);
 
 
 
