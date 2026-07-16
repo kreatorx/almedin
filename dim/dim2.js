@@ -124,7 +124,7 @@ function proracun() {
     let Mq = q * L * L / 8;  //kNm
     let M_ = M;
     NEd = N;
-    MEds = Mq + M_ ;//- NEd*zs1/100;
+    MEds = Mq + M_ - NEd*zs1/100;
     let MEds_cm = MEds*100 //kNcm
     let fcd_cm = fcd/10;  //MPa = MN/m2 = N/mm2 = /10 = kN/cm2 
 
@@ -145,24 +145,23 @@ function proracun() {
     zeta = 0.5*(1+Math.sqrt(1-2*uEds));
     xi = 2/lambda*(1-zeta);
     x=xi*d;
-    console.log(x);
     z=zeta*d;
 
    // ec = es * xi/(1-xi);
 
     //bilinearni dijagram za beton
-    if (0 <= ec <= ec3) {
+    if (0 <= ec && ec <= ec3) {
         sigC = fcd*ec/ec3;
     }
-    else if(ec3 < ec <= ecu3) {
+    else if(ec3 < ec && ec <= ecu3) {
         sigC = fcd;
     }
 
     //bilinearni dijagram za čelik
-    if (0 <= es <= eyd) {
+    if (0 <= es && es <= eyd) {
         sigS = fyd*fyd/Es;
     }
-    else if(eyd < es <= eud) {
+    else if(eyd < es && es <= eud) {
         sigS = fyd;
     }
     
@@ -174,7 +173,6 @@ function proracun() {
 
     //podrucje 5
     if (MEds===0 && NEd!==0) {
-        if (mali_e) {return;}
     x=h;
     uEds = MEds_cm/(b*h*h*fcd_cm);
     vEd = NEd/(b*h*fcd_cm);
@@ -231,9 +229,9 @@ function proracun() {
     // Nacrtaj ravan, nedeformisan presjek
     }
 
-    Fs1 = As1*sigSd;
-    Fs2 = As2*sigSd;
-    Fc = b*x*lambda*fcd*eta;
+    Fs1 = As1*sigSd/10;
+    Fs2 = As2*sigSd/10;
+    Fc = b*x*lambda*fcd/10*eta;
 
     signs1 = Math.sign(Fs1);
     signs2 = Math.sign(Fs2);
@@ -282,11 +280,11 @@ function proracun() {
         
         xi_pivot = ecu3/(ecu3+eud);
         C_ = (1-ec3/ecu3)*h;
-        if (xi === 0) {
+      /*  if (xi === 0) {
             ec = 0;
             es1 = eud;
             es2 = -eud * (d2 / d);
-        }
+        }*/
         if ( xi <= xi_pivot && xi > 0) {
             es1 = eud;
             ec = es1*xi/(1-xi);
@@ -297,6 +295,9 @@ function proracun() {
             es1 = ec*(1-xi)/xi;
             es2 = ec - (d2 / d) * (ec + es1);
         }
+
+        let sumN = -Fs1 + Fs2 + Fc - N;
+        document.getElementById("Sum_N").innerText = -Fs1.toFixed(2) +" + " +  Fs2.toFixed(2) +" + " +  Fc.toFixed(2)  + " - " + (N).toFixed(2) +" = " + sumN.toFixed(2) + " kN";
 
  /*   let w1 = 0.3;
     fcd = acc * fck / gammac;  //MPa
@@ -496,7 +497,7 @@ function crtajPresjek() {
     ctx.textAlign = "left";
     TextEdit.format(
             ctx, 
-            `F_c = ${(fcd * eta*lambda * x*b).toFixed(2)} N`, 
+            `F_c = ${(fcd/10 * eta*lambda * x*b).toFixed(2)} kN`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
             y_start + Math.max(x/2 * skala+0.6*skala,3*skala), 
             14
@@ -523,7 +524,7 @@ function crtajPresjek() {
     ctx.textAlign = "left";
     TextEdit.format(
             ctx, 
-            `F_s = ${(As1 * sigSd).toFixed(2)} N`, 
+            `F_s = ${(As1 * sigSd/10).toFixed(2)} kN`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
             y_start + h_px - (d1-0.6) * skala, 
             14
@@ -537,7 +538,7 @@ function crtajPresjek() {
     ctx.textAlign = "left";
     TextEdit.format(
             ctx, 
-            `F_s = ${(As2 * sigSd).toFixed(2)} N`, 
+            `F_s = ${(As2 * sigSd/10).toFixed(2)} kN`, 
             x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
             y_start + (d2+0.6) * skala, 
             14
