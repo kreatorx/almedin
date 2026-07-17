@@ -330,7 +330,7 @@ function proracun() {
         }
     }
 
-    w1 = As1 * fyd / (b * d * fcd + NEd);
+    w1 = As1 * fyd / (b * d * fcd + NEd); // uEds/zeta
     w2 = As2 * fyd / (b * d * fcd);
 
     let As_max = (As1 + As2) / (b * h);
@@ -523,6 +523,9 @@ function crtajPresjek() {
     const x_start = 50, y_start = 20;
     const skala_dijagrama = 5000;
 
+    let poz_d_sigma = 0.3;
+    let poz_d_epsilon= 0.85;
+
     // --- 6.1. SIVI PRAVOUGAONIK (Betonski presjek) ---
     ctx.lineWidth = 3; ctx.strokeStyle = "#333333"; ctx.fillStyle = "#e0e0e0";   
     ctx.beginPath(); ctx.rect(x_start, y_start, b_px, h_px); ctx.fill();
@@ -531,17 +534,17 @@ function crtajPresjek() {
     ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = "#888888"; ctx.setLineDash([5, 5]); ctx.beginPath();
     ctx.moveTo(x_start + b_px, y_start); ctx.lineTo(canvas.width - 20, y_start);
     ctx.moveTo(x_start + b_px, y_start + h_px); ctx.lineTo(canvas.width - 20, y_start + h_px);
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start+h_px+20); 
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start + h_px+20);
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_sigma, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_sigma, y_start+h_px+20); 
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon, y_start + h_px+20);
     ctx.stroke(); ctx.restore();
 
     // Horizontalne linije nivoa gornje i donje armature na desnoj strani
     ctx.save(); ctx.strokeStyle="#000";ctx.lineWidth=1; ctx.beginPath();
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start+d*skala);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9+es1*skala_dijagrama*(-1),y_start+d*skala);
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon, y_start+d*skala);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon+es1*skala_dijagrama*(-1),y_start+d*skala);
     ctx.stroke(); ctx.beginPath();
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start+d1*skala);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9+es2*skala_dijagrama,y_start+d1*skala);
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon, y_start+d1*skala);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon+es2*skala_dijagrama,y_start+d1*skala);
     ctx.stroke(); ctx.restore();
 
     // Šatiranje pritisnutog dijela betona unutar samog presjeka (pod 45 stepeni)
@@ -555,21 +558,21 @@ function crtajPresjek() {
     ctx.moveTo(x_start + b_px, y_start+xi_lim * d * skala); ctx.lineTo(canvas.width-20, y_start+xi_lim * d * skala);
     ctx.stroke(); ctx.restore();
 
-    // --- 6.3. PRAVOUGAONI BLOK NAPONA BETONA (Šatirani blok na osi 0.3) ---
+    // --- 6.3. PRAVOUGAONI BLOK NAPONA BETONA (Šatirani blok na osi poz_d_sigma) ---
     ctx.save(); ctx.beginPath(); ctx.lineWidth = 0.5; ctx.strokeStyle = "#333"; 
     ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 0, 5, "#363333", 1); 
-    ctx.rect(x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3, y_start, fcd * eta * skala, xBlockDraw * skala); ctx.fill(); ctx.stroke();
+    ctx.rect(x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma, y_start, fcd * eta * skala, xBlockDraw * skala); ctx.fill(); ctx.stroke();
 
     // Ispis geometrijskih vrijednosti (visina ose x, bloka lambda*x, granične ose x_lim)
     ctx.save(); ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
     TextEdit.format(ctx, `x = ${(x).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xGeomDraw * skala - 2 * skala, 14);
-    TextEdit.format(ctx, `\u03BB·x = ${(lambda * x).toFixed(2)} cm`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + fcd * eta * skala + 5, y_start + xBlockDraw * skala, 14);
+    TextEdit.format(ctx, `\u03BB·x = ${(lambda * x).toFixed(2)} cm`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma + fcd * eta * skala + 5, y_start + xBlockDraw * skala, 14);
     TextEdit.format(ctx, `x_lim = ${(xi_lim*d).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xi_lim * d * skala, 14);
     ctx.restore();
 
     // Ispis granične čvrstoće pritisnutog betona (fcd * eta) iznad bloka
     ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`fcd·\u03B7 = ${(fcd*eta).toFixed(2)} MPa`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.3 + 5, y_start - 8);
+    ctx.fillText(`fcd·\u03B7 = ${(fcd*eta).toFixed(2)} MPa`, x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_sigma + 5, y_start - 8);
 
     // --- 6.4. TEKSTUALNI ISPIS REZULTUJUĆIH SILA I NAPONA U MATERIJALIMA ---
     let Fs1_potpuni = As1 * sigSd1 / 10;
@@ -578,25 +581,25 @@ function crtajPresjek() {
 
     // Ispis unutrašnjih sila Fc, Fs1, Fs2 i napona u čeliku sigma_s1 i sigma_s2
     ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
-    TextEdit.format(ctx, `F_c = ${Fc_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2 + 10) * skala, y_start + Math.max(xBlockDraw / 2 * skala + 0.6 * skala, 3 * skala), 14);
+    TextEdit.format(ctx, `F_c = ${Fc_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma + (fcd * eta / 2 + 10) * skala, y_start + Math.max(xBlockDraw / 2 * skala + 0.6 * skala, 3 * skala), 14);
     ctx.restore();
     ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "right";
-    TextEdit.format(ctx, `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5, y_start + h_px + 3 * skala, 14);
+    TextEdit.format(ctx, `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma -5, y_start + h_px + 3 * skala, 14);
     ctx.restore();
     ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "right";
-    TextEdit.format(ctx, `\u03C3_s2 = ${(sigSd2).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5 , y_start - 8, 14);
+    TextEdit.format(ctx, `\u03C3_s2 = ${(sigSd2).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma -5 , y_start - 8, 14);
     ctx.restore();
     ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
-    TextEdit.format(ctx, `F_s1 = ${Fs1_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, y_start + h_px - (d1-0.6) * skala, 14);
+    TextEdit.format(ctx, `F_s1 = ${Fs1_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma + (fcd * eta / 2+10) * skala, y_start + h_px - (d1-0.6) * skala, 14);
     ctx.restore();
     if (Fs2 !== 0) {
         ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
-        TextEdit.format(ctx, `F_s2 = ${Fs2_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, y_start + (d2+0.6) * skala, 14);
+        TextEdit.format(ctx, `F_s2 = ${Fs2_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma + (fcd * eta / 2+10) * skala, y_start + (d2+0.6) * skala, 14);
         ctx.restore();
     }
 
     // Crtanje crnih horizontalnih linija i strelica za pravac i intenzitet unutrašnjih sila
-    const arrowStartX = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2) * skala;
+    const arrowStartX = x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_sigma + (fcd * eta / 2) * skala;
     const arrowStartY = y_start;
 
     if (rasporedDonja.some(x => x[0] > 0 && x[1] > 0)) {
@@ -651,7 +654,7 @@ function crtajPresjek() {
 
     // --- 6.5. PLAVI DIJAGRAM GRANIČNIH DILATACIJA (ULS - Granično stanje sloma na osi 0.9) ---
     ctx.save(); ctx.lineWidth = 0.8; ctx.strokeStyle = "#0080e9"; ctx.setLineDash([]);
-    const osa_ec = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.9;
+    const osa_ec = x_start + b_px + (canvas.width - x_start - b_px - 20) * poz_d_epsilon;
     const yTop = y_start, yBottom = y_start + h_px, yS1 = y_start + d * skala, yS2 = y_start + d2 * skala;
     const xTop = osa_ec + ec2 * skala_dijagrama, xBottom = osa_ec + ec1 * skala_dijagrama;
 
@@ -679,7 +682,7 @@ function crtajPresjek() {
     ctx.textAlign = "right";
     TextEdit.format(ctx, `\u03B5_s2 = ${(es2).toFixed(4)}`, osa_ec - 5, yS2 - 8, 14);
     ctx.textAlign = "right";
-    TextEdit.format(ctx, `\u03B5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 - 5, y_start + h_px + 3 * skala, 14);
+    TextEdit.format(ctx, `\u03B5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*poz_d_epsilon - 5, y_start + h_px + 3 * skala, 14);
 
     // --- 6.6. CRVENA LINIJA REALNIH DILATACIJA (Stvarno radno stanje za unijeti moment) ---
     if (typeof eps_c_stv !== 'undefined' && eps_c_stv > 1e-6) {
