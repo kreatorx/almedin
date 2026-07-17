@@ -1,4 +1,4 @@
-class Solveri {
+class Iter {
     /**
      * Rješava linearni sistem jednačina Ax = b pomoću Gausove eliminacije sa parcijalnim pivotiranjem.
      * Koristi se za pronalaženje vektora pomaka u linearnoj analizi.

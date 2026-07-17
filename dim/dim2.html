@@ -136,7 +136,7 @@
             }
 
    .placeholder {
-    width: 900px;
+    width: 1100px;
     height: 500px;
     padding: 20px;
     box-sizing: border-box;
@@ -149,6 +149,15 @@
     display: block;
     background: #fdfdfd;
 }
+
+span {
+    display: inline-block;
+    width: 70px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+
 
     </style>
 </head>
@@ -244,6 +253,7 @@
             <span>zetaLim:</span><span id="res_zeta_lim">0.00</span>
             <span style="margin-bottom:10px;"></span><span></span>
             <span>xiPivot:</span><span id="res_xi_p">0.00</span>
+            <span>xPivotAB:</span><span id="res_x_p">0.00</span>
        </div>
        <div class="results">
         <span>E (GPa):</span><span id="res_E">0.00</span>
@@ -303,7 +313,9 @@
     <div>Procenat armiranja zahtjevano: <span id="As_max">0.00%</span></div>
     <div>Procenat armiranja dodijeljeno: <span id="As_max_">0.00%</span></div>
     <div>Rezultanta sila: F<sub>s1</sub> + F<sub>s2</sub> + F<sub>c</sub> + N<sub>Ed</sub> </div>
-    <span id="Sum_N">0.00</span>
+    <rez class="bezformatiranja" id="Sum_N">0.00</rez>
+    <div>Rezultanta momenta: M<sub>Fc</sub> + M<sub>Fs2</sub> - M<sub>Eds1</sub> </div>
+    <rez class="bezformatiranja" id="Sum_M">0.00</rez>
     </div>
 </div>
 
@@ -314,6 +326,8 @@
 </div>
     <script src="TextEdit.js"></script>
     <script src="RasporedArmature.js"></script>
+    <script src="Iter.js" ></script>
     <script src="dim2.js" ></script>
+
 </body>
 </html>

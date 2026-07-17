@@ -1,4 +1,6 @@
-
+// ==========================================================================
+// 1. GLOBALNE VARIJABLE I INICIJALNI PARAMETRI PRESJEKA
+// ==========================================================================
 let b = 30; //cm
 let h = 50; //cm
 let c = 3; //cm
@@ -12,15 +14,15 @@ let fiL2 = 14;
 let fiV = 8; //mm
 
 let fyk = 500; //MPa
-let fck = 20; //C20/25  //MPa
+let fck = 20; //MPa
 let fcm = 0;
 let fctm = 0;
 let gamma1 = 1.15;
 let gammac = 1.5;
-let acc = 0.85; //1.0 0.85
+let acc = 0.85; 
 let Ec = 30000;  //MPa
 let Es = 210000; //MPa
-let E = 30000;   //MPa (Dodano za E)
+let E = 30000;   //MPa 
 let sigSd = 435; //MPa
 let sigSd1 = 0;
 let sigSd2 = 0;
@@ -48,33 +50,38 @@ let zeta_lim = 0.7437;
 
 const kcal = 1.00;
 const eud = 25 / 1000;
-let es1 = 0;
-let es2 = 0;
-let ecd = 0;
-let ec = 0;
-let es = 0;
+let es1 = 0, es2 = 0, ec1 = 0, ec2 = 0, ecd = 0, ec = 0, es = 0;
 
-//dynamic
-let ecu3=0;
-let ec3=0;
-let n=0;
-let lambda=0;
-let eta=0;
-let eyd=0; // Granica elastičnog zatezanja armature
-let xlim=0; // Granica pritisnute zone
-let signc=0;
-let signs1=0;
-let signs2=0;
-let suma_=0;
+let ecu3 = 0, ec3 = 0, n = 0, lambda = 0, eta = 0, eyd = 0, xlim = 0;
+let signc = 0, signs1 = 0, signs2 = 0, suma_ = 0;
+let xi_pivot = 0, x_p = 0, C_ = 0, uEds_lim = 0, MEd0 = 0, fcd_ = 0, fyd_ = 0, fyd_cm = 0, zs1 = 0, zs2 = 0, sigC = 0, sigS = 0, Fs1_ = 0, Fs2_ = 0, Fs1 = 0, Fs2 = 0, Fc = 0;
 
-// Globalne varijable za raspoređenu armaturu (za potrebe crtanja i težišta)
-let rasporedDonja = [[18,18]]; // Array redova, npr. [[16, 16], [16]]
+let podrucje = "";
+let x_crtanje = 0;
+let x_blok = 0;
+
+const TOL = 1e-9;
+let rasporedDonja = [[18,18]]; 
 let rasporedGornja = [[14,14]];
 let stub = false;
+let proracunskiRaspored = null;
+
+////fiksirana amratura
+let eps_c_stv = 0;
+let eps_c1_stv = 0;
+let eps_s1_stv = 0;
+let eps_s2_stv = 0;
+let x_stv = 0;
+let e_real = 0;
+let As1_act = 0;
+let As2_act = 0;
+/////////////////////
 
 const TextEdit = { format: format };
 
-// Osluškivanje input polja za parametre grede
+// ==========================================================================
+// 2. EVENT LISTENERS ZA ULAZNE PODATKE ELEMENTA
+// ==========================================================================
 document.getElementById("inp-b").addEventListener("input", function (event) { b = parseFloat(event.target.value) || 0; proracun(); });
 document.getElementById("inp-h").addEventListener("input", function (event) { h = parseFloat(event.target.value) || 0; proracun(); });
 document.getElementById("inp-c").addEventListener("input", function (event) { c = parseFloat(event.target.value) || 0; proracun(); });
@@ -92,27 +99,72 @@ document.getElementById("inp-g1").addEventListener("input", function (event) { g
 document.getElementById("inp-gc").addEventListener("input", function (event) { gammac = parseFloat(event.target.value) || 0; proracun(); });
 document.getElementById("inp-fck").addEventListener("input", function (event) { fck = parseFloat(event.target.value) || 0; proracun(); });
 
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function naponCelik(es) { return clamp(Es * es, -fyd, fyd); }
 
+// ==========================================================================
+// 3. ODREĐIVANJE DILATACIJA PO PODRUČJIMA RAZMAKA NEUTRALNE OSE
+// ==========================================================================
+function odrediDilatacijePoX(xVal) {
+    const xi_pivot_local = ecu3 / (ecu3 + eud);
+    const x_p_local = xi_pivot_local * d;
+    const x_lim_local = xi_lim * d;
+
+    if (!Number.isFinite(xVal) || xVal > 1e8) {
+        podrucje = "5 - centrični pritisak / mala ekscentričnost";
+        x = Infinity;
+        ec2 = ec3; ec1 = ec3; ec = ec2;
+        es1 = -ec3; es2 = ec3;
+        x_crtanje = h; x_blok = h;
+        return;
+    }
+
+    x = Math.max(xVal, TOL);
+
+    if (x <= x_p_local) {
+        podrucje = "2 - savijanje, rotacija oko A";
+        es1 = eud;
+        ec2 = es1 * x / (d - x);
+        ec1 = ec2 * (1 - h / x);
+        es2 = ec2 * (1 - d2 / x);
+        ec = ec2;
+    } else if (x <= h) {
+        ec2 = ecu3; ec1 = ec2 * (1 - h / x);
+        es1 = ec2 * (d - x) / x; es2 = ec2 * (1 - d2 / x);
+        ec = ec2;
+        podrucje = (x <= x_lim_local) ? "3 - beton i zategnuta armatura iskorišteni" : "4 - pritisak sa savijanjem, zategnuta armatura nije iskorištena";
+    } else {
+        podrucje = "5 - pritisak, neutralna osa van presjeka";
+        const C = h * (1 - ec3 / ecu3);
+        ec2 = ec3 * x / (x - C);
+        ec1 = ec2 * (1 - h / x);
+        ec = ec2;
+        es1 = -ec2 * (1 - d / x);
+        es2 = ec2 * (1 - d2 / x);
+    }
+    x_crtanje = Math.min(Math.max(x, 0), h);
+    x_blok = Math.min(Math.max(lambda * x, 0), h);
+}
+
+// ==========================================================================
+// 4. GLAVNI STATIČKI PRORAČUN I DIMENZIONISANJE PRESJEKA
+// ==========================================================================
 function proracun() {
-
     ecu3 = fck < 55 ? 0.0035 : 0.0026 + 0.035 * ((90 - fck) / 100) ** 4;
     ec3 = fck < 55 ? 0.00175 : 0.00175 + 0.00055 * ((fck - 50) / 40);
-    n = fck < 55 ? 2 : 1.4+23.4*((90-fck)/100)**4;
+    n = fck < 55 ? 2 : 1.4 + 23.4 * ((90 - fck) / 100) ** 4;
     lambda = fck < 55 ? 0.8 : 0.8 - (fck - 50) / 400;
     eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
-    fctm = fck < 55 ? 0.3*fck : 2.12*Math.log10(1+((fck+8)/10));
-    eyd = kcal * fyk / gamma1 / Es; // Granica elastičnog zatezanja armature
-    xlim = d*(ecu3/(ecu3+eyd)); // Granica pritisnute zone
-    //sign = Math.sign(N);
+    fctm = fck < 55 ? 0.3 * Math.pow(fck, 2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10);
+    eyd = kcal * fyk / gamma1 / Es;
 
     fcd_ = fck / gammac;
     fcd = acc * fck / gammac;  
 
     fyd_ = fyk / gamma1;
-    fyd = kcal * fyk / gamma1; // hardening
+    fyd = kcal * fyk / gamma1; 
     fyd_cm = fyd / 10;
 
-    //položaji težišta armature d1 i d2 iz RasporedArmature.js
     d1 = c + fiV / 10 + fiL / 20;
     d2 = c + fiV / 10 + fiL2 / 20;
     if (proracunskiRaspored) {
@@ -120,819 +172,644 @@ function proracun() {
         if (proracunskiRaspored.d2 !== null) d2 = proracunskiRaspored.d2.y;
     }
     d = h - d1;
-    zs1 = d-h/2;
-    zs2 = (h-d2)-h/2;
+    zs1 = d - h / 2;
+    zs2 = (h - d2) - h / 2;
 
-    let Mq = q * L * L / 8;  //kNm
+    xi_lim = ecu3 / (ecu3 + eyd);
+    zeta_lim = 1 - lambda * xi_lim / 2;
+    uEds_lim = lambda * xi_lim * zeta_lim;
+    xlim = xi_lim * d;
+
+    let Mq = q * L * L / 8;  
     let M_ = M;
+    MEd0 = Mq + M_;
+    let MEd_design = MEd0;
     NEd = N;
-    Mmax = Mq + M;
-    MEds = Mmax + NEd*zs1/100;
-    let MEds_cm = MEds*100 //kNcm
-    let fcd_cm = fcd/10;  //MPa = MN/m2 = N/mm2 = /10 = kN/cm2 
 
-    let e = MEds / NEd;
-    let e0 = Math.max(h/3000,0.02);
-    if ( e <= e0 ) { mali_e = true } else { mali_e = false }
+    let e0 = Math.max(h / 3000, 0.02); 
+    e_real = Infinity;
+    let maliEkscentricitetPritisak = false;
+    let cistiPritisakZaKlasifikaciju = false;
 
+    if (Math.abs(NEd) > TOL) { e_real = MEd0 / NEd; }
+    
+    if (NEd > 0) {
+        if (Math.abs(MEd0) < TOL) {
+            cistiPritisakZaKlasifikaciju = true;
+            maliEkscentricitetPritisak = true;
+        } else if (Math.abs(e_real) <= e0) {
+            maliEkscentricitetPritisak = true;
+        }
+        if (maliEkscentricitetPritisak) {
+            const smjer = Math.abs(MEd0) < TOL ? 1 : Math.sign(MEd0);
+            MEd_design = smjer * NEd * e0;
+        }
+        if (stub && !maliEkscentricitetPritisak) {
+            console.warn("Stub sa N+M: potrebno koristiti interakcioni dijagram N-M.");
+        }
+    }
 
-    let Asmin_ = 0.26*fctm/fyk*b*d;
-    let Asmin = Math.max(Asmin_, 0.0013*b*d);
+    Mmax = MEd_design;
+    MEds = Mmax + NEd * zs1 / 100;
+    let MEds_cm = MEds * 100;
+    let fcd_cm = fcd / 10;  
+
+    let Asmin_ = 0.26 * fctm / fyk * b * d;
+    let Asmin = Math.max(Asmin_, 0.0013 * b * d);
     document.getElementById("As_min").innerText = "Minimalna armatura je potrebna: " + Asmin.toFixed(2) + " cm2";
 
+    uEds = MEds_cm / (eta * b * d * d * fcd_cm);
+    vEd = NEd / (b * d * fcd_cm);
 
-    //podrucje 3a 
-    uEds = MEds_cm/(eta*b*d*d*fcd_cm);
-    vEd = NEd/(b*d*fcd_cm);
-    //zeta = Math.min(0.5*(1+Math.sqrt(1-2*uEds)),0.951);
-    uEds = Math.min(uEds,0.5);
-    zeta = 0.5*(1+Math.sqrt(1-2*uEds));
-    xi = 2/lambda*(1-zeta);
-    x=xi*d;
-    z=zeta*d;
-
-   // ec = es * xi/(1-xi);
-
-    //bilinearni dijagram za beton
-    if (0 <= ec && ec <= ec3) {
-        sigC = fcd*ec/ec3;
-    }
-    else if(ec3 < ec && ec <= ecu3) {
-        sigC = fcd;
-    }
-
-    //bilinearni dijagram za čelik
-    if (0 <= es && es <= eyd) {
-        sigS = es*Es;
-    }
-    else if(eyd < es && es <= eud) {
-        sigS = fyd;
-    }
-    
-
-
-    //linija e (eps_lim)
-    //xi = 2/lambda*(1-zeta_lim);
-    //zeta = zeta_lim;
-
-    //podrucje 5
-   /* if (MEds===0 && NEd!==0) {
-    x=h;
-    uEds = MEds_cm/(b*h*h*fcd_cm);
-    vEd = NEd/(b*h*fcd_cm);
-    }*/
-    
-
- //   es1 = 0.0035*(d-x)/x;
-
-    //console.log(  uEds + "  Mmax  " + Mmax + "  fcd_  " + fcd_+ "  fcd  " + fcd );
-
-    if (MEds !== 0 && NEd === 0) {
-        // jednostrano armiran
-        if (xi < xi_lim) {
-            As1 = 1/fyd_cm*(MEds_cm/zeta/d);
-            As2 = 0;
+    As1_act = 0, As2_act = 0;
+    if (proracunskiRaspored) {
+        if (proracunskiRaspored.redoviDonje) {
+            proracunskiRaspored.redoviDonje.forEach(red => {
+                red.sipke.forEach(sipka => { As1_act += Math.PI * (sipka.fi / 10) ** 2 / 4; });
+            });
         }
-        // dvostrano armiran
-        else {
-            let uEds_lim = lambda * xi_lim * zeta_lim;
-            let MEds_lim = uEds_lim * eta * b * d * d * fcd_cm;
-            let d_MEds = MEds_cm - MEds_lim;
-            As1 = 1/fyd_cm*(MEds_lim/zeta_lim/d + d_MEds/(d-d2));
-            As2 = 1/fyd_cm*(d_MEds/(d-d2));
+        if (proracunskiRaspored.redoviGornje) {
+            proracunskiRaspored.redoviGornje.forEach(red => {
+                red.sipke.forEach(sipka => { As2_act += Math.PI * (sipka.fi / 10) ** 2 / 4; });
+            });
         }
     }
-    else if (MEds === 0 && NEd !== 0) {
-        As1 = (NEd - eta * fcd_cm * b * h)/fyd_cm/2;
-        As2 = As1;
+    if (As1_act === 0) As1_act = As1 || 1.0;
+    if (As2_act === 0) As2_act = As2 || 1.0;
+
+    if (Math.abs(MEd0) < TOL && Math.abs(NEd) < TOL) {
+        podrucje = "0 - Neopterećen presjek";
+        x = 0; xi = 0; z = d; zeta = 1;
+        ec2 = 0; ec1 = 0; ec = 0; es1 = 0; es2 = 0;
+        x_crtanje = 0; x_blok = 0;
     }
-    else if (MEds !== 0 && NEd !== 0 ) {
-        // jednostrano armiran
-        if (xi < xi_lim) {
-            As1 = 1/fyd_cm*(MEds_cm/zeta/d-NEd);
-            As2 = 0;
+    else if (NEd < 0 && Math.abs(MEd0) < TOL) {
+        podrucje = "1 - čisto aksijalno zatezanje";
+        x = 0; xi = 0; z = 0; zeta = 0; ec2 = 0; ec1 = 0; ec = 0; es1 = eud; es2 = eud; x_crtanje = 0; x_blok = 0;
+    } 
+    else if (NEd > 0 && maliEkscentricitetPritisak) {
+        podrucje = "5 - čisti/mali ekscentrični pritisak";
+        odrediDilatacijePoX(Infinity);
+        xi = Infinity; z = h / 2; zeta = z / d;
+    } 
+    else if (Math.abs(NEd) < TOL) {
+        if (uEds <= uEds_lim) {
+            zeta = 0.5 * (1 + Math.sqrt(1 - 2 * uEds));
+            xi = 2 / lambda * (1 - zeta); x = xi * d; z = zeta * d;
+        } else {
+            xi = xi_lim; zeta = zeta_lim; x = xlim; z = zeta_lim * d;
         }
-        // dvostrano armiran
-        else {
-            let uEds_lim = lambda * xi_lim * zeta_lim;
-            let MEds_lim = uEds_lim * eta * b * d * d * fcd_cm;
-            let d_MEds = MEds_cm - MEds_lim;
-            As1 = 1/fyd_cm*(MEds_lim/zeta_lim/d + d_MEds/(d-d2)-NEd);
-            As2 = 1/fyd_cm*(d_MEds/(d-d2));
-        }
-    }
+        odrediDilatacijePoX(x);
+    } 
     else {
-        nultoOpt = true;
-        x = 0;
-        xi = 0;
-        Fc = 0;
-        Fs = 0;
-        ec3 = 0;
-        es1 = 0;
-        As1 = 0;
-        As2 = 0;
-    // Nacrtaj ravan, nedeformisan presjek
+        const funkcijaRavnoteze = (test_x) => {
+            let test_ec2 = 0, test_ec1 = 0, test_es1 = 0, test_es2 = 0;
+            const xi_pivot_local = ecu3 / (ecu3 + eud);
+            const x_p_local = xi_pivot_local * d;
+            if (test_x <= x_p_local) {
+                test_es1 = eud; test_ec2 = test_es1 * test_x / (d - test_x);
+                test_ec1 = test_ec2 * (1 - h / test_x); test_es2 = test_ec2 * (1 - d2 / test_x);
+            } else if (test_x <= h) {
+                test_ec2 = ecu3; test_ec1 = test_ec2 * (1 - h / test_x);
+                test_es1 = test_ec2 * (d - test_x) / test_x; test_es2 = test_ec2 * (1 - d2 / test_x);
+            } else {
+                const C = h * (1 - ec3 / ecu3); test_ec2 = ec3 * test_x / (test_x - C);
+                test_ec1 = test_ec2 * (1 - h / test_x); test_es1 = -test_ec2 * (1 - d / test_x); test_es2 = test_ec2 * (1 - d2 / test_x);
+            }
+            let sig1 = clamp(test_es1 * Es, -fyd, fyd);
+            let sig2 = clamp(test_es2 * Es, -fyd, fyd);
+            let test_x_blok = Math.min(lambda * test_x, h);
+            let test_Fc = b * test_x_blok * (fcd / 10) * eta;
+            return (-As1_act * sig1 / 10 + As2_act * sig2 / 10 + test_Fc) - NEd;
+        };
+
+        if (typeof Iter !== 'undefined' && Iter.bisekcija) {
+            x = Iter.bisekcija(funkcijaRavnoteze, 1e-4, 10 * h, 1e-6, 100);
+            xi = x / d; z = d - lambda * x / 2; zeta = z / d;
+            odrediDilatacijePoX(x);
+        } else {
+            if (NEd > 0) {
+                if (Math.abs(e_real) <= h / 100 / 6) {
+                    odrediDilatacijePoX(1e9); xi = Infinity; z = h / 2; zeta = z / d;
+                } else {
+                    xi = x / d; z = d - lambda * x / 2; zeta = z / d; odrediDilatacijePoX(x);
+                }
+            } else {
+                x = Math.max(TOL, 0.1 * d); xi = x / d; z = d - lambda * x / 2; zeta = z / d; odrediDilatacijePoX(x);
+            }
+        }
     }
 
-    Fs1 = As1*sigSd/10;
-    Fs2 = As2*sigSd/10;
-    Fc = b*x*lambda*fcd/10*eta;
+    if (0 <= ec && ec <= ec3) { sigC = fcd * ec / ec3; } else if (ec3 < ec && ec <= ecu3) { sigC = fcd; }
+    if (0 <= es && es <= eyd) { sigS = es * Es; } else if (eyd < es && es <= eud) { sigS = fyd; }
 
-    signs1 = Math.sign(Fs1);
-    signs2 = Math.sign(Fs2);
-    signc  = Math.sign(Fc);
+    if (Math.abs(MEd0) < TOL && Math.abs(NEd) < TOL) {
+        As1 = 0; As2 = 0;
+    }
+    else if (maliEkscentricitetPritisak) {
+        let As_potrebno = (NEd - eta * fcd_cm * b * h) / fyd_cm;
+        As1 = Math.max(0, As_potrebno / 2); As2 = As1;
+    }
+    else if (MEds !== 0 && NEd === 0) {
+        if (xi < xi_lim) { As1 = 1 / fyd_cm * (MEds_cm / zeta / d); As2 = 0; } 
+        else {
+            let MEds_lim = uEds_lim * eta * b * d * d * fcd_cm;
+            let d_MEds = MEds_cm - MEds_lim;
+            As1 = 1 / fyd_cm * (MEds_lim / zeta_lim / d + d_MEds / (d - d2)); As2 = 1 / fyd_cm * (d_MEds / (d - d2));
+        }
+    } 
+    else if (MEds === 0 && NEd !== 0) {
+        As1 = (NEd - eta * fcd_cm * b * h) / fyd_cm / 2; As2 = As1;
+    } 
+    else if (MEds !== 0 && NEd !== 0) {
+        if (xi < xi_lim) { As1 = 1 / fyd_cm * (MEds_cm / zeta / d - NEd); As2 = 0; } 
+        else {
+            let MEds_lim = uEds_lim * eta * b * d * d * fcd_cm;
+            let d_MEds = MEds_cm - MEds_lim;
+            As1 = 1 / fyd_cm * (MEds_lim / zeta_lim / d + d_MEds / (d - d2) - NEd); As2 = 1 / fyd_cm * (d_MEds / (d - d2));
+        }
+    }
 
-    w1 = As1*fyd/(b*d*fcd+NEd);
-    w2 = As2*fyd/(b*d*fcd);
+    w1 = As1 * fyd / (b * d * fcd + NEd);
+    w2 = As2 * fyd / (b * d * fcd);
 
-    let As_max = (As1+As2)/(b*h);
-    if (Math.abs(As_max) < Math.max(0.1*NEd/fyd, 0.002) || Math.abs(As_max) > (stub ? 0.08 : 0.04) ) {
-        document.getElementById("As_max").style.color = "#dc3545";
+    let As_max = (As1 + As2) / (b * h);
+    document.getElementById("As_max").style.color = (Math.abs(As_max) < Math.max(0.1 * NEd / fyd, 0.002) || Math.abs(As_max) > (stub ? 0.08 : 0.04)) ? "#dc3545" : "#0eb30e";
+    let As_max_ = suma_ / (b * h);
+    document.getElementById("As_max_").style.color = (Math.abs(As_max_) < Math.max(0.1 * NEd / fyd, 0.002) || Math.abs(As_max_) > (stub ? 0.08 : 0.04)) ? "#dc3545" : "#0eb30e";
+    
+    document.getElementById("As_max").textContent = (As_max * 100).toFixed(2) + "%";
+    document.getElementById("As_max_").textContent = (As_max_ * 100).toFixed(2) + "%";
+
+    xi_pivot = ecu3 / (ecu3 + eud);
+    x_p = xi_pivot * d;
+    C_ = (1 - ec3 / ecu3) * h;
+/*
+    if (x <= x_p) {
+        es1 = eud; ec = es1 * x / (d - x); es2 = ec - (d2 / d) * (ec + es1);
+    } else if (x <= h) {
+        ec = ecu3; es1 = ec * (d - x) / x; es2 = ec * (1 - d2 / x);
     } else {
-        document.getElementById("As_max").style.color = "#0eb30e";
+        ec = ec3 * xi * d / (xi * d - C_); es1 = -ec3 * (x - d) / (x - C_); es2 = ec3 * (x - d2) / (x - C_);
     }
-    let As_max_ = suma_/(b*h);
-    if (Math.abs(As_max_) < Math.max(0.1*NEd/fyd, 0.002) || Math.abs(As_max_) > (stub ? 0.08 : 0.04)) {
-        document.getElementById("As_max_").style.color = "#dc3545";
-    } else {
-        document.getElementById("As_max_").style.color = "#0eb30e";
-    }
+*/
+    sigSd1 = naponCelik(es1);
+    sigSd2 = naponCelik(es2);
+    Fs1_ = As1 * sigSd1 / 10; Fs2_ = As2 * sigSd2 / 10;
     
-    document.getElementById("As_max").textContent = (As_max*100).toFixed(2) + "%";
-    document.getElementById("As_max_").textContent = (As_max_*100).toFixed(2) + "%";
+    // Zadržavamo stabilne bazične veličine za geometrijski proračun
+    Fs1 = As1 * fyd_cm; Fs2 = As2 * fyd_cm;
+    x_blok = Number.isFinite(x) ? Math.min(lambda * x, h) : h;
+    Fc = b * x_blok * fcd / 10 * eta;
+    let a_c = x_blok / 2;
 
-    // KOEFICIJENT SMICUCEG ARMIRANJA
-    let Asw = 2*Math.pow(fiV/2,2)*2;
-    let s = 10; //poduzni razmak vilica
-    let alpha = Math.PI/2; //ugao vilica naspram poduzne ose elementa
-    let row_min=0.08*Math.sqrt(fck)/fyk;
-    let row = Asw/(s*b*Math.sin(alpha));
-    //--------------------------------
+    signs1 = Math.sign(Fs1); signs2 = Math.sign(Fs2); signc = Math.sign(Fc);
 
-    //proracun izduzenja epsilon
-    // ec2/x = es2/(x-d2) = es1/(d-x) = ec1/(h-x)
-  /*  if (podrucje = "234") {
-        let es2 =  ec3 * (1-d2/(xi*d));
-        let es1 = ec3 * (1/xi-1);
-        let ec1 = ec3 * (h/(xi*d)-1);
-    }
-    else if (podrucje = "5") {
-        let ec = 0.002;
-        let ec1 = 2*ec3-ec;
-        let es2 = ec3 + (ec-ec3)*(1-2*d2/h);
-        let es1 = ec3 - (ec-ec3)*(1-2*d1/h);
-    }*/
-        
-        xi_pivot = ecu3/(ecu3+eud);
-        C_ = (1-ec3/ecu3)*h;
-      /*  if (xi === 0) {
-            ec = 0;
-            es1 = eud;
-            es2 = -eud * (d2 / d);
-        }*/
-        if ( xi <= xi_pivot && xi > 0) {
-            es1 = eud;
-            ec = es1*xi/(1-xi);
-            es2 = ec - (d2 / d) * (ec + es1);
-            console.log("1: " + es2.toFixed(2));
-        }
-        else if (xi > xi_pivot ) {
-            ec = ecu3;
-            es1 = ec*(1-xi)/xi;
-            es2 = ec - (d2 / d) * (ec + es1);
-            console.log("2: " + es2.toFixed(2));
-        }
-        else if (xi > 1 ) {
-            ec = ecu3;
-            es1 = ec*(1-xi)/Math.abs(xi);
-            es2 = ec - (d2 / d) * (ec + es1);
-            console.log("3: " + es2.toFixed(2));
-        }
+    // RAČUNANJE SILA SA POTPUNIM ZNAKOM (Tenzija = +, Pritisak = -)
+    let Fs1_potpuni = As1 * sigSd1 / 10; 
+    let Fs2_potpuni = -As2 * sigSd2 / 10; 
+    let Fc_potpuni = -Math.abs(Fc); 
+    let N_potpuni = -NEd; 
 
-        sigSd1 = es1 <= eyd ? Es * es1 : fyd;
-        sigSd2 = es2 <= eyd ? Es * es2 : fyd;
+    // Postavljanje čistih indikatora smjera: +1 za zatezanje (od presjeka), -1 za pritisak (prema presjeku)
+    signc  = Math.sign(Fc_potpuni); // Biće -1 jer je beton uvijek u pritisku
+    signs1 = Math.sign(Fs1_potpuni); // +1 ako zateže, -1 ako pritiska
+    signs2 = Math.sign(Fs2_potpuni); // +1 ako zateže, -1 ako pritiska
 
-        let sumN = -Fs1 + Fs2 + Fc - N;
-        document.getElementById("Sum_N").innerText = -Fs1.toFixed(2) +" + " +  Fs2.toFixed(2) +" + " +  Fc.toFixed(2)  + " - " + (N).toFixed(2) +" = " + sumN.toFixed(2) + " kN";
+    let sumN = Fs1_potpuni + Fs2_potpuni + Fc_potpuni - N_potpuni;
+    let sumM = -Fc_potpuni * (d - a_c) / 100 - Fs2_potpuni * (d - d2) / 100 - MEds;
 
- /*   let w1 = 0.3;
-    fcd = acc * fck / gammac;  //MPa
-    
-    // VAŽNO: Koristimo lokalnu varijablu da ne bismo uništili globalnu vrijednost fyd
-    let fyd = fyk / gamma1;    //MPa
-    E = 22 * ((fck + 8) / 10) ** 0.3; //GPa  
-
-    lambda = fck < 55 ? 0.8 : 0.8 - (fck - 50) / 400;
-    eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
-    let elim = fck < 55 ? 0.45 : 0.35;
-
-    let d1 = c + fiV / 10 + fiL / 20; // cm (ispravljeno: fiV/10 jer je u mm, fiL/20 jer je u mm do centra)
-    d = h - d1;
-    let d2 = c + fiV / 10 + fiL2 / 20;
-    
-    MEds = Mmax + NEd * (d - h / 2) / 100;
-
-
-    // POPRAVKA: Računamo dinamički ecu3 i napon u armaturi direktno ovdje
-    es1 = ecu3 * (d - x) / x;
-    
-    if (es1 <= eyd) {
-        sigSd = Es * es1;
-    }
-    else if (es1 > eyd && es1 <= eud) {
-        sigSd = fyd*(1+(kcal-1)*(es1-eyd)/(eud-eyd));
-    }
-     else {
-        sigSd = fyd*kcal;
-    }
-
-    z = d - lambda * x / 2;
-    let zeta = z / d;
-    let xi = x / d;
-
-    // Pretvaranje u kN i cm ISKLJUČIVO lokalno za izračun As
-    let fyd_kN_cm2 = fyd / 10;
-    let MEds_kN_cm = MEds * 100;
-    
-    As = (1 / fyd_kN_cm2) * (MEds_kN_cm / (zeta * d) - NEd);
-
-    let vEd = NEd / (b * d * (fcd / 10));
-    let uEds = MEds_kN_cm / (b * d * d * (fcd / 10));
-    
-    w1 = As / (b * d) * (sigSd / (fcd / 10));*/
-
-    // Ažuriranje HTML rezultata
-    // Pomoćna funkcija za siguran ispis sa try-catch mehanizmom
-    
+    document.getElementById("Sum_N").innerText = Fs1_potpuni.toFixed(2) + " + " + Fs2_potpuni.toFixed(2) + " + " + Fc_potpuni.toFixed(2) + " - (" + N_potpuni.toFixed(2) + ") = " + sumN.toFixed(2) + " kN";
+    document.getElementById("Sum_M").innerText = (-Fc_potpuni * (d - lambda * x / 2) / 100).toFixed(2) + " + " + (-Fs2_potpuni * (d - d2) / 100).toFixed(2) + " + " + (MEds).toFixed(2) + " = " + sumM.toFixed(2) + " kNm";
 
     popuniRezultate();
+    proracunStvarnihDilatacija();
     crtajPresjek();
     
 }
 
+function proracunStvarnihDilatacija() {
+    let M_meta = Math.abs(MEd0); // Ciljni moment unesen od korisnika (kNm)
+    
+    // Ako nema opterećenja ili nema armature, resetuj sve na nulu
+    if (M_meta < TOL || (As1_act === 0 && As2_act === 0)) {
+        eps_c_stv = 0; eps_c1_stv = 0; eps_s1_stv = 0; eps_s2_stv = 0; x_stv = 0;
+        return;
+    }
 
-function popuni(id, vrijednost, decimale, jedinica = "") {
-    try {
-        document.getElementById(id).innerText = vrijednost.toFixed(decimale) + jedinica;
-    } catch (e) {
-        try {
-            document.getElementById(id).innerText = "greska";
-        } catch (err) {
-            console.error("Element sa ID-jem " + id + " ne postoji u HTML-u.");
+    let niska_ec = 0;
+    let visoka_ec = ecu3; // Gornja granica proračuna je granična dilatacija ULS-a
+    let konacno_x = 0;    // DEFINISANO OVDJE da bude dostupno na kraju funkcije!
+    
+    // Vanjska bisekcija: tražimo tačnu dilataciju gornje ivice betona (eps_c) koja daje traženi moment
+    for (let iterOuter = 0; iterOuter < 100; iterOuter++) {
+        let test_ec = (niska_ec + visoka_ec) / 2;
+
+        // Unutrašnja bisekcija: tražimo položaj neutralne ose (x) za izabranu dilataciju betona tako da je N = 0
+        let nisko_x = 0.01;
+        let visoko_x = h * 5;
+        let test_x = 0;
+
+        for (let iterInner = 0; iterInner < 100; iterInner++) {
+            test_x = (nisko_x + visoko_x) / 2;
+
+            // Računanje dilatacija na nivoima armature na osnovu linearnog ponašanja ravnih presjeka
+            let t_es1 = test_ec * (d - test_x) / test_x;
+            let t_es2 = test_ec * (test_x - d2) / test_x;
+
+            let t_sig1 = clamp(t_es1 * Es, -fyd, fyd);
+            let t_sig2 = clamp(t_es2 * Es, -fyd, fyd);
+
+            // Aproksimacija sile u betonu za radno stanje (linearno skaliranje bloka napona)
+            let faktor_napona = test_ec <= ec3 ? (test_ec / ec3) : 1.0;
+            let t_x_blok = Math.min(lambda * test_x, h);
+            let t_Fc = b * t_x_blok * (fcd / 10) * eta * faktor_napona;
+
+            let t_Fs1 = As1_act * t_sig1 / 10;
+            let t_Fs2 = As2_act * t_sig2 / 10;
+            
+            let sumN = t_Fs2 + t_Fc - t_Fs1; // Uslov ravnoteže aksijalnih sila (N = 0)
+
+            if (Math.abs(sumN) < 1e-5) break;
+            if (sumN > 0) {
+                visoko_x = test_x; // Previše pritiska, pomjeri osu prema gore
+            } else {
+                nisko_x = test_x;  // Previše zatezanja, pomjeri osu prema dole
+            }
+        }
+
+        // Sa nađenim 'test_x' računamo unutrašnji moment otpornosti presjeka
+        let t_es2 = test_ec * (test_x - d2) / test_x;
+        let t_sig2 = clamp(t_es2 * Es, -fyd, fyd);
+        let faktor_napona = test_ec <= ec3 ? (test_ec / ec3) : 1.0;
+        let t_x_blok = Math.min(lambda * test_x, h);
+        let t_Fc = b * t_x_blok * (fcd / 10) * eta * faktor_napona;
+        let t_Fs2 = As2_act * t_sig2 / 10;
+
+        let krak_Fc = d - t_x_blok / 2;
+        let krak_Fs2 = d - d2;
+        let M_unutrasnji = (t_Fc * krak_Fc + t_Fs2 * krak_Fs2) / 100; // Pretvaranje u kNm
+
+        konacno_x = test_x; // Čuvamo vrijednost u varijablu koja je vidljiva van petlje
+
+        if (Math.abs(M_unutrasnji - M_meta) < 1e-4) {
+            niska_ec = test_ec; // Osiguraj da niska_ec drži tačnu vrijednost prije prekida
+            break;
+        }
+
+        if (M_unutrasnji > M_meta) {
+            visoka_ec = test_ec; // Presjek ima veći kapacitet, smanji ulaznu dilataciju betona
+        } else {
+            niska_ec = test_ec;  // Presjek traži više naprezanja, povećaj dilataciju betona
         }
     }
+
+    // Dodjeljivanje stabilnih vrijednosti za ispis i crtanje
+    eps_c_stv = niska_ec;
+    x_stv = konacno_x;
+    eps_s1_stv = eps_c_stv * (d - x_stv) / x_stv;
+    eps_s2_stv = eps_c_stv * (x_stv - d2) / x_stv;
+    
+    // Dilatacija na samom dnu presjeka (koristi se za pravilnu geometriju linije na Canvasu)
+    eps_c1_stv = eps_c_stv * (1 - h / x_stv); 
+}
+
+function proracunInterakcijeSimetricnoArmiranogPresjeka() { console.warn("Interakcioni dijagram još nije implementiran."); return null; }
+
+// ==========================================================================
+// 5. POMOĆNE FUNKCIJE ZA POPUNJAVANJE REZULTATA U HTML ODREDIŠTIMA
+// ==========================================================================
+function popuni(id, vrijednost, decimale, i = "") {
+    try { document.getElementById(id).innerText = vrijednost.toFixed(decimale) + i; } 
+    catch (e) { try { document.getElementById(id).innerText = "greska"; } catch (err) {} }
 }
 
 function popuniRezultate() {
-popuni("res_M", MEds, 2, "  kNm");
-popuni("res_N", NEd, 2, "  kN");
-popuni("res_uEds", uEds, 4);
-popuni("res_vEd", vEd, 2);
-popuni("res_d", d, 2, "  cm");
-popuni("res_d1", d1, 2, "  cm");
-popuni("res_d2", d2, 2, "  cm");
-popuni("res_x", x, 2, "  cm");
-popuni("res_z", z, 2, "  cm");
-popuni("res_z1", zs1, 2, "  cm");
-popuni("res_z2", zs2, 2, "  cm");
-popuni("res_xi", xi, 3, "");
-popuni("res_xi_p", xi_pivot, 3, "");
-popuni("res_zeta", zeta, 3, "");
-popuni("res_x_lim", xi_lim*d, 2, "  cm");
-popuni("res_z_lim", zeta_lim*d, 2, "  cm");
-popuni("res_xi_lim",xi_lim,3,"");
-popuni("res_zeta_lim",zeta_lim,3,"");
-popuni("res_E", E, 2, "  GPa");
-popuni("res_fcd", fcd, 2, "  MPa");
-popuni("res_fyd", fyd, 2, "  MPa");
-popuni("res_lambdac", lambda, 2);
-popuni("res_eta", eta, 2);
-popuni("res_sigSd", sigSd, 2, "  MPa");
-popuni("res_w1", w1, 4);
-popuni("res_w2", w2, 4);
-popuni("res_As1", As1, 3, "  cm2");
-popuni("res_As2", As2, 3, "  cm2");
+    popuni("res_M", MEds, 2, "  kNm"); popuni("res_N", NEd, 2, "  kN");
+    
+    popuni("res_uEds", uEds, 3, ""); let uEl = document.getElementById("res_uEds");
+    if (uEl) uEl.style.color = uEds <= uEds_lim ? "#0080e9" : (uEds <= 0.55 ? "#fd7e14" : "#dc3545");
+
+    popuni("res_vEd", vEd, 3);
+    popuni("res_d", d, 2, "  cm"); popuni("res_d1", d1, 2, "  cm"); popuni("res_d2", d2, 2, "  cm");
+    popuni("res_x", x, 2, "  cm"); popuni("res_z", z, 2, "  cm"); popuni("res_z1", zs1, 2, "  cm"); popuni("res_z2", zs2, 2, "  cm");
+    popuni("res_xi", xi, 3, ""); popuni("res_xi_p", xi_pivot, 3, ""); popuni("res_x_p", x_p, 3, ""); popuni("res_zeta", zeta, 3, "");
+    popuni("res_x_lim", xi_lim * d, 2, "  cm"); popuni("res_z_lim", zeta_lim * d, 2, "  cm"); popuni("res_xi_lim", xi_lim, 3, ""); popuni("res_zeta_lim", zeta_lim, 3, "");
+    popuni("res_E", E, 2, "  GPa"); popuni("res_fcd", fcd, 2, "  MPa"); popuni("res_fyd", fyd, 2, "  MPa");
+    popuni("res_lambdac", lambda, 2); popuni("res_eta", eta, 2); popuni("res_sigSd", sigSd, 2, "  MPa"); popuni("res_w1", w1, 4); popuni("res_w2", w2, 4);
+    popuni("res_As1", As1, 3, "  cm2"); popuni("res_As2", As2, 3, "  cm2");
 }
 
-
 // ==========================================================================
-// FUNKCIJA ZA CRTANJE SVIH ELEMENATA (CANVAS)
+// 6. GRAFIČKI CANVAS PRIKAZ PRESJEKA, NAPONA I DEFORMACIJA
 // ==========================================================================
 function crtajPresjek() {
-     const canvasEl = document.getElementById("presjekCanvas");
+    const canvasEl = document.getElementById("presjekCanvas");
     if (!canvasEl) return;
 
+    // Prilagođavanje rezolucije ekrana i skaliranje dimenzija grednog presjeka
     const setup = rezolucija(canvasEl, window.devicePixelRatio || 2);
     const ctx = setup.ctx;
-
-    const canvas = {
-        get width() {
-            return setup.width;
-        },
-        get height() {
-            return setup.height;
-        }
-    };
-   const maxPixela = 300;
+    const canvas = { get width() { return setup.width; }, get height() { return setup.height; } };
+    const maxPixela = 300;
     let skala = maxPixela / h;
 
-    if (b * skala > canvas.width - 100) {
-        skala = (canvas.width - 100) / b;
-    }
+    const xGeomDraw = Number.isFinite(x) ? Math.min(Math.max(x, 0), h) : h;
+    const xBlockDraw = Number.isFinite(x) ? Math.min(Math.max(lambda * x, 0), h) : h;
 
-    const b_px = b * skala;
-    const h_px = h * skala;
+    if (b * skala > canvas.width - 100) { skala = (canvas.width - 100) / b; }
 
-    const x_start = 50;
-    const y_start = 20;
+    const b_px = b * skala, h_px = h * skala;
+    const x_start = 50, y_start = 20;
+    const skala_dijagrama = 5000;
 
+    // --- 6.1. SIVI PRAVOUGAONIK (Betonski presjek) ---
+    ctx.lineWidth = 3; ctx.strokeStyle = "#333333"; ctx.fillStyle = "#e0e0e0";   
+    ctx.beginPath(); ctx.rect(x_start, y_start, b_px, h_px); ctx.fill();
+
+    // --- 6.2. POMOĆNE ISPREKIDANE OSI (Osa 0.3 za napone i 0.9 za dilatacije) ---
+    ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = "#888888"; ctx.setLineDash([5, 5]); ctx.beginPath();
+    ctx.moveTo(x_start + b_px, y_start); ctx.lineTo(canvas.width - 20, y_start);
+    ctx.moveTo(x_start + b_px, y_start + h_px); ctx.lineTo(canvas.width - 20, y_start + h_px);
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start+h_px+20); 
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start-20); ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start + h_px+20);
+    ctx.stroke(); ctx.restore();
+
+    // Horizontalne linije nivoa gornje i donje armature na desnoj strani
+    ctx.save(); ctx.strokeStyle="#000";ctx.lineWidth=1; ctx.beginPath();
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start+d*skala);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9+es1*skala_dijagrama*(-1),y_start+d*skala);
+    ctx.stroke(); ctx.beginPath();
+    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start+d1*skala);
+    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9+es2*skala_dijagrama,y_start+d1*skala);
+    ctx.stroke(); ctx.restore();
+
+    // Šatiranje pritisnutog dijela betona unutar samog presjeka (pod 45 stepeni)
+    ctx.save(); ctx.lineWidth = 0.7; ctx.strokeStyle = "#222"; ctx.fillStyle = "#979797";
+    ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 45, 10, "#363333", 1); 
+    ctx.beginPath(); ctx.rect(x_start, y_start, b_px, xGeomDraw * skala); ctx.stroke(); ctx.fill(); ctx.restore();
     
+    // Crvene isprekidane linije za stvarnu neutralnu osu (x) i graničnu (x_lim)
+    ctx.save(); ctx.lineWidth = 0.5; ctx.strokeStyle = "#bd7373"; ctx.setLineDash([5, 5]); ctx.beginPath();
+    ctx.moveTo(x_start + b_px, y_start+x * skala); ctx.lineTo(canvas.width-20, y_start+x * skala);
+    ctx.moveTo(x_start + b_px, y_start+xi_lim * d * skala); ctx.lineTo(canvas.width-20, y_start+xi_lim * d * skala);
+    ctx.stroke(); ctx.restore();
 
-   // if (fck < 55) { const ecu3 = 0.0035; } else { const ecu3 = 0.0026 + 0.035 * ((90 - fck) / 100) ** 4; }                      
-    
+    // --- 6.3. PRAVOUGAONI BLOK NAPONA BETONA (Šatirani blok na osi 0.3) ---
+    ctx.save(); ctx.beginPath(); ctx.lineWidth = 0.5; ctx.strokeStyle = "#333"; 
+    ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 0, 5, "#363333", 1); 
+    ctx.rect(x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3, y_start, fcd * eta * skala, xBlockDraw * skala); ctx.fill(); ctx.stroke();
 
-    // Crtanje pravougaonika (beton)
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#333333"; 
-    ctx.fillStyle = "#e0e0e0";   
-    ctx.beginPath();
-    ctx.rect(x_start, y_start, b_px, h_px);
-    ctx.fill();
-
-    // Isprekidane kotne linije iz desnih ćoškova ---
-    ctx.save(); // Čuvamo trenutni stil (da ne pokvarimo ostale linije)
-    ctx.lineWidth = 1;          // Tanka linija
-    ctx.strokeStyle = "#888888"; // Svjetlija siva boja
-    ctx.setLineDash([5, 5]);    // Uzorak isprekidane linije: 5px puna, 5px prazna
-    ctx.beginPath();
-    ctx.moveTo(x_start + b_px, y_start);
-    ctx.lineTo(canvas.width - 20, y_start); // Ide do 20px pred desnu ivicu canvasa
-    ctx.moveTo(x_start + b_px, y_start + h_px);
-    ctx.lineTo(canvas.width - 20, y_start + h_px);
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start-20);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start+h_px+20); // Ide do 20px pred desnu ivicu canvasa
-    ctx.moveTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start-20);
-    ctx.lineTo(x_start + b_px+(canvas.width-x_start-b_px-20)*0.9, y_start + h_px+20);
-    ctx.stroke();
-    ctx.restore(); // Vraćamo stil na punu liniju za crtanje ostalih stvari
-
-    // Crtanje pritisnute zone
-    ctx.save();
-    ctx.lineWidth = 0.7;
-    ctx.strokeStyle = "#222"; 
-    ctx.fillStyle = "#979797";
-    ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 45, 10, "#363333", 1); // Šara za pritisnutu zonu
-    ctx.beginPath();
-    ctx.rect(x_start, y_start, b_px, x * skala);
-    ctx.stroke();
-    ctx.fill();
-    ctx.restore();
-    
-    //crtanje visine pritisnute zone
-    ctx.save();
-    ctx.lineWidth = 0.5;          // Tanka linija
-    ctx.strokeStyle = "#bd7373"; // Svjetlija siva boja
-    ctx.setLineDash([5, 5]);    // Uzorak isprekidane linije: 5px puna, 5px prazna
-    ctx.beginPath();
-    ctx.moveTo(x_start + b_px, y_start+x * skala);
-    ctx.lineTo(canvas.width-20, y_start+x * skala);
-    ctx.moveTo(x_start + b_px, y_start+xi_lim * d * skala);
-    ctx.lineTo(canvas.width-20, y_start+xi_lim * d * skala);
-    ctx.stroke();
-    ctx.restore();
-    //crtanje napona pritisnute zone
-    ctx.save();
-    ctx.beginPath();
-    ctx.lineWidth = 0.5;          // Tanka linija
-    ctx.strokeStyle = "#333"; // Svjetlija siva boja
-    ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 0, 5, "#363333", 1); //
-    ctx.rect(x_start + b_px+(canvas.width-x_start-b_px-20)*0.3, y_start, fcd*eta*skala, x * skala);
-    ctx.fill();
-    ctx.stroke();
-    //prikaz teksta pritisnute zone x i xlim
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    TextEdit.format( ctx, `\u03BB·x = ${(x).toFixed(2)} cm`, x_start + b_px + 3 * skala, Math.max(y_start+3*skala, Math.min(y_start+h_px-1*skala,y_start + x * skala)), 14 );
-    TextEdit.format( ctx, `x_lim = ${(xi_lim*d).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xi_lim * d * skala, 14 );
+    // Ispis geometrijskih vrijednosti (visina ose x, bloka lambda*x, granične ose x_lim)
+    ctx.save(); ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
+    TextEdit.format(ctx, `x = ${(x).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xGeomDraw * skala - 2 * skala, 14);
+    TextEdit.format(ctx, `\u03BB·x = ${(lambda * x).toFixed(2)} cm`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + fcd * eta * skala + 5, y_start + xBlockDraw * skala, 14);
+    TextEdit.format(ctx, `x_lim = ${(xi_lim*d).toFixed(2)} cm`, x_start + b_px + 3 * skala, y_start + xi_lim * d * skala, 14);
     ctx.restore();
 
-    //textualni prikaz napona pritisnute zone
-    ctx.fillStyle = "#000000";
-    ctx.font = "14px sans-serif";
-    ctx.textAlign = "left";
+    // Ispis granične čvrstoće pritisnutog betona (fcd * eta) iznad bloka
+    ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
     ctx.fillText(`fcd·\u03B7 = ${(fcd*eta).toFixed(2)} MPa`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.3 + 5, y_start - 8);
-    ctx.restore();
 
-    //prikaz sile pritisnute zone
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    TextEdit.format(
-            ctx, 
-            `F_c = ${(fcd/10 * eta*lambda * x*b).toFixed(2)} kN`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
-            y_start + Math.max(x/2 * skala+0.6*skala,3*skala), 
-            14
-        );
-    ctx.restore();
+    // --- 6.4. TEKSTUALNI ISPIS REZULTUJUĆIH SILA I NAPONA U MATERIJALIMA ---
+    let Fs1_potpuni = As1 * sigSd1 / 10;
+    let Fs2_potpuni = -As2 * sigSd2 / 10;
+    let Fc_potpuni = -Math.abs(fcd / 10 * eta * xBlockDraw * b);
 
-
-   //prikaz napona zategnute armature
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "right";
-    TextEdit.format(
-            ctx, 
-            `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5, 
-            y_start + h_px + 3 * skala, 
-            14
-        );
+    // Ispis unutrašnjih sila Fc, Fs1, Fs2 i napona u čeliku sigma_s1 i sigma_s2
+    ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
+    TextEdit.format(ctx, `F_c = ${Fc_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2 + 10) * skala, y_start + Math.max(xBlockDraw / 2 * skala + 0.6 * skala, 3 * skala), 14);
     ctx.restore();
-
-    //prikaz napona pritisnute armature
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "right";
-    TextEdit.format(
-            ctx, 
-            `\u03C3_s2 = ${(sigSd2).toFixed(2)} MPa`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5 , 
-            y_start - 8, 
-            14
-        );
+    ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "right";
+    TextEdit.format(ctx, `\u03C3_s1 = ${(sigSd1).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5, y_start + h_px + 3 * skala, 14);
     ctx.restore();
-    
-    //prikaz sile zategrnute armature
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    TextEdit.format(
-            ctx, 
-            `F_s1 = ${(As1 * sigSd/10).toFixed(2)} kN`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
-            y_start + h_px - (d1-0.6) * skala, 
-            14
-        );
+    ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "right";
+    TextEdit.format(ctx, `\u03C3_s2 = ${(sigSd2).toFixed(2)} MPa`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 -5 , y_start - 8, 14);
     ctx.restore();
-
-    //prikaz sile pritisnute armature
+    ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
+    TextEdit.format(ctx, `F_s1 = ${Fs1_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, y_start + h_px - (d1-0.6) * skala, 14);
+    ctx.restore();
     if (Fs2 !== 0) {
-    ctx.save();
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    TextEdit.format(
-            ctx, 
-            `F_s2 = ${(As2 * sigSd/10).toFixed(2)} kN`, 
-            x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, 
-            y_start + (d2+0.6) * skala, 
-            14
-        );
-    ctx.restore();
+        ctx.save(); ctx.fillStyle = "#000000"; ctx.textAlign = "left";
+        TextEdit.format(ctx, `F_s2 = ${Fs2_potpuni.toFixed(2)} kN`, x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2+10) * skala, y_start + (d2+0.6) * skala, 14);
+        ctx.restore();
     }
 
+    // Crtanje crnih horizontalnih linija i strelica za pravac i intenzitet unutrašnjih sila
     const arrowStartX = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.3 + (fcd * eta / 2) * skala;
-    const arrowStartY = y_start; // 10px iznad teksta
+    const arrowStartY = y_start;
 
-    //crtanje napona zategnute armature
     if (rasporedDonja.some(x => x[0] > 0 && x[1] > 0)) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.lineWidth =5;          // Tanka linija
-    ctx.strokeStyle = "#333"; // Svjetlija siva boja
-    ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + h_px - d1*skala);
-    ctx.lineTo(arrowStartX-(fcd/2+signs1*sigSd1/100)*skala, arrowStartY + h_px - d1*skala);
-    ctx.stroke();
-    ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.lineWidth = 5; ctx.strokeStyle = "#333"; 
+        ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + h_px - d1*skala);
+        ctx.lineTo(arrowStartX-(fcd/2+signs1*sigSd1/100)*skala, arrowStartY + h_px - d1*skala);
+        ctx.stroke(); ctx.restore();
     }
-
-    //crtanje napona pritisnute armature
-     if (rasporedGornja.some(x => x[0] > 0 && x[1] > 0) ) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.lineWidth =5;          // Tanka linija
-    ctx.strokeStyle = "#333"; // Svjetlija siva boja
-    ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + d2*skala);
-    ctx.lineTo(arrowStartX-(fcd/2-signs2*sigSd2/100)*skala, arrowStartY + d2*skala);
-    ctx.stroke();
-    ctx.restore();
-     }
+    if (rasporedGornja.some(x => x[0] > 0 && x[1] > 0) ) {
+        ctx.save(); ctx.beginPath(); ctx.lineWidth = 5; ctx.strokeStyle = "#333"; 
+        ctx.moveTo(arrowStartX-fcd*skala/2, arrowStartY + d2*skala);
+        ctx.lineTo(arrowStartX-(fcd/2-signs2*sigSd2/100)*skala, arrowStartY + d2*skala);
+        ctx.stroke(); ctx.restore();
+    }
     
-    // Crtanje strelice Fc
+    // Grafički indikatori/strelice smijera (pritisak "prit." ili zatezanje "zat.") za beton i armature
     if (Fc !== 0) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(arrowStartX+8*skala, arrowStartY+x/2*skala);
-    ctx.lineTo(arrowStartX, arrowStartY+x/2*skala);
-    if (signc >=0) {
-    ctx.moveTo(arrowStartX, arrowStartY+x/2*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartY-1*skala+x/2*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartY+1*skala+x/2*skala);
-    } else {
-    ctx.moveTo(arrowStartX, arrowStartY+x/2*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartY-1*skala+x/2*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartY+1*skala+x/2*skala);
+        ctx.save(); ctx.beginPath(); ctx.moveTo(arrowStartX+8*skala, arrowStartY+lambda*x/2*skala); ctx.lineTo(arrowStartX, arrowStartY+lambda*x/2*skala);
+        if (signc >=0) {
+            ctx.moveTo(arrowStartX+8*skala, arrowStartY+lambda*x/2*skala); ctx.lineTo(arrowStartX+6*skala, arrowStartY-1*skala+lambda*x/2*skala); ctx.lineTo(arrowStartX+6*skala, arrowStartY+1*skala+lambda*x/2*skala);
+        } else {
+            ctx.moveTo(arrowStartX, arrowStartY+lambda*x/2*skala); ctx.lineTo(arrowStartX+2*skala, arrowStartY-1*skala+lambda*x/2*skala); ctx.lineTo(arrowStartX+2*skala, arrowStartY+1*skala+lambda*x/2*skala);
+        }
+        ctx.closePath(); ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = "#000000"; ctx.fill();
+        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.fillText("prit.", arrowStartX + 4*skala, arrowStartY + lambda*x/2*skala - 3);
+        ctx.restore();
     }
-    ctx.closePath();
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = "#000000";
-    ctx.fill();
-    ctx.restore();
-    }
-
-    // Crtanje strelice Fs1
     if (Fs1 !== 0) {
-    let arrowStartYFs1 = arrowStartY + h_px - d1*skala;
-    ctx.moveTo(arrowStartX+8*skala, arrowStartYFs1);
-    ctx.lineTo(arrowStartX, arrowStartYFs1);
-    if (signs1 >=0 ) {
-    ctx.moveTo(arrowStartX+8*skala, arrowStartYFs1);
-    ctx.lineTo(arrowStartX+6*skala, arrowStartYFs1-1*skala);
-    ctx.lineTo(arrowStartX+6*skala, arrowStartYFs1+1*skala);
-    } else {
-    ctx.moveTo(arrowStartX, arrowStartYFs1);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartYFs1-1*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartYFs1+1*skala);
+        ctx.save(); let arrowStartYFs1 = arrowStartY + h_px - d1*skala; ctx.beginPath();
+        ctx.moveTo(arrowStartX+8*skala, arrowStartYFs1); ctx.lineTo(arrowStartX, arrowStartYFs1);
+        if (signs1 >=0 ) {
+            ctx.moveTo(arrowStartX+8*skala, arrowStartYFs1); ctx.lineTo(arrowStartX+6*skala, arrowStartYFs1-1*skala); ctx.lineTo(arrowStartX+6*skala, arrowStartYFs1+1*skala);
+        } else {
+            ctx.moveTo(arrowStartX, arrowStartYFs1); ctx.lineTo(arrowStartX+2*skala, arrowStartYFs1-1*skala); ctx.lineTo(arrowStartX+2*skala, arrowStartYFs1+1*skala);
+        }
+        ctx.closePath(); ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = "#000000"; ctx.fill();
+        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.fillText(es1 >= 0 ? "zat." : "prit.", arrowStartX + 4*skala, arrowStartYFs1 - 3);
+        ctx.restore();
     }
-    ctx.closePath();
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = "#000000";
-    ctx.fill();
-    ctx.restore();
-    }
-
-    // Crtanje strelice Fs2
     if (Fs2 !== 0){
-    let arrowStartYFs2 = arrowStartY + d2*skala;
-    ctx.moveTo(arrowStartX+8*skala, arrowStartYFs2);
-    ctx.lineTo(arrowStartX, arrowStartYFs2);
-    if (signs1 <=0 ) {
-    ctx.moveTo(arrowStartX+8*skala, arrowStartYFs2);
-    ctx.lineTo(arrowStartX+6*skala, arrowStartYFs2-1*skala);
-    ctx.lineTo(arrowStartX+6*skala, arrowStartYFs2+1*skala);
-    } else {
-    ctx.moveTo(arrowStartX, arrowStartYFs2);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartYFs2-1*skala);
-    ctx.lineTo(arrowStartX+2*skala, arrowStartYFs2+1*skala);
+        ctx.save(); let arrowStartYFs2 = arrowStartY + d2*skala; ctx.beginPath();
+        ctx.moveTo(arrowStartX+8*skala, arrowStartYFs2); ctx.lineTo(arrowStartX, arrowStartYFs2);
+        if (signs2 >=0 ) {
+            ctx.moveTo(arrowStartX+8*skala, arrowStartYFs2); ctx.lineTo(arrowStartX+6*skala, arrowStartYFs2-1*skala); ctx.lineTo(arrowStartX+6*skala, arrowStartYFs2+1*skala);
+        } else {
+            ctx.moveTo(arrowStartX, arrowStartYFs2); ctx.lineTo(arrowStartX+2*skala, arrowStartYFs2-1*skala); ctx.lineTo(arrowStartX+2*skala, arrowStartYFs2+1*skala);
+        }
+        ctx.closePath(); ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = "#000000"; ctx.fill();
+        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.fillText(es2 >= 0 ? "prit." : "zat.", arrowStartX + 4*skala, arrowStartYFs2 - 3);
+        ctx.restore();
     }
-    ctx.closePath();
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = "#000000";
-    ctx.fill();
-    ctx.restore();
-}
 
-    // Crtanje dijagrama dilatacija
-    ctx.save();
-    ctx.lineWidth = 0.5;
-    ctx.strokeStyle = "#0080e9";
-    ctx.setLineDash([]); // Puna linija
-
+    // --- 6.5. PLAVI DIJAGRAM GRANIČNIH DILATACIJA (ULS - Granično stanje sloma na osi 0.9) ---
+    ctx.save(); ctx.lineWidth = 0.8; ctx.strokeStyle = "#0080e9"; ctx.setLineDash([]);
     const osa_ec = x_start + b_px + (canvas.width - x_start - b_px - 20) * 0.9;
-    const skala_dijagrama = 5000; 
-    const y_vrh = y_start;                      
-    const y_osax = y_start + x * skala;         
-    const y_osas1 = y_start + d * skala;  
-    console.log(y_osas1);  
-    //const es1 = ecu3 * (d - x) / x;          // Sličnost trouglova
+    const yTop = y_start, yBottom = y_start + h_px, yS1 = y_start + d * skala, yS2 = y_start + d2 * skala;
+    const xTop = osa_ec + ec2 * skala_dijagrama, xBottom = osa_ec + ec1 * skala_dijagrama;
 
-    ctx.beginPath();
-    ctx.moveTo(osa_ec, y_vrh); //y_top
-    ctx.lineTo(osa_ec + (ec * skala_dijagrama), y_vrh); //y_top + ec
-    ctx.lineTo(osa_ec, y_osax);  //y_top + x
-    ctx.lineTo(osa_ec - (es1 * skala_dijagrama), y_osas1); //y_s1 - es1
-    ctx.lineTo(osa_ec , y_osas1);  // y_s1
-    console.log(y_osas1); 
-   // ctx.lineTo(osa_ec , y_vrh); //y_top
-    //ctx.moveTo(osa_ec, y_vrh+d2*skala); //es2
-   // ctx.lineTo(osa_ec + es2*skala, y_vrh+d2*skala); //es2
-    ctx.fillStyle = "rgba(0, 128, 233, 0.1)";
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.strokeStyle = "#ff0040";
-    ctx.setLineDash([5,5]); // Puna linija
-    ctx.moveTo(osa_ec-eud*skala_dijagrama, y_vrh+h_px+10); //eud
-    ctx.lineTo(osa_ec-eud*skala_dijagrama, y_vrh+h_px-40); //eud
-    ctx.moveTo(osa_ec-eyd*skala_dijagrama, y_vrh+h_px+10); //eud
-    ctx.lineTo(osa_ec-eyd*skala_dijagrama, y_vrh+h_px-40); //eud
-    ctx.stroke();
-    ctx.restore();
-    // kraj crtanja dijagrama dilatacija
+    // Crtanje i prozirno plavo bojenje trouglova graničnih deformacija (slom betona/tečenje čelika)
+    ctx.beginPath(); ctx.moveTo(xTop, yTop); ctx.lineTo(xBottom, yBottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(osa_ec, yTop); ctx.lineTo(xTop, yTop); ctx.lineTo(xBottom, yBottom); ctx.lineTo(osa_ec, yBottom); ctx.closePath();
+    ctx.fillStyle = "rgba(0, 128, 233, 0.10)"; ctx.fill(); ctx.stroke();
 
-    //textualni prikaz dilatacije pritisnute zone
-    ctx.fillStyle = "#000000";
-    ctx.font = "14px sans-serif";
-    ctx.textAlign = "left";
-    TextEdit.format(ctx,`\u03b5_c3 = ${(ec).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 + 5, y_start -8,14);
+    // Označavanje nivoa granične neutralne ose na plavom dijagramu
+    if (Number.isFinite(x) && x >= 0 && x <= h) {
+        ctx.beginPath(); ctx.strokeStyle = "#0080e9"; ctx.setLineDash([4, 4]);
+        ctx.moveTo(osa_ec - 30, y_start + x * skala); ctx.lineTo(osa_ec + 30, y_start + x * skala); ctx.stroke();
+    }
 
-    //textualni prikaz dilatacije zategnute armature
-    ctx.fillStyle = "#000000";
-    ctx.font = "14px sans-serif";
+    // Iscrtavanje pomoćnih crvenih markera za maksimalne dozvoljene dilatacije čelika (eud i eyd)
+    ctx.beginPath(); ctx.strokeStyle = "#ff0040"; ctx.setLineDash([5, 5]);
+    ctx.moveTo(osa_ec - eud * skala_dijagrama, yBottom + 10); ctx.lineTo(osa_ec - eud * skala_dijagrama, yBottom - 40);
+    ctx.moveTo(osa_ec - eyd * skala_dijagrama, yBottom + 10); ctx.lineTo(osa_ec - eyd * skala_dijagrama, yBottom - 40);
+    ctx.stroke(); ctx.restore();
+
+    // Ispis brojčanih vrijednosti teoretskih graničnih dilatacija (plavi tekstovi)
+    ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
+    TextEdit.format(ctx, `\u03B5_c3 = ${(ec2).toFixed(4)}`, osa_ec + 5, yTop - 8, 14);
+    TextEdit.format(ctx, `\u03B5_c1 = ${(ec1).toFixed(4)}`, osa_ec + 5, yBottom + 18, 14);
     ctx.textAlign = "right";
-    TextEdit.format(ctx,`\u03b5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 - 5, y_start + h_px + 3 * skala,14);
+    TextEdit.format(ctx, `\u03B5_s2 = ${(es2).toFixed(4)}`, osa_ec - 5, yS2 - 8, 14);
+    ctx.textAlign = "right";
+    TextEdit.format(ctx, `\u03B5_s1 = ${(es1).toFixed(4)}`, x_start + b_px+(canvas.width-x_start-b_px-20)*0.9 - 5, y_start + h_px + 3 * skala, 14);
 
+    // --- 6.6. CRVENA LINIJA REALNIH DILATACIJA (Stvarno radno stanje za unijeti moment) ---
+    if (typeof eps_c_stv !== 'undefined' && eps_c_stv > 1e-6) {
+        ctx.save();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#dc3545"; // Pune crvene linije
+        ctx.setLineDash([]);
 
+        const xTopStv = osa_ec + eps_c_stv * skala_dijagrama;
+        const xBottomStv = osa_ec + eps_c1_stv * skala_dijagrama; 
 
+        // Vučenje crvene linije kroz osu (reaktivno se naginje zavisno od momenta)
+        ctx.beginPath();
+        ctx.moveTo(xTopStv, yTop);
+        ctx.lineTo(xBottomStv, yBottom);
+        ctx.stroke();
 
-    // Vanjska ivica grede
-    ctx.strokeStyle = "#333333"; 
-    ctx.beginPath();
-    ctx.rect(x_start, y_start, b_px, h_px);
-    ctx.stroke();
+        // Crtanje male crvene crtice na nivou stvarne neutralne ose x_stv
+        if (Number.isFinite(x_stv) && x_stv > 0 && x_stv <= h) {
+            ctx.beginPath();
+            ctx.strokeStyle = "#dc3545";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(osa_ec - 15, y_start + x_stv * skala);
+            ctx.lineTo(osa_ec + 15, y_start + x_stv * skala);
+            ctx.stroke();
+        }
 
-    // Crtanje zaštitnog sloja (samo okvirna linija vizuelno)
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#f01e2c"; 
-    ctx.beginPath();
-    ctx.rect(x_start + c * skala, y_start + c * skala, b_px - 2 * c * skala, h_px - 2 * c * skala);
-    ctx.stroke();
+        // Boldirani ispis stvarnih dilatacija u promilima (crveni tekst)
+        ctx.fillStyle = "#dc3545";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "left";
+        TextEdit.format(ctx, `\u03B5_c,act = ${(eps_c_stv).toFixed(4)}`, osa_ec + 20, yTop + 14, 12);
+        ctx.textAlign = "right";
+        TextEdit.format(ctx, `\u03B5_s1,act = ${(eps_s1_stv).toFixed(4)}`, osa_ec - 10, y_start + (d-1) * skala, 12);
+        
+        ctx.restore();
+    }
 
-    // Crtanje vilice
-    ctx.lineWidth = (fiV / 10) * skala;
-    ctx.strokeStyle = "#779eb2"; 
-    ctx.beginPath();
+    // --- 6.7. GEOMETRIJA ARMATURE (Konstruktivni detalji: oplata, uzengije i šipke) ---
+    // Crtanje spoljne crne oplate i crvene unutrašnje linije zaštitnog sloja (c)
+    ctx.strokeStyle = "#333333"; ctx.beginPath(); ctx.rect(x_start, y_start, b_px, h_px); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = "#f01e2c"; ctx.beginPath(); ctx.rect(x_start + c * skala, y_start + c * skala, b_px - 2 * c * skala, h_px - 2 * c * skala); ctx.stroke();
+
+    // Crtanje plave zatvorene linije uzengije (fiV) sa zaobljenim uglovima i kukama
+    ctx.lineWidth = (fiV / 10) * skala; ctx.strokeStyle = "#779eb2"; ctx.beginPath();
     ctx.roundRect(x_start + (c + fiV / 20) * skala, y_start + (c + fiV / 20) * skala, b_px - 2 * (c + fiV / 20) * skala, h_px - 2 * (c + fiV / 20) * skala, 10*Math.min(30/b,50/h));
     ctx.stroke();
-    
-    // Crtanje kukica vilice
     ctx.beginPath();
-    ctx.moveTo(x_start + b_px - (c + fiV / 20) * skala, y_start + (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala);
-    ctx.lineTo(x_start + b_px - (c + fiV / 20) * skala - 3 * skala, y_start + (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala + 3 * skala);
-    ctx.moveTo(x_start + b_px - (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala, y_start + (c + fiV / 20) * skala);
-    ctx.lineTo(x_start + b_px - (c + 4*Math.min(30/b,50/h) - fiV / 20) * skala - 3 * skala, y_start + (c + fiV / 20) * skala + 3 * skala);
+    ctx.moveTo(x_start + b_px - (c + fiV / 20) * skala, y_start + (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala); ctx.lineTo(x_start + b_px - (c + fiV / 20) * skala - 3 * skala, y_start + (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala + 3 * skala);
+    ctx.moveTo(x_start + b_px - (c + 3*Math.min(30/b,50/h) + fiV / 20) * skala, y_start + (c + fiV / 20) * skala); ctx.lineTo(x_start + b_px - (c + 4*Math.min(30/b,50/h) - fiV / 20) * skala - 3 * skala, y_start + (c + fiV / 20) * skala + 3 * skala);
     ctx.stroke();
 
-    // 3. CRTANJE PODUŽNE ARMATURE (DONJA I GORNJA ZONA)
+    // Funkcija za crtanje krugova armaturnih šipki na tačnim distancama unutar gornje/donje zone
     const iscrtajSveSipke = (redovi, polozaj) => {
         if (!redovi) return;
-
         redovi.forEach(red => {
-            // Y koordinata na canvasu ovisno o tome da li je donja ili gornja zona
-            let y_canvas = polozaj === "donja" 
-                ? y_start + h_px - (red.y * skala) 
-                : y_start + (red.y * skala);
-
+            let y_canvas = polozaj === "donja" ? y_start + h_px - (red.y * skala) : y_start + (red.y * skala);
             red.sipke.forEach(sipka => {
                 let x_canvas = x_start + (sipka.x * skala);
-
-                ctx.beginPath();
-                ctx.arc(x_canvas, y_canvas, (sipka.fi / 20) * skala, 0, 2 * Math.PI);
-                ctx.fillStyle = polozaj === "donja" ? "#779eb2" : "#a85d5d"; 
-                ctx.fill();
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "#333";
-                ctx.stroke();
+                ctx.beginPath(); ctx.arc(x_canvas, y_canvas, (sipka.fi / 20) * skala, 0, 2 * Math.PI);
+                ctx.fillStyle = polozaj === "donja" ? "#779eb2" : "#a85d5d"; ctx.fill();
+                ctx.lineWidth = 1; ctx.strokeStyle = "#333"; ctx.stroke();
             });
         });
     };
 
-    if (proracunskiRaspored) {
-        iscrtajSveSipke(proracunskiRaspored.redoviDonje, "donja");
-        iscrtajSveSipke(proracunskiRaspored.redoviGornje, "gornja");
-    }
-    // 4. Ispis dimenzija na ivicama pravougaonika (b i h)
-    ctx.fillStyle = "#000000";
-    ctx.font = "14px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`b = ${b} cm`, x_start + b_px / 2, y_start + h_px + 20);
-
-    ctx.save();
-    ctx.translate(x_start - 20, y_start + h_px / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(`h = ${h} cm`, 0, 0);
-    ctx.restore();
+    // Pokretanje crtanja šipki i konačni ispis glavnih spoljnih dimenzija b i h grede
+    if (proracunskiRaspored) { iscrtajSveSipke(proracunskiRaspored.redoviDonje, "donja"); iscrtajSveSipke(proracunskiRaspored.redoviGornje, "gornja"); }
+    ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "center"; ctx.fillText(`b = ${b} cm`, x_start + b_px / 2, y_start + h_px + 20);
+    ctx.save(); ctx.translate(x_start - 20, y_start + h_px / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(`h = ${h} cm`, 0, 0); ctx.restore();
 }
 
 // ==========================================================================
-// FUNKCIJA ZA ZBIR I CRTANJE ARMATURE
+// 7. PRERAČUNAVANJE I REGENERACIJA ZONE ARMATURA I RAZMAKA SVIH REDOVA
 // ==========================================================================
 window.preracunajSve = function() {
     const kontejnerDonja = document.getElementById("armatura-kontejner-donja");
     const kontejnerGornja = document.getElementById("armatura-kontejner-gornja");
-    
     let As_donja = window.preracunajZonu(kontejnerDonja, "inp-precnik-d", "inp-broj-sipki-d", "lab_arm_d");
     let As_gornja = window.preracunajZonu(kontejnerGornja, "inp-precnik-g", "inp-broj-sipki-g", "lab_arm_g");
-    
-    // Čuvamo ukupnu površinu armature u cm2
     suma_ = As_donja + As_gornja; 
-    
     sakupiIRasporediArmaturu();
     proracun();
-
     return suma_;
 };
 
-// ==========================================================================
-// POMOCNA FUNKCIJA ZA SLANJE U KLASU RasporedArmature.js
-// ==========================================================================
-let proracunskiRaspored = null;
-
 function sakupiIRasporediArmaturu() {
     const sakupiIzKontejnera = (kontejnerId, klasaPrecnika, klasaBroja) => {
-        const kontejner = document.getElementById(kontejnerId);
-        if (!kontejner) return [];
+        const kontejner = document.getElementById(kontejnerId); if (!kontejner) return [];
         const listaRedova = kontejner.querySelector(".arm-lista-redova") || kontejner;
         const sviRedovi = listaRedova.querySelectorAll(".arm_red");
-        
-        let podaci = []; // Format: [[fi, kom], [fi, kom], ...]
+        let podaci = []; 
         sviRedovi.forEach(red => {
             const fi = parseFloat(red.querySelector("." + klasaPrecnika).value) || 0;
             const n = parseFloat(red.querySelector("." + klasaBroja).value) || 0;
-            if (fi > 0 && n > 0) {
-                podaci.push([fi, n]); // Pregledniji i čitljiviji upis!
-            }
+            if (fi > 0 && n > 0) { podaci.push([fi, n]); }
         });
         return podaci;
     };
-
     let donjaZonaPodaci = sakupiIzKontejnera("armatura-kontejner-donja", "inp-precnik-d", "inp-broj-sipki-d");
     let gornjaZonaPodaci = sakupiIzKontejnera("armatura-kontejner-gornja", "inp-precnik-g", "inp-broj-sipki-g");
-
-    // Pozivamo naš novi RasporedArmature
     proracunskiRaspored = new RasporedArmature(b, h, c, fiV, donjaZonaPodaci, gornjaZonaPodaci, fck);
 }
 
-// ==========================================================================
-// POMOCNA FUNKCIJA ZA CRTANJE ŠRAFURE
-// ==========================================================================
 function createRotatedHatchPattern(ctx, tip, ugao, skala, boja, lineWidth) {
-    let pCanvas = document.createElement('canvas');
-    pCanvas.width = skala;
-    pCanvas.height = skala;
-    let pCtx = pCanvas.getContext('2d');
-
-    pCtx.strokeStyle = boja;
-    pCtx.lineWidth = lineWidth || 1;
-    pCtx.beginPath();
-
-    // 1. Crtamo UVIJEK savršeno ravno pod 0° (nema trigonometrije, nema prekida!)
-    pCtx.moveTo(0, 0); 
-    pCtx.lineTo(skala, 0); // Obična uspravna linija dužine 'a' (skala)
-    
-    if (tip === 'grid') {
-        pCtx.moveTo(0, 0); 
-        pCtx.lineTo(0,skala); // Vodoravna linija koja pravi pravilan plus (+)
-    }
+    let pCanvas = document.createElement('canvas'); pCanvas.width = skala; pCanvas.height = skala;
+    let pCtx = pCanvas.getContext('2d'); pCtx.strokeStyle = boja; pCtx.lineWidth = lineWidth || 1;
+    pCtx.beginPath(); pCtx.moveTo(0, 0); pCtx.lineTo(skala, 0);
+    if (tip === 'grid') { pCtx.moveTo(0, 0); pCtx.lineTo(0,skala); }
     pCtx.stroke();
-
-    // 2. Kreiramo osnovni šablon koji se ponavlja
     let pattern = ctx.createPattern(pCanvas, 'repeat');
-
-    // 3. NAKNADNA ROTACIJA: Rotiramo kompletno spojenu teksturu
-    if (ugao !== 0) {
-        let matrica = new DOMMatrix();
-        matrica = matrica.rotate(-ugao); // Rotiramo za tačan broj stepeni
-        pattern.setTransform(matrica);  // Primjenjujemo rotaciju na šablon
-    }
-
+    if (ugao !== 0) { let matrica = new DOMMatrix(); matrica = matrica.rotate(-ugao); pattern.setTransform(matrica); }
     return pattern;
 }
 
 // ==========================================================================
-// FUNKCIJA ZA ZBIR I CRTANJE PODUŽNE ARMATURE
+// 8. DINAMIČKA OBRADA LISTI (DODAVANJE I BRISANJE ELEMENTA REDOVA ARMATURE)
 // ==========================================================================
-window.preracunajSve = function() {
-    const kontejnerDonja = document.getElementById("armatura-kontejner-donja");
-    const kontejnerGornja = document.getElementById("armatura-kontejner-gornja");
-    
-    let As_donja = window.preracunajZonu(kontejnerDonja, "inp-precnik-d", "inp-broj-sipki-d", "lab_arm_d");
-    let As_gornja = window.preracunajZonu(kontejnerGornja, "inp-precnik-g", "inp-broj-sipki-g", "lab_arm_g");
-    
-    // Čuvamo ukupnu površinu armature u cm2
-    suma_ = As_donja + As_gornja; 
-    
-    sakupiIRasporediArmaturu();
-    proracun();
-};
-
-// ==========================================================================
-// DODAVANJE ARMATURE U LISTU I PRERAČUN (DONJA I GORNJA ZONA)
-// ==========================================================================
-
 document.addEventListener("DOMContentLoaded", function () {
     const kontejnerDonja = document.getElementById("armatura-kontejner-donja");
     const kontejnerGornja = document.getElementById("armatura-kontejner-gornja");
 
-    // Funkcija koja prolazi kroz redove i osigurava da samo zadnji ima "+", a ostali "×"
     function osveziDugmadIZnakove(kontejner, klasaDugmetaKlasicna) {
         if (!kontejner) return;
         const listaRedova = kontejner.querySelector(".arm-lista-redova") || kontejner;
         const sviRedovi = listaRedova.querySelectorAll(".arm_red");
-        
         sviRedovi.forEach((red, indeks) => {
             red.querySelector(".redni-broj").textContent = `${indeks + 1}:`;
-            
             const poslednjaCelija = red.children[4] || red.querySelector("button");
             if (!poslednjaCelija) return;
-
             if (indeks === sviRedovi.length - 1) {
                 poslednjaCelija.outerHTML = `<button class="${klasaDugmetaKlasicna}" type="button">+</button>`;
             } else {
@@ -941,142 +818,64 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Funkcija koja računa površinu armature po zonama
     window.preracunajZonu = function(kontejner, klasaPrecnika, klasaBroja, klasaLab) {
         if (!kontejner) return 0;
-        
         const listaRedova = kontejner.querySelector(".arm-lista-redova") || kontejner;
         const sviRedovi = listaRedova.querySelectorAll(".arm_red");
         let suma = 0;
-
         sviRedovi.forEach(red => {
             const fi = parseFloat(red.querySelector("." + klasaPrecnika).value) || 0;
             const n = parseFloat(red.querySelector("." + klasaBroja).value) || 0;
-
             const povrsinaReda = n * Math.PI * (fi / 10) ** 2 / 4;
             const labArm = red.querySelector("." + klasaLab);
-            if (labArm) {
-                labArm.textContent = povrsinaReda.toFixed(2) + " cm²";
-            }
+            if (labArm) { labArm.textContent = povrsinaReda.toFixed(2) + " cm²"; }
             suma += povrsinaReda;
         });
-
         const ukupnoPrikaz = kontejner.querySelector(".arm-ukupno");
-        if (ukupnoPrikaz) {
-            ukupnoPrikaz.textContent = suma.toFixed(2) + " cm²";
-        }
-        
+        if (ukupnoPrikaz) { ukupnoPrikaz.textContent = suma.toFixed(2) + " cm²"; }
         return suma;
     }
 
-    // Osluškivanje promjena u donjoj zoni
     if (kontejnerDonja) {
-        kontejnerDonja.addEventListener("input", function (e) {
-            if (e.target.classList.contains("inp-precnik-d") || e.target.classList.contains("inp-broj-sipki-d")) {
-                preracunajSve();
-            }
-        });
-
+        kontejnerDonja.addEventListener("input", function (e) { if (e.target.classList.contains("inp-precnik-d") || e.target.classList.contains("inp-broj-sipki-d")) { preracunajSve(); } });
         kontejnerDonja.addEventListener("click", function (e) {
             const listaRedova = kontejnerDonja.querySelector(".arm-lista-redova") || kontejnerDonja;
-
             if (e.target.classList.contains("btn_add_arm_d")) {
-                const noviRed = document.createElement("div");
-                noviRed.className = "arm_red";
-                noviRed.innerHTML = `
-                    <span class="redni-broj"></span>
-                    <input class="inp-precnik-d" type="number" min="8" max="50" value="14" placeholder="Ø (mm)">
-                    <input class="inp-broj-sipki-d" type="number" min="1" max="50" value="2" placeholder="kom">
-                    <span class="lab_arm_d">0.00 cm²</span>
-                    <button class="btn_add_arm_d" type="button">+</button>
-                `;
-                listaRedova.appendChild(noviRed);
-                osveziDugmadIZnakove(kontejnerDonja, "btn_add_arm_d");
-                preracunajSve();
+                const noviRed = document.createElement("div"); noviRed.className = "arm_red";
+                noviRed.innerHTML = `<span class="redni-broj"></span><input class="inp-precnik-d" type="number" min="8" max="50" value="14" placeholder="Ø (mm)"><input class="inp-broj-sipki-d" type="number" min="1" max="50" value="2" placeholder="kom"><span class="lab_arm_d">0.00 cm²</span><button class="btn_add_arm_d" type="button">+</button>`;
+                listaRedova.appendChild(noviRed); osveziDugmadIZnakove(kontejnerDonja, "btn_add_arm_d"); preracunajSve();
             }
-
-            if (e.target.classList.contains("btn-obrisi")) {
-                e.target.closest(".arm_red").remove();
-                osveziDugmadIZnakove(kontejnerDonja, "btn_add_arm_d");
-                preracunajSve();
-            }
+            if (e.target.classList.contains("btn-obrisi")) { e.target.closest(".arm_red").remove(); osveziDugmadIZnakove(kontejnerDonja, "btn_add_arm_d"); preracunajSve(); }
         });
     }
 
-    // Osluškivanje promjena u gornjoj zoni
     if (kontejnerGornja) {
-        kontejnerGornja.addEventListener("input", function (e) {
-            if (e.target.classList.contains("inp-precnik-g") || e.target.classList.contains("inp-broj-sipki-g")) {
-                preracunajSve();
-            }
-        });
-
+        kontejnerGornja.addEventListener("input", function (e) { if (e.target.classList.contains("inp-precnik-g") || e.target.classList.contains("inp-broj-sipki-g")) { preracunajSve(); } });
         kontejnerGornja.addEventListener("click", function (e) {
             const listaRedova = kontejnerGornja.querySelector(".arm-lista-redova") || kontejnerGornja;
-
             if (e.target.classList.contains("btn_add_arm_g")) {
-                const noviRed = document.createElement("div");
-                noviRed.className = "arm_red";
-                noviRed.innerHTML = `
-                    <span class="redni-broj"></span>
-                    <input class="inp-precnik-g" type="number" min="8" max="50" value="14" placeholder="Ø (mm)">
-                    <input class="inp-broj-sipki-g" type="number" min="1" max="50" value="2" placeholder="kom">
-                    <span class="lab_arm_g">0.00 cm²</span>
-                    <button class="btn_add_arm_g" type="button">+</button>
-                `;
-                listaRedova.appendChild(noviRed);
-                osveziDugmadIZnakove(kontejnerGornja, "btn_add_arm_g");
-                preracunajSve();
+                const noviRed = document.createElement("div"); noviRed.className = "arm_red";
+                noviRed.innerHTML = `<span class="redni-broj"></span><input class="inp-precnik-g" type="number" min="8" max="50" value="14" placeholder="Ø (mm)"><input class="inp-broj-sipki-g" type="number" min="1" max="50" value="2" placeholder="kom"><span class="lab_arm_g">0.00 cm²</span><button class="btn_add_arm_g" type="button">+</button>`;
+                listaRedova.appendChild(noviRed); osveziDugmadIZnakove(kontejnerGornja, "btn_add_arm_g"); preracunajSve();
             }
-
-            if (e.target.classList.contains("btn-obrisi")) {
-                e.target.closest(".arm_red").remove();
-                osveziDugmadIZnakove(kontejnerGornja, "btn_add_arm_g");
-                preracunajSve();
-            }
+            if (e.target.classList.contains("btn-obrisi")) { e.target.closest(".arm_red").remove(); osveziDugmadIZnakove(kontejnerGornja, "btn_add_arm_g"); preracunajSve(); }
         });
     }
 
-    // Inicijalno podešavanje stanja dugmića pri prvom učitavanju
     osveziDugmadIZnakove(kontejnerDonja, "btn_add_arm_d");
     osveziDugmadIZnakove(kontejnerGornja, "btn_add_arm_g");
-
-    // Prvi, inicijalni proračun
     preracunajSve();
 });
 
-window.addEventListener("DOMContentLoaded", () => {
-    document.body.style.zoom = "80%";
-});
-
-
 function rezolucija(canvasEl, faktor = window.devicePixelRatio || 1) {
     const ctx = canvasEl.getContext("2d");
-
-    // Logička CSS veličina canvasa
     const cssW = Math.round(canvasEl.clientWidth);
     const cssH = Math.round(canvasEl.clientHeight);
-
-    // Interna, stvarna rezolucija
-    const realW = Math.round(cssW * faktor);
-    const realH = Math.round(cssH * faktor);
-
-    // Podešavanje interne rezolucije samo ako se promijenila
-    if (canvasEl.width !== realW || canvasEl.height !== realH) {
-        canvasEl.width = realW;
-        canvasEl.height = realH;
+    if (canvasEl.width !== Math.round(cssW * faktor) || canvasEl.height !== Math.round(cssH * faktor)) {
+        canvasEl.width = Math.round(cssW * faktor); canvasEl.height = Math.round(cssH * faktor);
     }
-
-    // Reset transformacije - ovo sprječava gomilanje scale()
     ctx.setTransform(faktor, 0, 0, faktor, 0, 0);
-
-    // Brisanje u logičkim CSS koordinatama
     ctx.clearRect(0, 0, cssW, cssH);
-
-    return {
-        ctx,
-        width: cssW,
-        height: cssH,
-        faktor
-    };
+    return { ctx, width: cssW, height: cssH, faktor };
 }
+document.body.style.zoom = "80%";
