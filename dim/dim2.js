@@ -41,6 +41,7 @@ let NEd = 0;
 let MEds = 0;
 let koristiMinimalniEkscentricitet = false;
 let koristiPojednostavljeno = false;
+let koristiPravacParabola = false;
 
 let uEds = 0;
 let vEd = 0;
@@ -88,11 +89,24 @@ function naponCelik(es) { return clamp(Es * es, -fyd, fyd); }
 // 2. GLAVNI STATIČKI PRORAČUN I DIMENZIONISANJE PRESJEKA
 // ==========================================================================
 function proracun() {
-    ecu3 = fck < 55 ? 0.0035 : 0.0026 + 0.035 * ((90 - fck) / 100) ** 4;
-    ec3 = fck < 55 ? 0.00175 : 0.00175 + 0.00055 * ((fck - 50) / 40);
-    n = fck < 55 ? 2 : 1.4 + 23.4 * ((90 - fck) / 100) ** 4;
-    lambda = fck < 55 ? 0.8 : 0.8 - (fck - 50) / 400;
-    eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
+    if (koristiPravacParabola) {
+        // PRAVAC-PARABOLA MODEL (EN 1992-1-1, Tabela 3.1)
+        ecu3 = fck < 55 ? 0.0035 : 0.0026 + 0.035 * ((90 - fck) / 100) ** 4; // \u03B5_cu2
+        ec3 = fck < 55 ? 0.0020 : 0.0020 + 0.00085 * ((fck - 50) / 40) ** 0.53; // \u03B5_c2
+        n = fck < 55 ? 2.0 : 1.4 + 23.4 * ((90 - fck) / 100) ** 4;
+        
+        // Za pravac-parabolu, pritisak se proteže kroz cijelu visinu 'x', nema skraćivanja sa lambda!
+        lambda = 1.0; 
+        eta = 1.0;
+    } else {
+        // UPROŠTENI PRAVOUGAONI BLOK (EN 1992-1-1, Poglavlje 3.1.7)
+        ecu3 = fck < 55 ? 0.0035 : 0.0026 + 0.035 * ((90 - fck) / 100) ** 4; // \u03B5_cu3
+        ec3 = fck < 55 ? 0.00175 : 0.00175 + 0.00055 * ((fck - 50) / 40); // \u03B5_c3
+        n = fck < 55 ? 2.0 : 1.4 + 23.4 * ((90 - fck) / 100) ** 4;
+        lambda = fck < 55 ? 0.8 : 0.8 - (fck - 50) / 400;
+        eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
+    }
+
     fctm = fck < 55 ? 0.3 * Math.pow(fck, 2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10);
     eyd = kcal * fyk / gamma1 / Es;
 
@@ -539,7 +553,7 @@ function proracunInterakcijeSimetricnoArmiranogPresjeka() {
             });
         }
     }
-    
+
     if (As1_stvarno === 0) As1_stvarno = As1 || 0;
     if (As2_stvarno === 0) As2_stvarno = As2 || 0;
 
@@ -548,7 +562,8 @@ function proracunInterakcijeSimetricnoArmiranogPresjeka() {
             b: b, h: h, d1: d1, d2: d2,
             As1: As1_stvarno, As2: As2_stvarno,
             fck: fck, fyk: fyk, gammac: gammac, gammaS: gamma1,
-            acc: acc, Es: Es, MEd: Mmax, NEd: -NEd  
+            acc: acc, kcal: kcal, Ec: Ec, Es: Es, MEd: Mmax, NEd: -NEd,
+            koristiParabolu: koristiPravacParabola  
         });
     }
 }
@@ -672,11 +687,46 @@ function crtajPresjek() {
     // ==========================================================================
     // d) DIJAGRAM 1: ČISTI NAPONI
     // ==========================================================================
-    if (xGeomDraw > TOL) {
-        ctx.save(); ctx.beginPath(); ctx.lineWidth = 0.5; ctx.strokeStyle = "#333"; 
-        ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 0, 5, "#363333", 1); 
-        ctx.rect(osa_sigma, y_start, sirinaBetonskogBloka, xBlockDraw * skala); 
-        ctx.fill(); ctx.stroke(); ctx.restore();
+if (xGeomDraw > TOL) {
+        ctx.save();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#333";
+        ctx.fillStyle = createRotatedHatchPattern(ctx, "line", 0, 5, "#363333", 0.7);
+        
+        ctx.beginPath();
+        
+        if (koristiPravacParabola) {
+            // 1. KRAK PARABOLE: Krećemo od neutralne ose (gdje je napon jednak nuli)
+            ctx.moveTo(osa_sigma, y_start + xGeomDraw * skala);
+            
+            // Iscrtavanje realne krive linije parabole tačku po tačku
+            let brojSegmenata = 25;
+            for (let i = brojSegmenata; i >= 0; i--) {
+                let procenatVisine = i / brojSegmenata;
+                let y_tacke = y_start + (xGeomDraw * procenatVisine) * skala;
+                let eps_y = ec2 * (1 - procenatVisine);
+                
+                let trenutniNapon = 0;
+                if (eps_y > 0) {
+                    trenutniNapon = eps_y < ec3 ? fcd * (1 - Math.pow(1 - eps_y / ec3, n)) : fcd;
+                }
+                
+                let x_tacke = osa_sigma + (trenutniNapon * skala * eta);
+                ctx.lineTo(x_tacke, y_tacke);
+            }
+            ctx.lineTo(osa_sigma, y_start);
+        } else {
+            // 2. KRAK POJEDNOSTAVLJENOG PRORAČUNA: Čisti fiksni pravougaonik visine lambda * x
+            ctx.moveTo(osa_sigma, y_start);                                             // Gore lijevo
+            ctx.lineTo(osa_sigma + sirinaBetonskogBloka, y_start);                      // Gore desno
+            ctx.lineTo(osa_sigma + sirinaBetonskogBloka, y_start + xBlockDraw * skala); // Dolje desno (\u03BB·x)
+            ctx.lineTo(osa_sigma, y_start + xBlockDraw * skala);                        // Dolje lijevo (\u03BB·x)
+        }
+        
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
         
         ctx.fillStyle = "#000000"; ctx.font = "14px sans-serif"; ctx.textAlign = "left";
         TextEdit.format(ctx, `\u03B7·f_cd = ${(fcd).toFixed(2)} MPa`, osa_sigma + 5, y_start - 8, 14);
@@ -684,7 +734,7 @@ function crtajPresjek() {
 
     let skalaNaponaCelika = 45 / fyd; 
 
-    function nacrtajLinijuNapona(y, napon, boja) {
+   function nacrtajLinijuNapona(y, napon, boja) {
         ctx.save();
         ctx.lineWidth = 4;
         ctx.strokeStyle = boja;
@@ -886,7 +936,7 @@ function iscrtajNMInterakciju(canvasId, p) {
 
     const b = parseFloat(p.b) || 30;
     const h = parseFloat(p.h) || 50;
-    const d1 = parseFloat(p.d1) || 4.5;
+    const d1 = parseFloat(p.d1) || 4.7;
     const d2 = parseFloat(p.d2) || 4.5;
     const As1 = parseFloat(p.As1) || 0; 
     const As2 = parseFloat(p.As2) || 0; 
@@ -895,6 +945,8 @@ function iscrtajNMInterakciju(canvasId, p) {
     const gammac = parseFloat(p.gammac) || 1.5;
     const gammaS = parseFloat(p.gammaS) || 1.15;
     const acc = parseFloat(p.acc) || 0.85;
+    const kcal = parseFloat(p.kcal) || 1.05;
+    const Ec = parseFloat(p.Ec) || 30000;
     const Es = parseFloat(p.Es) || 210000;
 
     const M_ed = p.MEd !== undefined ? parseFloat(p.MEd) : null; 
@@ -909,8 +961,8 @@ function iscrtajNMInterakciju(canvasId, p) {
     const eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
     
     const fcd = acc * fck / gammac; 
-    const fyd = fyk / gammaS;       
-    const eud = 0.025; 
+    const fyd = kcal * fyk / gammaS;       
+    const eud = 0.025;              
 
     let points = [];
     const koraci = 50; 
@@ -990,11 +1042,11 @@ function iscrtajNMInterakciju(canvasId, p) {
     ctx.fillStyle = "#000000";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("N-M DIJAGRAM INTERAKCIJE PRESJEKA", padLeft, 18);
+    ctx.fillText("N-M DIJAGRAM INTERAKCIJE PRESJEKA", plotWidth/2, 13);
 
     ctx.strokeStyle = "#eff1f4";
     ctx.lineWidth = 1;
-    ctx.font = "10px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.fillStyle = "#000000";
 
     for (let m = limM.min; m <= limM.max; m += limM.step) {
@@ -1030,27 +1082,27 @@ function iscrtajNMInterakciju(canvasId, p) {
     ctx.fillStyle = "#000000";
     let mLabX = padLeft + plotWidth - 65;
     let mLabY = kY(0) - 8;
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("M", mLabX, mLabY);
     let wM = ctx.measureText("M").width;
-    ctx.font = "bold 8px sans-serif";
-    ctx.fillText("Rd", mLabX + wM, mLabY + 3);
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText("Rd", mLabX + wM, mLabY + 5);
     let wRd = ctx.measureText("Rd").width;
-    ctx.font = "11px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.fillText(" [kNm]", mLabX + wM + wRd, mLabY);
     
     ctx.save();
     ctx.translate(22, padT + plotHeight / 2); 
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = "center";
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.fillText("N", 160, 0);
     let wN = ctx.measureText("N").width+2;
-    ctx.font = "bold 8px sans-serif";
+    ctx.font = "bold 10px sans-serif";
     ctx.fillText("Rd", 160 + wN, 3);
-    let wRdN = ctx.measureText("Rd").width+10;
-    ctx.font = "11px sans-serif";
+    let wRdN = ctx.measureText("Rd").width+6;
+    ctx.font = "12px sans-serif";
     ctx.fillText(" [kN]", 160 + wN + wRdN, 0);
     ctx.restore();
 
@@ -1082,7 +1134,7 @@ function iscrtajNMInterakciju(canvasId, p) {
 
         ctx.fillStyle = "#000000"; 
         ctx.textAlign = "left";
-        ctx.font = "bold 11px sans-serif";
+        ctx.font = "bold 12px sans-serif";
         ctx.fillText("TRENUTNO STANJE", panelX, padT + 20);
         
         ctx.fillStyle = unutra ? "#006644" : "#bf2600"; 
@@ -1091,21 +1143,21 @@ function iscrtajNMInterakciju(canvasId, p) {
         let stvarni_sig1 = Math.max(-fyd, Math.min(fyd, trenutno_es1 * Es));
         let stvarni_sig2 = Math.max(-fyd, Math.min(fyd, trenutno_es2 * Es));
 
-        ctx.font = "11px sans-serif";
+        ctx.font = "12px sans-serif";
         ctx.fillStyle = "#000000"; 
         ctx.fillText(`MEd = ${Math.abs(M_ed).toFixed(1)} kNm`, panelX, padT + 65);
         ctx.fillText(`NEd = ${N_ed.toFixed(1)} kN`, panelX, padT + 80); 
         
         ctx.font = "bold 11px sans-serif";
         ctx.fillText("Deformacije (\u2030):", panelX, padT + 110);
-        ctx.font = "11px sans-serif";
+        ctx.font = "12px sans-serif";
         ctx.fillText(`\u03B5_c (ivica) = ${(trenutno_ec2 * 1000).toFixed(2)} \u2030`, panelX, padT + 125);
         ctx.fillText(`\u03B5_s2 (gornja) = ${(trenutno_es2 * 1000).toFixed(2)} \u2030`, panelX, padT + 140);
         ctx.fillText(`\u03B5_s1 (donja) = ${(trenutno_es1 * 1000).toFixed(2)} \u2030`, panelX, padT + 155);
 
         ctx.font = "bold 11px sans-serif";
         ctx.fillText("Naponi u čeliku:", panelX, padT + 185);
-        ctx.font = "11px sans-serif";
+        ctx.font = "12px sans-serif";
         ctx.fillText(`\u03C3_s2 = ${stvarni_sig2.toFixed(1)} MPa`, panelX, padT + 200);
         ctx.fillText(`\u03C3_s1 = ${stvarni_sig1.toFixed(1)} MPa`, panelX, padT + 215);
     }
@@ -1195,7 +1247,8 @@ document.addEventListener("DOMContentLoaded", function () {
     bindInput("inp-fck", "input", function (e) { fck = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-kcal", "input", function (e) { kcal = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-kcal", "input", function (e) { acc = parseFloat(e.target.value) || 0; proracun(); });
- 
+    
+    bindInput("toggle-parabola", "change", function (e) { koristiPravacParabola = e.target.checked; proracun(); });
     bindInput("inp-min-e", "change", function (e) { koristiMinimalniEkscentricitet = e.target.checked; proracun(); });
     bindInput("toggle-simplified", "change", function (e) { koristiPojednostavljeno = e.target.checked; proracun(); });
 

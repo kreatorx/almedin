@@ -16,6 +16,7 @@ body {
     gap: 25px;
     width: 100%;
     box-sizing: border-box;
+    margin: 20px;
 }
 
 /* LIJEVA CELINA: Uvijek u liniji vertikalno, striktno definisanih granica */
@@ -217,6 +218,7 @@ body {
     border: 0px solid #e9ecef;
     box-sizing: border-box;
     flex-shrink: 0;
+    margin-top: 40px;
 }
 
 #presjekCanvas {
@@ -227,11 +229,9 @@ body {
 
 /* Omotač N-M Dijagrama - Kontrolisano širenje bez deformacije */
 .nm-diagram-wrapper {
-    flex: 1 1 660px;        /* Počinje od minimalne širine samo za grafik */
-    max-width: 660;       /* Maksimalna širina kada se komotno crta i legenda */
-    min-width: 420px;
-    max-width: 900px;
-    height: 480px;
+    flex: 0 0 900px;        /* Počinje od minimalne širine samo za grafik */
+    width: 900;       /* Maksimalna širina kada se komotno crta i legenda */
+    height: 450px;
     background: #ffffff;
     box-sizing: border-box;
 }
