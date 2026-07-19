@@ -1,0 +1,301 @@
+/* ==========================================================================
+   1. OSNOVNI RASPORED (FLEXBOX WRAPPING LAYOUT)
+   ========================================================================== */
+body {
+    margin: 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+}
+
+.main-container {
+    display: flex;
+    flex-wrap: wrap;        /* Omogućava prelazak N-M dijagrama ispod ako nema mjesta */
+    align-items: flex-start;
+    justify-content: flex-start; /* UVIJEK PORAVNATO LIJEVO - sprečava bježanje i centriranje */
+    gap: 25px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* LIJEVA CELINA: Uvijek u liniji vertikalno, striktno definisanih granica */
+.left-block {
+    flex: 0 0 900px;        /* Fiksirana osnovna širina koja drži elemente u liniji */
+    max-width: 900px;
+    min-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow: hidden;
+}
+
+/* Gornji horizontalni red kontrolne table */
+.controls-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start; /* Poravnanje svih kolona prema gore */
+    justify-content: flex-start;
+    gap: 20px;
+    width: 100%;
+}
+
+/* ==========================================================================
+   2. STRIKTNA ZAŠTITA OD PRELASKA U NOVI RED (ANTI-JUMP SHIELD)
+   ========================================================================== */
+.input-container label,
+.input-container span,
+.results span,
+.armatura-container label,
+.armatura-container span,
+.arm-procenat div,
+.switch-text {
+    white-space: nowrap !important;     /* Strogo zabranjen prelazak u novi red */
+    overflow: hidden !important;        /* Sakrij sve što izlazi van širine */
+    text-overflow: ellipsis !important; /* Elegantno maskiranje sa tri tačke (...) */
+}
+
+/* ==========================================================================
+   3. STILIZACIJA UNUTRAŠNJIH KOLONA (INPUTS & RESULTS)
+   ========================================================================== */
+.input-container {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0px 0px;
+    align-content: start;
+    flex-shrink: 0;
+    width: 190px;
+}
+
+.input-container label {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 13px;
+    height: 20px; /* Fiksna visina reda za input labele */
+    
+}
+
+.input-container input, 
+.input-container select {
+    width: 80px;
+    padding: 4px;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.results {
+    display: grid;
+    grid-template-columns: 80px minmax(65px, max-content);
+    gap: 1px 0px;
+    align-content: start;
+    flex-shrink: 0;
+}
+
+/* Specifične širine tekstova unutar tabele rezultata */
+.results span:nth-child(odd) {
+    font-weight: bold;
+    color: #333;
+    font-size: 13px;
+    display: inline-block;
+    width: 95px;
+}
+
+.results span:nth-child(even) {
+    color: #0056b3;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
+    width: 70px;
+    text-align: left;
+}
+
+.razmak-red {
+    margin-bottom: 8px;
+    height: 10px;
+}
+
+/* ==========================================================================
+   4. ARMATURNI PANEL (REINFORCEMENT)
+   ========================================================================== */
+.armatura-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 290px;
+    border-left: 2px solid #dee2e6;
+    padding-left: 15px;
+    flex-shrink: 0;
+}
+
+.armatura-zona {
+    padding: 8px;
+    border: 1px solid #e9ecef;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+}
+
+.armatura-zona h4 {
+    margin: 2px 0 6px 0;
+    font-size: 12px;
+    color: #495057;
+    letter-spacing: 0.5px;
+}
+
+.arm-lista-redova {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.arm_red {
+    display: grid;
+    grid-template-columns: 20px 55px 55px 65px 20px;
+    gap: 6px;
+    align-items: center;
+}
+
+.arm_red .redni-broj {
+    font-weight: bold;
+    width: auto;
+}
+
+.arm_red input {
+    width: 50px;
+    padding: 3px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.arm_red span {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 12px;
+    width: auto;
+}
+
+.arm_suma {
+    margin-top: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    border-top: 1px dashed #dee2e6;
+    padding-top: 4px;
+}
+
+.arm-procenat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12px;
+    color: #495057;
+}
+
+.arm-procenat div {
+    font-weight: 500;
+}
+
+.btn-obrisi {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* ==========================================================================
+   5. PLATNA ZA CRTEŽE I DIJAGRAME (CANVAS STYLES)
+   ========================================================================== */
+/* Omotač presjeka - Nalazi se ispod kontrola */
+.presjek-diagram-wrapper {
+    width: 900px;
+    height: 360px;
+    background: #ffffff;
+    border: 0px solid #e9ecef;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+#presjekCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Omotač N-M Dijagrama - Kontrolisano širenje bez deformacije */
+.nm-diagram-wrapper {
+    flex: 1 1 660px;        /* Počinje od minimalne širine samo za grafik */
+    max-width: 660;       /* Maksimalna širina kada se komotno crta i legenda */
+    min-width: 420px;
+    height: 480px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+#interakcijaCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ==========================================================================
+   6. SKLOPKE / PREKIDAČI (TOGGLE SWITCHES)
+   ========================================================================== */
+.control-group-switch {
+    grid-column: span 2;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+    width: 100%;
+}
+
+.switch-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.switch-text {
+    font-size: 12px;
+    font-weight: bold;
+    color: #172b4d;
+    width: auto !important;
+    flex: 1;
+    margin-right: 10px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block !important;
+    width: 44px !important;
+    height: 24px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.switch .slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #dfe1e6;
+    transition: .3s;
+    border-radius: 24px;
+    width: auto !important;
+}
+
+.switch .slider::before {
+    position: absolute;
+    content: "";
+    height: 18px; width: 18px; left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.switch input:checked + .slider { background-color: #0052cc; }
+.switch input:checked + .slider::before { transform: translateX(20px); }
