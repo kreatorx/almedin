@@ -230,6 +230,7 @@ body {
     flex: 1 1 660px;        /* Počinje od minimalne širine samo za grafik */
     max-width: 660;       /* Maksimalna širina kada se komotno crta i legenda */
     min-width: 420px;
+    max-width: 900px;
     height: 480px;
     background: #ffffff;
     box-sizing: border-box;
