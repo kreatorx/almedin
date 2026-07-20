@@ -1379,4 +1379,4 @@ window.addEventListener("resize", function () {
     }, 50);
 });
 
-document.body.style.zoom = "80%";
+document.body.style.zoom = "100%";
