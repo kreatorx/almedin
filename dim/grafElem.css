@@ -75,7 +75,35 @@ body {
     height: 20px; /* Fiksna visina reda za input labele */
     
 }
+label.xilim {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 13px;
+    height: 24px;
+    color: #333;
+    white-space: nowrap;
+}
 
+/* Unificirani stil za select i input – garantuje istu širinu i visinu */
+select.xilim,
+input.xilim {
+    width: 80px;
+    height: 24px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #ffffff;
+    margin: 0;
+}
+
+/* Boja teksta u polju za unos broja */
+input.xilim {
+    color: #0056b3;
+}
 .input-container input, 
 .input-container select {
     width: 80px;
@@ -231,7 +259,7 @@ body {
 .nm-diagram-wrapper {
     flex: 0 0 900px;        /* Počinje od minimalne širine samo za grafik */
     width: 900;       /* Maksimalna širina kada se komotno crta i legenda */
-    height: 450px;
+    height: 480px;
     background: #ffffff;
     box-sizing: border-box;
 }
