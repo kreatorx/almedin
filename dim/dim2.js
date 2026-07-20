@@ -1288,7 +1288,7 @@ document.addEventListener("DOMContentLoaded", function () {
     bindInput("inp-gc", "input", function (e) { gammac = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-fck", "input", function (e) { fck = parseFloat(e.target.value) || 0; azurirajXiLimVrijednost(); proracun(); });
     bindInput("inp-kcal", "input", function (e) { kcal = parseFloat(e.target.value) || 0; proracun(); });
-    bindInput("inp-kcal", "input", function (e) { acc = parseFloat(e.target.value) || 0; proracun(); });
+    bindInput("inp-acc", "input", function (e) { acc = parseFloat(e.target.value) || 0; proracun(); });
  
     bindInput("inp-xi-type", "change", function () { proracun(); });
     bindInput("inp-xi-lim", "input", function () { proracun(); });
