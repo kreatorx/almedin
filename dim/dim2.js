@@ -687,7 +687,7 @@ function crtajPresjek() {
     // ==========================================================================
     // b) CRTANJE VERTIKALNIH I HORIZONTALNIH NULTIH LINIJA OSA
     // ==========================================================================
-    ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = "#888888"; ctx.setLineDash([5, 5]); ctx.beginPath();
+    ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = "#888888"; ctx.setLineDash([5, 5]); ctx.beginPath();
     ctx.moveTo(x_start + b_px, y_start); ctx.lineTo(canvas.width - 20, y_start);
     ctx.moveTo(x_start + b_px, y_start + h_px); ctx.lineTo(canvas.width - 20, y_start + h_px);
     ctx.moveTo(osa_sigma, y_start - 20); ctx.lineTo(osa_sigma, y_start + h_px + 20); 
