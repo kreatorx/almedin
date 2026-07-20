@@ -107,6 +107,10 @@ function proracun() {
         eta = fck < 55 ? 1.0 : 1.0 - (fck - 50) / 200;
     }
 
+    azurirajXiLimVrijednost();
+    let elXiLimInp = document.getElementById("inp-xi-lim");
+    xi_lim = elXiLimInp ? parseFloat(elXiLimInp.value) || xi_lim : 0.617;
+
     fctm = fck < 55 ? 0.3 * Math.pow(fck, 2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10);
     eyd = kcal * fyk / gamma1 / Es;
 
@@ -127,8 +131,8 @@ function proracun() {
     d = h - d1;
     zs1 = d - h / 2;
     zs2 = (h - d2) - h / 2;
-
-    xi_lim = ecu3 / (ecu3 + eyd);
+console.log(xi_lim);
+   // xi_lim = 0.450; //ecu3 / (ecu3 + eyd);
     zeta_lim = 1 - lambda * xi_lim / 2;
     uEds_lim = lambda * xi_lim * zeta_lim;
     xlim = xi_lim * d;
@@ -331,6 +335,10 @@ else if (koristiPojednostavljeno) {
             let epsBottom = p.bottom;
             let t_x = (Math.abs(epsTop - epsBottom) < 1e-7) ? Infinity : (epsTop * h) / (epsTop - epsBottom);
             
+            if (t_x > xi_lim * d && NEd <= 0) {
+                return; // Preskače ovaj profil i ide na sljedeći zbog osiguranja duktilnosti prema EC2
+    }
+
             let t_Fc = 0;
             let t_Mc_as1 = 0;
             let nSlices = 30;
@@ -597,6 +605,40 @@ function popuniRezultate() {
     
     let elMEd = document.getElementById("res_MEd");
     if (elMEd) elMEd.innerText = Mmax.toFixed(2) + " kNm";
+}
+
+function azurirajXiLimVrijednost() {
+    const tipEl = document.getElementById("inp-xi-type");
+    const valInput = document.getElementById("inp-xi-lim");
+    if (!tipEl || !valInput) return;
+
+    const tip = tipEl.value;
+    
+    // Ako je izabran ručni unos, otključavamo polje i ne prebrisujemo vrijednost
+    if (tip === "custom") {
+        valInput.readOnly = false;
+        valInput.style.backgroundColor = "#ffffff";
+        return;
+    }
+
+    // U suprotnom, polje je zaklučano i vrijednost se računa automatski
+    valInput.readOnly = true;
+    valInput.style.backgroundColor = "#e9ecef";
+
+    // Dinamički računamo eyd i ecu3 na osnovu fck i fyk
+    const t_ecu3 = fck < 55 ? 0.0035 : 0.0026 + 0.035 * Math.pow((90 - fck) / 100, 4);
+    const t_eyd = (kcal*fyk / gamma1) / Es;
+
+    if (tip === "odr") {
+        // Statički određeni nosači: ecu3 / (ecu3 + eyd) -> Daje 0.617 za <=C50/60 ili ~0.588 za >C50/60
+        valInput.value = (t_ecu3 / (t_ecu3 + t_eyd)).toFixed(3);
+    } else if (tip === "neodr") {
+        // Statički neodređeni (bez preraspodjele)
+        valInput.value = fck < 55 ? "0.450" : "0.350";
+    } else if (tip === "ploca") {
+        // Ploče po teoriji plastičnosti
+        valInput.value = fck < 55 ? "0.250" : "0.150";
+    }
 }
 
 // ==========================================================================
@@ -1244,9 +1286,12 @@ document.addEventListener("DOMContentLoaded", function () {
     bindInput("inp-fyk", "input", function (e) { fyk = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-g1", "input", function (e) { gamma1 = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-gc", "input", function (e) { gammac = parseFloat(e.target.value) || 0; proracun(); });
-    bindInput("inp-fck", "input", function (e) { fck = parseFloat(e.target.value) || 0; proracun(); });
+    bindInput("inp-fck", "input", function (e) { fck = parseFloat(e.target.value) || 0; azurirajXiLimVrijednost(); proracun(); });
     bindInput("inp-kcal", "input", function (e) { kcal = parseFloat(e.target.value) || 0; proracun(); });
     bindInput("inp-kcal", "input", function (e) { acc = parseFloat(e.target.value) || 0; proracun(); });
+ 
+    bindInput("inp-xi-type", "change", function () { proracun(); });
+    bindInput("inp-xi-lim", "input", function () { proracun(); });
     
     bindInput("toggle-parabola", "change", function (e) { koristiPravacParabola = e.target.checked; proracun(); });
     bindInput("inp-min-e", "change", function (e) { koristiMinimalniEkscentricitet = e.target.checked; proracun(); });
