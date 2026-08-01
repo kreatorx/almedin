@@ -356,35 +356,28 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// UNIVERZALNI CANVAS CRTAČ (Podržava puni i šuplji presjek)
+// UNIVERZALNI CANVAS CRTAČ SA KOTIRANjEM, OSAMA Y/Z I RADIJUSIMA INERCIJE
 // -------------------------------------------------------------
-function drawCanvasProfile(commands) {
+function drawCanvasProfile(data) {
   const canvas = document.getElementById('profileCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  
+  // Povećane dimenzije canvasa za smještaj kuta i oznaka
   const width = canvas.width;
   const height = canvas.height;
 
   // Očisti prethodni crtež
   ctx.clearRect(0, 0, width, height);
 
-  // Crtanje pomoćnih mrežnih osa u pozadini
-  ctx.strokeStyle = '#26334d';
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1;
+  if (!data || !data.draw_commands || !data.draw_commands.length) return;
 
-  ctx.beginPath();
-  ctx.moveTo(width / 2, 10);
-  ctx.lineTo(width / 2, height - 10);
-  ctx.moveTo(10, height / 2);
-  ctx.lineTo(width - 10, height / 2);
-  ctx.stroke();
+  const commands = data.draw_commands;
+  const dimensions = data.dimensions || [];
+  const major_y = data.major_y || [];
+  const minor_z = data.minor_z || [];
 
-  ctx.setLineDash([]); // Vrati punu liniju
-
-  if (!commands || !commands.length) return;
-
-  // 1. Izračunavanje Bounding Box-a radi automatskog skaliranja i centriranja
+  // 1. Izračunavanje Bounding Box-a (graničnih dimenzija)
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 
   commands.forEach(cmd => {
@@ -405,17 +398,49 @@ function drawCanvasProfile(commands) {
   const bHeight = yMax - yMin || 40;
   const maxDim = Math.max(bWidth, bHeight);
 
-  // Skaliranje na dimenziju Canvas-a (280x280)
-  const scale = 200 / maxDim;
+  // Margina od 50px za kotne linije
+  const margin = 50;
+  const scale = (width - 2 * margin) / maxDim;
   const cx = width / 2 - ((xMin + xMax) / 2) * scale;
   const cy = height / 2 - ((yMin + yMax) / 2) * scale;
 
   const tx = (x) => cx + x * scale;
   const ty = (y) => cy + y * scale;
 
-  // 2. Izvršavanje AI komandi za crtanje
+  // 2. CRTIČANjE NEUTRALNIH OSA (y-y horizontalno, z-z vertikalno)
+  ctx.save();
+  ctx.strokeStyle = '#ec4899'; // Roza / Magenta boja za ose
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+
+  // Horizontalna osa y-y
   ctx.beginPath();
-  ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+  ctx.moveTo(15, cy);
+  ctx.lineTo(width - 15, cy);
+  ctx.stroke();
+
+  // Vertikalna osa z-z
+  ctx.beginPath();
+  ctx.moveTo(cx, 15);
+  ctx.lineTo(cx, height - 15);
+  ctx.stroke();
+  ctx.restore();
+
+  // Ispis naziva osa y i z
+  ctx.font = 'bold 12px Segoe UI, sans-serif';
+  ctx.fillStyle = '#ec4899';
+  ctx.fillText('y', width - 14, cy + 4);
+  ctx.fillText('z', cx - 4, height - 4);
+
+  // Crvena tačka u težištu (0,0)
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // 3. CRTIČANjE GEOMETRIJE POPREČNOG PRESJEKA
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2;
 
@@ -434,10 +459,132 @@ function drawCanvasProfile(commands) {
     }
   });
 
-  // OVO JE KLJUČNO ZA ŠUPLJE PROFILE (SHS, RHS, CHS):
-  // 'evenodd' pravilo ostavlja unutrašnju rupa providnom!
-  ctx.fill('evenodd');
+  ctx.fill('evenodd'); // Pravilo za unutrašnje rupe/šupljine
   ctx.stroke();
+
+  // 4. CRTIČANjE RADIJUSA INERCIJE (i_y, i_z) NA OSAMA
+  const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
+  const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
+
+  if (iyItem || izItem) {
+    ctx.save();
+    ctx.strokeStyle = '#fbbf24'; // Žuto-zlatna boja
+    ctx.fillStyle = '#fbbf24';
+    ctx.setLineDash([2, 2]);
+    ctx.font = '10px Segoe UI, sans-serif';
+
+    if (iyItem && iyItem.val) {
+      const iyPx = iyItem.val * scale;
+      ctx.beginPath();
+      ctx.arc(cx, cy - iyPx, 2.5, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillText(`i_y=${iyItem.val}`, cx + 5, cy - iyPx + 3);
+    }
+    if (izItem && izItem.val) {
+      const izPx = izItem.val * scale;
+      ctx.beginPath();
+      ctx.arc(cx + izPx, cy, 2.5, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillText(`i_z=${izItem.val}`, cx + izPx - 10, cy - 6);
+    }
+    ctx.restore();
+  }
+
+  // 5. INŽENjERSKO KOTIRANjE (h, b, tw, tf, r1, r2, r_o, r_i)
+  drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty);
+}
+
+// Funkcija za crtanje kotnih linija i oznaka dimenzija
+function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) {
+  if (!dimensions || !dimensions.length) return;
+
+  const hItem = dimensions.find(d => d.symbol === 'h' || d.label.toLowerCase().includes('depth'));
+  const bItem = dimensions.find(d => d.symbol === 'b' || d.label.toLowerCase().includes('width'));
+  const twItem = dimensions.find(d => d.symbol === 't_w' || d.symbol === 'tw' || d.symbol === 't');
+  const tfItem = dimensions.find(d => d.symbol === 't_f' || d.symbol === 'tf');
+  const r1Item = dimensions.find(d => d.symbol === 'r_1' || d.symbol === 'r' || d.symbol === 'r_o');
+  const r2Item = dimensions.find(d => d.symbol === 'r_2' || d.symbol === 'r_i');
+
+  ctx.save();
+  ctx.strokeStyle = '#94a3b8'; // Siva boja za kote
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = '10px Segoe UI, sans-serif';
+  ctx.lineWidth = 1;
+
+  // Pomoćna funkcija za crtanje kotne linije sa koticama
+  function drawDimLine(x1, y1, x2, y2, text, offset, isHoriz) {
+    let px1 = x1, py1 = y1, px2 = x2, py2 = y2;
+    if (isHoriz) {
+      py1 += offset; py2 += offset;
+      // Pomoćne linije od profila do kote
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(x1, py1 + (offset > 0 ? 4 : -4));
+      ctx.moveTo(x2, y2); ctx.lineTo(x2, py2 + (offset > 0 ? 4 : -4));
+      ctx.stroke();
+      // Glavna kotna linija
+      ctx.beginPath();
+      ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+      ctx.stroke();
+      // Kotice (kosi zarezi)
+      drawTick(px1, py1); drawTick(px2, py2);
+      // Tekst kote
+      ctx.textAlign = 'center';
+      ctx.fillText(text, (px1 + px2) / 2, py1 + (offset > 0 ? 12 : -5));
+    } else {
+      px1 += offset; px2 += offset;
+      // Pomoćne linije od profila do kote
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(px1 + (offset > 0 ? 4 : -4), y1);
+      ctx.moveTo(x2, y2); ctx.lineTo(px2 + (offset > 0 ? 4 : -4), y2);
+      ctx.stroke();
+      // Glavna kotna linija
+      ctx.beginPath();
+      ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+      ctx.stroke();
+      // Kotice
+      drawTick(px1, py1); drawTick(px2, py2);
+      // Tekst kote
+      ctx.textAlign = 'right';
+      ctx.fillText(text, px1 + (offset > 0 ? -5 : -5), (py1 + py2) / 2 + 3);
+    }
+  }
+
+  function drawTick(x, y) {
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y + 3);
+    ctx.lineTo(x + 3, y - 3);
+    ctx.stroke();
+  }
+
+  // 1. Kota Visine (h) - Lijeva strana
+  if (hItem) {
+    drawDimLine(tx(xMin), ty(yMin), tx(xMin), ty(yMax), `h=${hItem.val}`, -22, false);
+  }
+
+  // 2. Kota Širine (b) - Gornja strana
+  if (bItem) {
+    drawDimLine(tx(xMin), ty(yMin), tx(xMax), ty(yMin), `b=${bItem.val}`, -20, true);
+  }
+
+  // 3. Tekstualne oznake debljina i radijusa (Desna strana gore)
+  const annX = tx(xMax) + 12;
+  let annY = ty(yMin) + 10;
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = '10px Segoe UI, sans-serif';
+  ctx.textAlign = 'left';
+
+  const notes = [];
+  if (twItem) notes.push(`${twItem.symbol.replace('_', '') || 'tw'}=${twItem.val}`);
+  if (tfItem) notes.push(`tf=${tfItem.val}`);
+  if (r1Item) notes.push(`${r1Item.symbol.replace('_', '') || 'r1'}=${r1Item.val}`);
+  if (r2Item) notes.push(`${r2Item.symbol.replace('_', '') || 'r2'}=${r2Item.val}`);
+
+  notes.forEach((note, idx) => {
+    ctx.fillText(note, annX, annY + idx * 13);
+  });
+
+  ctx.restore();
 }
 
 // -------------------------------------------------------------
