@@ -150,11 +150,9 @@
       min-height: 280px;
     }
 
-    canvas {
-      background: transparent;
-    }
+    canvas { background: transparent; }
 
-    /* Tabela - Smanjen font i kompaktni redovi */
+    /* Tabela */
     .tables-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -213,8 +211,8 @@
       <h2 class="card-title">Pretraga Profila Preko AI Modela</h2>
       <div class="controls">
         <div class="form-group" style="flex: 3;">
-          <label for="aiPromptInput">Naziv ili opis profila (Svjetski Standardi: IPE, HEA, WB 300, W12x26, L, C...)</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. WB 300, IPE 240, HEA 300 ili opis 'C profil 200x80'">
+          <label for="aiPromptInput">Naziv ili opis profila (Svjetski Standardi: IPE, HEA, WB 300, SHS 40x40x5, W12x26, L, C...)</label>
+          <input type="text" id="aiPromptInput" placeholder="Npr. SHS 40x40x5, WB 300, IPE 240, HEA 300 ili opis 'C profil 200x80'">
         </div>
         <button class="btn-action" id="btnAiSearch">Generiši Profil (AI)</button>
       </div>
@@ -229,6 +227,7 @@
       <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 16px;">
         <div>
           <div class="card">
+            <!-- Obratite pažnju na naslov: HTML5 Canvas -->
             <h2 class="card-title">Poprečni Presjek (HTML5 Canvas)</h2>
             <div class="canvas-wrapper">
               <canvas id="profileCanvas" width="280" height="280"></canvas>
@@ -276,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Čišćenje simbola od LaTeX dolara $
+// Čišćenje simbola od $ znakova i pravilno postavljanje indeksnih oznaka
 function formatSymbol(sym) {
   if (!sym || sym === '-') return '';
   let clean = sym.replace(/\$/g, '').trim();
@@ -323,12 +322,12 @@ async function fetchProfileFromVercel() {
     const data = await response.json();
     currentAiData = data;
 
-    // Ispis sirovog JSON-a
+    // Prikaz sirovog JSON odgovora
     rawCode.textContent = JSON.stringify(data, null, 2);
     rawDetails.style.display = "block";
     rawDetails.open = false;
 
-    // PROVJERA PROFILA: Ako profil ne postoji u standardima
+    // Ako profil nije pronađen
     if (data.found === false) {
       showStatus(data.error_message || `Profil "${promptText}" nije pronađen u priznatim standardima čelika!`, "error");
       return;
@@ -357,7 +356,7 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// INTERPRETIANJE I RENDANJE CANVAS POPREČNOG PRESJEKA
+// UNIVERZALNI CANVAS CRTAČ (Podržava puni i šuplji presjek)
 // -------------------------------------------------------------
 function drawCanvasProfile(commands) {
   const canvas = document.getElementById('profileCanvas');
@@ -366,9 +365,10 @@ function drawCanvasProfile(commands) {
   const width = canvas.width;
   const height = canvas.height;
 
+  // Očisti prethodni crtež
   ctx.clearRect(0, 0, width, height);
 
-  // Mreža i ose u pozadini
+  // Crtanje pomoćnih mrežnih osa u pozadini
   ctx.strokeStyle = '#26334d';
   ctx.setLineDash([4, 4]);
   ctx.lineWidth = 1;
@@ -384,7 +384,7 @@ function drawCanvasProfile(commands) {
 
   if (!commands || !commands.length) return;
 
-  // 1. Prvi prolaz: Izračunaj Bounding Box tačaka radi automatskog skaliranja
+  // 1. Izračunavanje Bounding Box-a radi automatskog skaliranja i centriranja
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 
   commands.forEach(cmd => {
@@ -401,19 +401,19 @@ function drawCanvasProfile(commands) {
     }
   });
 
-  const bWidth = xMax - xMin || 100;
-  const bHeight = yMax - yMin || 100;
+  const bWidth = xMax - xMin || 40;
+  const bHeight = yMax - yMin || 40;
   const maxDim = Math.max(bWidth, bHeight);
 
-  // Skaliranje i centriranje na Canvas-u (280x280 sa 30px margina)
-  const scale = 220 / maxDim;
+  // Skaliranje na dimenziju Canvas-a (280x280)
+  const scale = 200 / maxDim;
   const cx = width / 2 - ((xMin + xMax) / 2) * scale;
   const cy = height / 2 - ((yMin + yMax) / 2) * scale;
 
   const tx = (x) => cx + x * scale;
-  const ty = (y) => cy + y * scale; // Invertovane Y koordinate
+  const ty = (y) => cy + y * scale;
 
-  // 2. Drugi prolaz: Crtanje geometrije presjeka sa tačnim radijusima
+  // 2. Izvršavanje AI komandi za crtanje
   ctx.beginPath();
   ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
   ctx.strokeStyle = '#38bdf8';
@@ -434,12 +434,14 @@ function drawCanvasProfile(commands) {
     }
   });
 
-  ctx.fill();
+  // OVO JE KLJUČNO ZA ŠUPLJE PROFILE (SHS, RHS, CHS):
+  // 'evenodd' pravilo ostavlja unutrašnju rupa providnom!
+  ctx.fill('evenodd');
   ctx.stroke();
 }
 
 // -------------------------------------------------------------
-// RENDANJE PARALELNIH TABELA (y-y i z-z u istom redu)
+// RENDANJE TABELA
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
@@ -468,7 +470,6 @@ function renderAiTables(data, containerId) {
       </div>
     </div>
 
-    <!-- PARALELNO y-y I z-z OSE U ISTOM REDU -->
     <div class="axis-row-grid" style="margin-top: 16px;">
       <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
         <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Major Axis y-y Properties</h3>

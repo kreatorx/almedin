@@ -47,6 +47,8 @@ export default async function handler(req, res) {
          - ["arc", cx, cy, radius, startAngle, endAngle] (ZA CHS OKRUGLE CIJEVI)
          - ["closePath"]
 
+    3. JSON array objekte {} vracaj inline 
+
     OBLIK ZAHVTANOG JSON-A AKO JE PRONAĐEN:
     {
       "found": true,
