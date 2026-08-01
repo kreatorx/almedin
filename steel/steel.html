@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baza & AI Čelični Profili — Eurocode 3</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151c2c;
+      --accent: #38bdf8;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #26334d;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --error: #f87171;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1 { margin: 0; color: var(--accent); font-size: 1.8rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+    /* Navigacijski Tabovi */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 16px;
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+    label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; font-weight: bold; }
+    
+    input, select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    input:focus, select:focus { border-color: var(--accent); outline: none; }
+
+    button.btn-action {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 11px 24px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.btn-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Grid Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 992px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-top: 0;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .svg-wrapper {
+      background: #070a12;
+      border-radius: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      min-height: 280px;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 20px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    td, th { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 500; }
+    td.val { font-weight: 600; text-align: right; color: #60a5fa; }
+    td.unit { color: var(--muted); font-size: 0.8rem; width: 65px; text-align: right; }
+
+    .status-msg {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-weight: 500;
+      display: none;
+    }
+    .status-msg.loading { display: block; background: #1e293b; color: var(--accent); border: 1px solid var(--accent); }
+    .status-msg.error { display: block; background: #3f1d1d; color: var(--error); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
+    <div class="subtitle">Pogonjeno putem Vercel API-ja i Google Gemini 1.5 Flash (S235 čelik, γM0 = 1.00)</div>
+  </header>
+
+  <!-- Navigacijski Tabovi -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('ai-profile')">1. AI Profil</button>
+    <button class="tab-btn" onclick="switchTab('browser')">2. Preglednik Baze</button>
+    <button class="tab-btn" onclick="switchTab('ai-search')">3. AI Dimenzionisanje (Uskoro)</button>
+    <button class="tab-btn" onclick="switchTab('custom-calc')">4. Proračun Proizvoljnog Profila (Uskoro)</button>
+  </div>
+
+  <!-- TAB 1: AI PROFIL (PREKO VERCEL API-JA) -->
+  <div id="tab-ai-profile" class="tab-content active">
+    <div class="card">
+      <h2 class="card-title">Pretraga Profila Preko AI Modela</h2>
+      <p style="color: var(--muted); font-size: 0.9rem;">Unesite naziv ili opis profila. AI servis vraća osnovna svojstva profila, na osnovu kojih se automatski izračunavaju sve inercije, otporni momenti i računske nosivosti po Eurocode 3.</p>
+
+      <div class="controls">
+        <div class="form-group" style="flex: 3;">
+          <label for="aiPromptInput">Naziv ili opis profila</label>
+          <input type="text" id="aiPromptInput" placeholder="Npr. IPE 240, HEA 300, ili opis 'I-profil visine 250mm, širine 120mm'">
+        </div>
+        <button class="btn-action" id="btnAiSearch" onclick="fetchProfileFromVercel()">Generiši Profil (AI)</button>
+      </div>
+
+      <div id="aiStatus" class="status-msg"></div>
+
+      <div class="main-grid" id="aiResultsGrid" style="display: none;">
+        <div>
+          <div class="card">
+            <h2 class="card-title">Poprečni Presjek (SVG)</h2>
+            <div class="svg-wrapper" id="aiSvgContainer"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2 class="card-title" id="aiProfileTitle">Proračunata Svojstva Profila</h2>
+            <div class="tables-grid" id="aiSpecsContainer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PREGLEDNIK BAZE PROFILA -->
+  <div id="tab-browser" class="tab-content">
+    <div class="controls">
+      <div class="form-group">
+        <label>Tip profila</label>
+        <select id="typeSelect" onchange="onTypeChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>Oznaka profila</label>
+        <select id="profileSelect" onchange="renderProfile()"></select>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div>
+        <div class="card">
+          <h2 class="card-title">Geometrijski Prikaz</h2>
+          <div class="svg-wrapper" id="svgContainer"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2 class="card-title" id="profileTitle">Specifikacije Profila</h2>
+          <div class="tables-grid" id="specsContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: REZERVISANO -->
+  <div id="tab-ai-search" class="tab-content">
+    <div class="card">
+      <h2 class="card-title">3. AI Dimenzionisanje (Optimizacija)</h2>
+      <p style="color: var(--muted);">Ova sekcija će biti konfigurisana u narednom koraku.</p>
+    </div>
+  </div>
+
+  <!-- TAB 4: REZERVISANO -->
+  <div id="tab-custom-calc" class="tab-content">
+    <div class="card">
+      <h2 class="card-title">4. Proračun Proizvoljnog Profila</h2>
+      <p style="color: var(--muted);">Ova sekcija će biti konfigurisana u narednom koraku.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let jsonData = {};
+
+async function initApp() {
+  try {
+    const res = await fetch('profiles.json');
+    jsonData = await res.json();
+
+    const typeSelect = document.getElementById('typeSelect');
+    typeSelect.innerHTML = '';
+    
+    Object.keys(jsonData.tipovi).forEach(typeKey => {
+      const opt = document.createElement('option');
+      opt.value = typeKey;
+      opt.textContent = `${typeKey} — ${jsonData.tipovi[typeKey].naziv}`;
+      typeSelect.appendChild(opt);
+    });
+
+    onTypeChange();
+  } catch (err) {
+    console.warn("Preglednik baze: profiles.json nije učitan ili je nedostupan:", err);
+  }
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  event.target.classList.add('active');
+  document.getElementById(`tab-${tabId}`).classList.add('active');
+}
+
+// -------------------------------------------------------------
+// TAB 1: AI POZIV PREMA VERCEL POZIVU (/api/steel)
+// -------------------------------------------------------------
+async function fetchProfileFromVercel() {
+  const promptText = document.getElementById('aiPromptInput').value.trim();
+  const statusEl = document.getElementById('aiStatus');
+  const resultsGrid = document.getElementById('aiResultsGrid');
+  const btn = document.getElementById('btnAiSearch');
+
+  if (!promptText) {
+    showStatus("Molimo unesite naziv ili opis profila!", "error");
+    return;
+  }
+
+  showStatus("Generišem profil putem AI servisa...", "loading");
+  btn.disabled = true;
+  resultsGrid.style.display = "none";
+
+  try {
+    // Ako si na localhostu, možete podesiti punu Vercel URL adresu za testiranje,
+    // npr: const apiUrl = window.location.hostname === '127.0.0.1' ? 'https://tvoj-projekat.vercel.app/api/steel' : '/api/steel';
+    const apiUrl = 'https://almedin.vercel.app/api/steel';
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText })
+    });
+
+    // 1. Provjera da li je odgovor 404 ili greška servera
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Ruta /api/steel nije pronađena na ovom lokalnom serveru. Backend funkcije rade nakon deploy-a na Vercel ili pokretanja preko Vercel CLI ('vercel dev').");
+      }
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Greška HTTP Status: ${response.status}`);
+    }
+
+    // 2. Provjera da li je vraćeni odgovor stvarni JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Server nije vratio JSON format. Provjerite da li Vercel funkcija radi ispravno.");
+    }
+
+    const parsedData = await response.json();
+
+    // Proračun ostalih parametara na klijentskoj strani
+    const calc = calculateAllParameters(parsedData.shape || 'I', parsedData);
+
+    document.getElementById('aiProfileTitle').textContent = `${parsedData.oznaka} (AI Generisano)`;
+    renderTablesHTML(calc, 'aiSpecsContainer');
+    drawSVG(parsedData.shape || 'I', calc, 'aiSvgContainer');
+
+    statusEl.style.display = "none";
+    resultsGrid.style.display = "grid";
+  } catch (err) {
+    console.error(err);
+    showStatus(`Greška: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showStatus(text, type) {
+  const el = document.getElementById('aiStatus');
+  el.textContent = text;
+  el.className = `status-msg ${type}`;
+}
+
+// -------------------------------------------------------------
+// TAB 2: PREGLEDNIK BAZE
+// -------------------------------------------------------------
+function onTypeChange() {
+  const typeKey = document.getElementById('typeSelect').value;
+  const profileSelect = document.getElementById('profileSelect');
+  profileSelect.innerHTML = '';
+
+  const groupData = jsonData.tipovi[typeKey];
+  groupData.podaci.forEach((row, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = row[0];
+    profileSelect.appendChild(opt);
+  });
+
+  renderProfile();
+}
+
+function renderProfile() {
+  const typeKey = document.getElementById('typeSelect').value;
+  const idx = document.getElementById('profileSelect').value;
+  const groupData = jsonData.tipovi[typeKey];
+  const rowData = groupData.podaci[idx];
+  
+  let raw = {};
+  groupData.redoslijed.forEach((key, i) => { raw[key] = rowData[i]; });
+
+  const calc = calculateAllParameters(typeKey, raw);
+  document.getElementById('profileTitle').textContent = raw.oznaka;
+
+  renderTablesHTML(calc, 'specsContainer');
+  drawSVG(typeKey, calc, 'svgContainer');
+}
+
+// -------------------------------------------------------------
+// INŽENjERSKA MATEMATIČKA MAŠINA ZA EN 1993-1-1
+// -------------------------------------------------------------
+function calculateAllParameters(typeKey, raw) {
+  let h = 0, b = 0, tw = 0, tf = 0, r = 0, D = 0, a = 0, t = 0;
+  
+  if (typeKey.includes('IPE') || typeKey.includes('HE') || typeKey === 'IPN' || typeKey === 'I') {
+    h = raw.h; b = raw.b; tw = raw.tw; tf = raw.tf; r = raw.r || 0;
+  } else if (typeKey === 'UPN') {
+    h = raw.h; b = raw.b; tw = raw.tw; tf = raw.tf; r = raw.r || 0;
+  } else if (typeKey === 'SHS') {
+    a = raw.a || raw.h; t = raw.t || raw.tw; h = a; b = a; tw = t; tf = t; r = 1.5 * t;
+  } else if (typeKey === 'RHS') {
+    h = raw.h; b = raw.b; t = raw.t || raw.tw; tw = t; tf = t; r = 1.5 * t;
+  } else if (typeKey === 'CHS') {
+    D = raw.D || raw.h; t = raw.t || raw.tw; h = D; b = D; tw = t; tf = t;
+  }
+
+  let A = 0, Iy = 0, Iz = 0, Wely = 0, Welz = 0, Wply = 0, Wplz = 0, IT = 0, Iw = 0, Avz = 0, Avy = 0;
+
+  if (typeKey.includes('IPE') || typeKey.includes('HE') || typeKey === 'IPN' || typeKey === 'I') {
+    A = 2 * b * tf + (h - 2 * tf) * tw + (4 - Math.PI) * r * r;
+    Iy = (b * Math.pow(h, 3) - (b - tw) * Math.pow(h - 2 * tf, 3)) / 12 + 0.0461 * Math.pow(r, 4);
+    Iz = (2 * tf * Math.pow(b, 3) + (h - 2 * tf) * Math.pow(tw, 3)) / 12 + 0.0461 * Math.pow(r, 4);
+    Wely = Iy / (h / 2); Welz = Iz / (b / 2);
+    Wply = b * tf * (h - tf) + (tw * Math.pow(h - 2 * tf, 2)) / 4;
+    Wplz = (tf * Math.pow(b, 2)) / 2 + ((h - 2 * tf) * Math.pow(tw, 2)) / 4;
+    Avz = Math.max(A - 2 * b * tf + (tw + 2 * r) * tf, 1.2 * (h - 2 * tf) * tw);
+    Avy = 2 * b * tf;
+    IT = (1 / 3) * (2 * b * Math.pow(tf, 3) + (h - 2 * tf) * Math.pow(tw, 3));
+    Iw = (Iz * Math.pow(h - tf, 2)) / 4;
+  } else if (typeKey === 'SHS' || typeKey === 'RHS') {
+    A = 2 * tw * (h + b - 2 * tw);
+    Iy = (b * Math.pow(h, 3) - (b - 2 * tw) * Math.pow(h - 2 * tw, 3)) / 12;
+    Iz = (h * Math.pow(b, 3) - (h - 2 * tw) * Math.pow(b - 2 * tw, 3)) / 12;
+    Wely = Iy / (h / 2); Welz = Iz / (b / 2);
+    Wply = (b * Math.pow(h, 2) - (b - 2 * tw) * Math.pow(h - 2 * tw, 2)) / 4;
+    Wplz = (h * Math.pow(b, 2) - (h - 2 * tw) * Math.pow(b - 2 * tw, 2)) / 4;
+    Avz = A * (h / (h + b)); Avy = A * (b / (h + b));
+    IT = (2 * tw * Math.pow(b - tw, 2) * Math.pow(h - tw, 2)) / (b + h - 2 * tw);
+    Iw = 0;
+  } else if (typeKey === 'CHS') {
+    A = Math.PI * t * (D - t);
+    Iy = Iz = (Math.PI / 64) * (Math.pow(D, 4) - Math.pow(D - 2 * t, 4));
+    Wely = Welz = Iy / (D / 2);
+    Wply = Wplz = (Math.pow(D, 3) - Math.pow(D - 2 * t, 3)) / 6;
+    Avz = Avy = (2 * A) / Math.PI;
+    IT = 2 * Iy; Iw = 0;
+  }
+
+  const iy = Math.sqrt(Iy / A) || 0;
+  const iz = Math.sqrt(Iz / A) || 0;
+  const m = A * 7.85e-3;
+  const P = (2 * h + 2 * b) / 1000;
+
+  const fy = 235; // S235 Čelik
+  const NplRd = (A * fy) / 1000;
+  const VplRdz = (Avz * (fy / Math.sqrt(3))) / 1000;
+  const VplRdy = (Avy * (fy / Math.sqrt(3))) / 1000;
+  const MplRdy = (Wply * fy) / 1e6;
+  const MplRdz = (Wplz * fy) / 1e6;
+
+  return {
+    h, b, tw, tf, r, A, m, P, Avz, Avy,
+    Iy, Iz, iy, iz, Wely, Welz, Wply, Wplz,
+    IT, WT: IT/Math.max(tf, tw, 1), Iw, Ww: Iw > 0 ? Iw / ((b*(h-tf))/4) : 0,
+    NplRd, VplRdz, VplRdy, MplRdy, MplRdz
+  };
+}
+
+function renderTablesHTML(c, containerId) {
+  document.getElementById(containerId).innerHTML = `
+    <div>
+      <h3>Geometrijske Dimenzije</h3>
+      <table>
+        <tr><td>Visina (h)</td><td class="val">${c.h}</td><td class="unit">mm</td></tr>
+        <tr><td>Širina (b)</td><td class="val">${c.b}</td><td class="unit">mm</td></tr>
+        <tr><td>Debljina hrpta (t<sub>w</sub>)</td><td class="val">${c.tw}</td><td class="unit">mm</td></tr>
+        <tr><td>Debljina pojasnice (t<sub>f</sub>)</td><td class="val">${c.tf}</td><td class="unit">mm</td></tr>
+        <tr><td>Radijus (r)</td><td class="val">${c.r}</td><td class="unit">mm</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h3>Površina i Masa</h3>
+      <table>
+        <tr><td>Masa po m (m)</td><td class="val">${c.m.toFixed(2)}</td><td class="unit">kg/m</td></tr>
+        <tr><td>Površina (A)</td><td class="val">${Math.round(c.A)}</td><td class="unit">mm²</td></tr>
+        <tr><td>Smičuća pov. A<sub>v,z</sub></td><td class="val">${Math.round(c.Avz)}</td><td class="unit">mm²</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h3>Inercija Osa y-y</h3>
+      <table>
+        <tr><td>Moment inercije (I<sub>y</sub>)</td><td class="val">${(c.Iy/1e6).toFixed(3)}</td><td class="unit">×10⁶ mm⁴</td></tr>
+        <tr><td>Elast. otporni m. (W<sub>el,y</sub>)</td><td class="val">${(c.Wely/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+        <tr><td>Plast. otporni m. (W<sub>pl,y</sub>)</td><td class="val">${(c.Wply/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h3>Računska Nosivost (S235)</h3>
+      <table>
+        <tr><td>Aksijalni pritisak N<sub>pl,Rd</sub></td><td class="val">${c.NplRd.toFixed(1)}</td><td class="unit">kN</td></tr>
+        <tr><td>Smicanje V<sub>pl,Rd,z</sub></td><td class="val">${c.VplRdz.toFixed(1)}</td><td class="unit">kN</td></tr>
+        <tr><td>Savijanje M<sub>pl,Rd,y</sub></td><td class="val">${c.MplRdy.toFixed(2)}</td><td class="unit">kNm</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+function drawSVG(typeKey, c, containerId) {
+  const container = document.getElementById(containerId);
+  const maxDim = Math.max(c.h, c.b);
+  const scale = 160 / maxDim;
+  const h = c.h * scale, b = c.b * scale, tw = Math.max(c.tw * scale, 2), tf = Math.max(c.tf * scale, 2);
+  const cx = 130, cy = 130;
+
+  let pathData = `M ${cx - b/2} ${cy - h/2} h ${b} v ${tf} h -${(b - tw)/2} v ${h - 2*tf} h ${(b - tw)/2} v ${tf} h -${b} v -${tf} h ${(b - tw)/2} v -${h - 2*tf} h -${(b - tw)/2} Z`;
+
+  container.innerHTML = `
+    <svg width="260" height="260" viewBox="0 0 260 260">
+      <line x1="${cx}" y1="10" x2="${cx}" y2="250" stroke="#26334d" stroke-dasharray="4" />
+      <line x1="10" y1="${cy}" x2="250" y2="${cy}" stroke="#26334d" stroke-dasharray="4" />
+      <path d="${pathData}" fill="#38bdf8" fill-opacity="0.25" stroke="#38bdf8" stroke-width="2"/>
+    </svg>
+  `;
+}
+
+window.onload = initApp;
+</script>
+
+</body>
+</html>
