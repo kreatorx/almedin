@@ -36,7 +36,7 @@
     h1 { margin: 0; color: var(--accent); font-size: 1.8rem; }
     .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
 
-    /* Navigacijski Tabovi */
+    /* Tabs */
     .tabs {
       display: flex;
       gap: 12px;
@@ -104,10 +104,19 @@
       white-space: nowrap;
     }
 
-    button.btn-action:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    button.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.btn-export {
+      background: #1e293b;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
     }
+    button.btn-export:hover { background: #334155; }
 
     /* Grid Layout */
     .main-grid {
@@ -133,6 +142,9 @@
       margin-bottom: 16px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .svg-wrapper {
@@ -147,7 +159,7 @@
 
     .tables-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
     }
 
@@ -156,6 +168,31 @@
     th { color: var(--muted); font-weight: 500; }
     td.val { font-weight: 600; text-align: right; color: #60a5fa; }
     td.unit { color: var(--muted); font-size: 0.8rem; width: 65px; text-align: right; }
+
+    /* Raw JSON details styling */
+    details.raw-json {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+    }
+    details.raw-json summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    details.raw-json pre {
+      margin: 10px 0 0 0;
+      background: #000;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      color: #34d399;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
 
     .status-msg {
       padding: 12px;
@@ -173,34 +210,40 @@
 <div class="container">
   <header>
     <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
-    <div class="subtitle">Pogonjeno putem Vercel API-ja i Google Gemini 1.5 Flash (S235 čelik, γM0 = 1.00)</div>
+    <div class="subtitle">Google Gemini 2.5 Flash API & Eurocode 3 proračun (S235 čelik, γM0 = 1.00)</div>
   </header>
 
-  <!-- Navigacijski Tabovi -->
+  <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('ai-profile')">1. AI Profil</button>
-    <button class="tab-btn" onclick="switchTab('browser')">2. Preglednik Baze</button>
-    <button class="tab-btn" onclick="switchTab('ai-search')">3. AI Dimenzionisanje (Uskoro)</button>
-    <button class="tab-btn" onclick="switchTab('custom-calc')">4. Proračun Proizvoljnog Profila (Uskoro)</button>
+    <button class="tab-btn active" data-tab="ai-profile">1. AI Profil</button>
+    <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
+    <button class="tab-btn" data-tab="ai-search">3. AI Dimenzionisanje (Uskoro)</button>
+    <button class="tab-btn" data-tab="custom-calc">4. Proračun Proizvoljnog Profila (Uskoro)</button>
   </div>
 
-  <!-- TAB 1: AI PROFIL (PREKO VERCEL API-JA) -->
+  <!-- TAB 1: AI PROFIL -->
   <div id="tab-ai-profile" class="tab-content active">
     <div class="card">
       <h2 class="card-title">Pretraga Profila Preko AI Modela</h2>
-      <p style="color: var(--muted); font-size: 0.9rem;">Unesite naziv ili opis profila. AI servis vraća osnovna svojstva profila, na osnovu kojih se automatski izračunavaju sve inercije, otporni momenti i računske nosivosti po Eurocode 3.</p>
+      <p style="color: var(--muted); font-size: 0.9rem;">Unesite naziv ili opis profila. AI vrši pretragu i vraća geometrijska svojstva na osnovu kojih se proračunava kompletna Eurocode 3 tablica.</p>
 
       <div class="controls">
         <div class="form-group" style="flex: 3;">
           <label for="aiPromptInput">Naziv ili opis profila</label>
           <input type="text" id="aiPromptInput" placeholder="Npr. IPE 240, HEA 300, ili opis 'I-profil visine 250mm, širine 120mm'">
         </div>
-        <button class="btn-action" id="btnAiSearch" onclick="fetchProfileFromVercel()">Generiši Profil (AI)</button>
+        <button class="btn-action" id="btnAiSearch">Generiši Profil (AI)</button>
       </div>
 
-      <div id="aiStatus" class="status-msg"></div>
+      <!-- Sirovi AI JSON Odgovor (Zatvoren po defaultu) -->
+      <details id="rawJsonDetails" class="raw-json" style="display: none;">
+        <summary>Prikaži sirovi AI JSON odgovor</summary>
+        <pre><code id="rawJsonCode"></code></pre>
+      </details>
 
-      <div class="main-grid" id="aiResultsGrid" style="display: none;">
+      <div id="aiStatus" class="status-msg" style="margin-top: 16px;"></div>
+
+      <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 20px;">
         <div>
           <div class="card">
             <h2 class="card-title">Poprečni Presjek (SVG)</h2>
@@ -210,7 +253,13 @@
 
         <div>
           <div class="card">
-            <h2 class="card-title" id="aiProfileTitle">Proračunata Svojstva Profila</h2>
+            <h2 class="card-title">
+              <span id="aiProfileTitle">Proračunata Svojstva Profila</span>
+              <div>
+                <button class="btn-export" onclick="exportToCSV('ai')">CSV</button>
+                <button class="btn-export" onclick="exportToPDF('ai')">PDF</button>
+              </div>
+            </h2>
             <div class="tables-grid" id="aiSpecsContainer"></div>
           </div>
         </div>
@@ -222,12 +271,12 @@
   <div id="tab-browser" class="tab-content">
     <div class="controls">
       <div class="form-group">
-        <label>Tip profila</label>
-        <select id="typeSelect" onchange="onTypeChange()"></select>
+        <label for="typeSelect">Tip profila</label>
+        <select id="typeSelect"></select>
       </div>
       <div class="form-group">
-        <label>Oznaka profila</label>
-        <select id="profileSelect" onchange="renderProfile()"></select>
+        <label for="profileSelect">Oznaka profila</label>
+        <select id="profileSelect"></select>
       </div>
     </div>
 
@@ -241,7 +290,13 @@
 
       <div>
         <div class="card">
-          <h2 class="card-title" id="profileTitle">Specifikacije Profila</h2>
+          <h2 class="card-title">
+            <span id="profileTitle">Specifikacije Profila</span>
+            <div>
+              <button class="btn-export" onclick="exportToCSV('db')">CSV</button>
+              <button class="btn-export" onclick="exportToPDF('db')">PDF</button>
+            </div>
+          </h2>
           <div class="tables-grid" id="specsContainer"></div>
         </div>
       </div>
@@ -252,7 +307,7 @@
   <div id="tab-ai-search" class="tab-content">
     <div class="card">
       <h2 class="card-title">3. AI Dimenzionisanje (Optimizacija)</h2>
-      <p style="color: var(--muted);">Ova sekcija će biti konfigurisana u narednom koraku.</p>
+      <p style="color: var(--muted);">Sekcija za optimizaciju profila prema N, M, V nosivosti.</p>
     </div>
   </div>
 
@@ -260,7 +315,7 @@
   <div id="tab-custom-calc" class="tab-content">
     <div class="card">
       <h2 class="card-title">4. Proračun Proizvoljnog Profila</h2>
-      <p style="color: var(--muted);">Ova sekcija će biti konfigurisana u narednom koraku.</p>
+      <p style="color: var(--muted);">Sekcija za unos proizvoljnih dimenzija profila.</p>
     </div>
   </div>
 
@@ -268,10 +323,35 @@
 
 <script>
 let jsonData = {};
+let activeCalcAi = null;
+let activeCalcDb = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  initApp();
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  const btnAi = document.getElementById('btnAiSearch');
+  if (btnAi) btnAi.addEventListener('click', fetchProfileFromVercel);
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const tabId = e.target.getAttribute('data-tab');
+      switchTab(tabId, e.target);
+    });
+  });
+
+  const typeSelect = document.getElementById('typeSelect');
+  const profileSelect = document.getElementById('profileSelect');
+  if (typeSelect) typeSelect.addEventListener('change', onTypeChange);
+  if (profileSelect) profileSelect.addEventListener('change', renderProfile);
+}
 
 async function initApp() {
   try {
     const res = await fetch('profiles.json');
+    if (!res.ok) throw new Error("profiles.json nije pronađen");
     jsonData = await res.json();
 
     const typeSelect = document.getElementById('typeSelect');
@@ -286,25 +366,29 @@ async function initApp() {
 
     onTypeChange();
   } catch (err) {
-    console.warn("Preglednik baze: profiles.json nije učitan ili je nedostupan:", err);
+    console.warn("Preglednik baze:", err.message);
   }
 }
 
-function switchTab(tabId) {
+function switchTab(tabId, activeBtn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   
-  event.target.classList.add('active');
-  document.getElementById(`tab-${tabId}`).classList.add('active');
+  if (activeBtn) activeBtn.classList.add('active');
+  const targetContent = document.getElementById(`tab-${tabId}`);
+  if (targetContent) targetContent.classList.add('active');
 }
 
 // -------------------------------------------------------------
-// TAB 1: AI POZIV PREMA VERCEL POZIVU (/api/steel)
+// TAB 1: AI POZIV PREMA VERCEL API-JU
 // -------------------------------------------------------------
 async function fetchProfileFromVercel() {
-  const promptText = document.getElementById('aiPromptInput').value.trim();
+  const promptInput = document.getElementById('aiPromptInput');
+  const promptText = promptInput ? promptInput.value.trim() : '';
   const statusEl = document.getElementById('aiStatus');
   const resultsGrid = document.getElementById('aiResultsGrid');
+  const rawDetails = document.getElementById('rawJsonDetails');
+  const rawCode = document.getElementById('rawJsonCode');
   const btn = document.getElementById('btnAiSearch');
 
   if (!promptText) {
@@ -312,44 +396,39 @@ async function fetchProfileFromVercel() {
     return;
   }
 
-  showStatus("Generišem profil putem AI servisa...", "loading");
+  showStatus("Generišem profil putem Gemini 2.5 Flash AI servisa...", "loading");
   btn.disabled = true;
   resultsGrid.style.display = "none";
+  rawDetails.style.display = "none";
 
   try {
-    // Ako si na localhostu, možete podesiti punu Vercel URL adresu za testiranje,
-    // npr: const apiUrl = window.location.hostname === '127.0.0.1' ? 'https://tvoj-projekat.vercel.app/api/steel' : '/api/steel';
-    const apiUrl = 'https://almedin.vercel.app/api/steel';
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch('/api/steel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: promptText })
     });
 
-    // 1. Provjera da li je odgovor 404 ili greška servera
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error("Ruta /api/steel nije pronađena na ovom lokalnom serveru. Backend funkcije rade nakon deploy-a na Vercel ili pokretanja preko Vercel CLI ('vercel dev').");
+        throw new Error("Ruta /api/steel ne postoji na ovom lokalnom serveru. Backend radi nakon deploy-a na Vercel.");
       }
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error || `Greška HTTP Status: ${response.status}`);
     }
 
-    // 2. Provjera da li je vraćeni odgovor stvarni JSON
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Server nije vratio JSON format. Provjerite da li Vercel funkcija radi ispravno.");
-    }
-
     const parsedData = await response.json();
 
-    // Proračun ostalih parametara na klijentskoj strani
-    const calc = calculateAllParameters(parsedData.shape || 'I', parsedData);
+    // Ispis sirovog JSON odgovora u <details><summary>
+    rawCode.textContent = JSON.stringify(parsedData, null, 2);
+    rawDetails.style.display = "block";
+    rawDetails.open = false; // Po defaultu zatvoren
+
+    // Proračun svih parametara
+    activeCalcAi = calculateAllParameters(parsedData.shape || 'I', parsedData);
 
     document.getElementById('aiProfileTitle').textContent = `${parsedData.oznaka} (AI Generisano)`;
-    renderTablesHTML(calc, 'aiSpecsContainer');
-    drawSVG(parsedData.shape || 'I', calc, 'aiSvgContainer');
+    renderTablesHTML(activeCalcAi, 'aiSpecsContainer');
+    drawSVG(parsedData.shape || 'I', activeCalcAi, 'aiSvgContainer');
 
     statusEl.style.display = "none";
     resultsGrid.style.display = "grid";
@@ -363,6 +442,7 @@ async function fetchProfileFromVercel() {
 
 function showStatus(text, type) {
   const el = document.getElementById('aiStatus');
+  if (!el) return;
   el.textContent = text;
   el.className = `status-msg ${type}`;
 }
@@ -371,39 +451,49 @@ function showStatus(text, type) {
 // TAB 2: PREGLEDNIK BAZE
 // -------------------------------------------------------------
 function onTypeChange() {
-  const typeKey = document.getElementById('typeSelect').value;
+  const typeSelect = document.getElementById('typeSelect');
   const profileSelect = document.getElementById('profileSelect');
+  if (!typeSelect || !profileSelect || !jsonData.tipovi) return;
+
+  const typeKey = typeSelect.value;
   profileSelect.innerHTML = '';
 
   const groupData = jsonData.tipovi[typeKey];
-  groupData.podaci.forEach((row, idx) => {
-    const opt = document.createElement('option');
-    opt.value = idx;
-    opt.textContent = row[0];
-    profileSelect.appendChild(opt);
-  });
-
-  renderProfile();
+  if (groupData && groupData.podaci) {
+    groupData.podaci.forEach((row, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = row[0];
+      profileSelect.appendChild(opt);
+    });
+    renderProfile();
+  }
 }
 
 function renderProfile() {
-  const typeKey = document.getElementById('typeSelect').value;
-  const idx = document.getElementById('profileSelect').value;
+  const typeSelect = document.getElementById('typeSelect');
+  const profileSelect = document.getElementById('profileSelect');
+  if (!typeSelect || !profileSelect || !jsonData.tipovi) return;
+
+  const typeKey = typeSelect.value;
+  const idx = profileSelect.value;
   const groupData = jsonData.tipovi[typeKey];
   const rowData = groupData.podaci[idx];
   
+  if (!rowData) return;
+
   let raw = {};
   groupData.redoslijed.forEach((key, i) => { raw[key] = rowData[i]; });
 
-  const calc = calculateAllParameters(typeKey, raw);
+  activeCalcDb = calculateAllParameters(typeKey, raw);
   document.getElementById('profileTitle').textContent = raw.oznaka;
 
-  renderTablesHTML(calc, 'specsContainer');
-  drawSVG(typeKey, calc, 'svgContainer');
+  renderTablesHTML(activeCalcDb, 'specsContainer');
+  drawSVG(typeKey, activeCalcDb, 'svgContainer');
 }
 
 // -------------------------------------------------------------
-// INŽENjERSKA MATEMATIČKA MAŠINA ZA EN 1993-1-1
+// PROŠIRENA INŽENjERSKA MAŠINA — PRORAČUN SVIH EN 1993-1-1 PARAMETARA
 // -------------------------------------------------------------
 function calculateAllParameters(typeKey, raw) {
   let h = 0, b = 0, tw = 0, tf = 0, r = 0, D = 0, a = 0, t = 0;
@@ -454,61 +544,149 @@ function calculateAllParameters(typeKey, raw) {
 
   const iy = Math.sqrt(Iy / A) || 0;
   const iz = Math.sqrt(Iz / A) || 0;
-  const m = A * 7.85e-3;
-  const P = (2 * h + 2 * b) / 1000;
+  const m = A * 7.85e-3; // kg/m
+  const P = (2 * h + 2 * b) / 1000; // m
 
-  const fy = 235; // S235 Čelik
-  const NplRd = (A * fy) / 1000;
-  const VplRdz = (Avz * (fy / Math.sqrt(3))) / 1000;
-  const VplRdy = (Avy * (fy / Math.sqrt(3))) / 1000;
-  const MplRdy = (Wply * fy) / 1e6;
-  const MplRdz = (Wplz * fy) / 1e6;
+  const WT = IT / Math.max(tf, tw, 1);
+  const Ww = Iw > 0 ? Iw / ((b * (h - tf)) / 4) : 0;
+
+  // Eurocode 3 S235 čelik (fy = 235 N/mm2, gammaM0 = 1.00)
+  const fy = 235;
+  const NplRd = (A * fy) / 1000; // kN
+  const VplRdz = (Avz * (fy / Math.sqrt(3))) / 1000; // kN
+  const VplRdy = (Avy * (fy / Math.sqrt(3))) / 1000; // kN
+  
+  const MelRdy = (Wely * fy) / 1e6; // kNm
+  const MplRdy = (Wply * fy) / 1e6; // kNm
+  const MelRdz = (Welz * fy) / 1e6; // kNm
+  const MplRdz = (Wplz * fy) / 1e6; // kNm
+
+  // Krive izvijanja
+  let buckY = 'a', buckZ = 'b';
+  if (typeKey.includes('HE')) {
+    if (h / b > 1.2 && tf <= 40) { buckY = 'a'; buckZ = 'b'; }
+    else { buckY = 'b'; buckZ = 'c'; }
+  } else if (typeKey === 'SHS' || typeKey === 'RHS' || typeKey === 'CHS') {
+    buckY = 'c'; buckZ = 'c';
+  }
+
+  // Klasifikacija presjeka (epsilon = 1.0 za S235)
+  let cWebB = 1, cWebC = 1, cFlanC = 1;
+  if (typeKey.includes('IPE') || typeKey.includes('HE')) {
+    const c_flange = (b - tw - 2 * r) / (2 * tf);
+    if (c_flange <= 9) cFlanC = 1; else if (c_flange <= 10) cFlanC = 2; else if (c_flange <= 14) cFlanC = 3; else cFlanC = 4;
+
+    const c_web = (h - 2 * tf - 2 * r) / tw;
+    if (c_web <= 72) cWebB = 1; else if (c_web <= 83) cWebB = 2; else if (c_web <= 124) cWebB = 3; else cWebB = 4;
+    if (c_web <= 33) cWebC = 1; else if (c_web <= 38) cWebC = 2; else if (c_web <= 42) cWebC = 3; else cWebC = 4;
+  }
 
   return {
-    h, b, tw, tf, r, A, m, P, Avz, Avy,
-    Iy, Iz, iy, iz, Wely, Welz, Wply, Wplz,
-    IT, WT: IT/Math.max(tf, tw, 1), Iw, Ww: Iw > 0 ? Iw / ((b*(h-tf))/4) : 0,
-    NplRd, VplRdz, VplRdy, MplRdy, MplRdz
+    oznaka: raw.oznaka || 'Profil',
+    h, b, tw, tf, r, m, P, A, Avz, Avy,
+    Iy, iy, Wely, Wply,
+    Iz, iz, Welz, Wplz,
+    IT, WT, Iw, Ww,
+    NplRd, VplRdz, VplRdy, MelRdy, MplRdy, MelRdz, MplRdz,
+    buckY, buckZ, cWebB, cWebC, cFlanC
   };
 }
 
+// -------------------------------------------------------------
+// RENDANJE PROŠIRENE TABELE SA SVIM SPECIFIKACIJAMA
+// -------------------------------------------------------------
 function renderTablesHTML(c, containerId) {
-  document.getElementById(containerId).innerHTML = `
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <!-- 1. Dimenzije -->
     <div>
-      <h3>Geometrijske Dimenzije</h3>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Profile Dimensions</h3>
       <table>
-        <tr><td>Visina (h)</td><td class="val">${c.h}</td><td class="unit">mm</td></tr>
-        <tr><td>Širina (b)</td><td class="val">${c.b}</td><td class="unit">mm</td></tr>
-        <tr><td>Debljina hrpta (t<sub>w</sub>)</td><td class="val">${c.tw}</td><td class="unit">mm</td></tr>
-        <tr><td>Debljina pojasnice (t<sub>f</sub>)</td><td class="val">${c.tf}</td><td class="unit">mm</td></tr>
-        <tr><td>Radijus (r)</td><td class="val">${c.r}</td><td class="unit">mm</td></tr>
+        <tr><td>Depth ($h$)</td><td class="val">${c.h}</td><td class="unit">mm</td></tr>
+        <tr><td>Width ($b$)</td><td class="val">${c.b}</td><td class="unit">mm</td></tr>
+        <tr><td>Web thickness ($t_w$)</td><td class="val">${c.tw}</td><td class="unit">mm</td></tr>
+        <tr><td>Flange thickness ($t_f$)</td><td class="val">${c.tf}</td><td class="unit">mm</td></tr>
+        <tr><td>Root radius ($r$)</td><td class="val">${c.r}</td><td class="unit">mm</td></tr>
       </table>
     </div>
 
+    <!-- 2. Površina i Masa -->
     <div>
-      <h3>Površina i Masa</h3>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Area Properties</h3>
       <table>
-        <tr><td>Masa po m (m)</td><td class="val">${c.m.toFixed(2)}</td><td class="unit">kg/m</td></tr>
-        <tr><td>Površina (A)</td><td class="val">${Math.round(c.A)}</td><td class="unit">mm²</td></tr>
-        <tr><td>Smičuća pov. A<sub>v,z</sub></td><td class="val">${Math.round(c.Avz)}</td><td class="unit">mm²</td></tr>
+        <tr><td>Weight ($m$)</td><td class="val">${c.m.toFixed(2)}</td><td class="unit">kg/m</td></tr>
+        <tr><td>Perimeter ($P$)</td><td class="val">${c.P.toFixed(3)}</td><td class="unit">m</td></tr>
+        <tr><td>Area ($A$)</td><td class="val">${Math.round(c.A)}</td><td class="unit">mm²</td></tr>
+        <tr><td>Shear area z-z ($A_{v,z}$)</td><td class="val">${Math.round(c.Avz)}</td><td class="unit">mm²</td></tr>
+        <tr><td>Shear area y-y ($A_{v,y}$)</td><td class="val">${Math.round(c.Avy)}</td><td class="unit">mm²</td></tr>
       </table>
     </div>
 
+    <!-- 3. Inercija Y-Y -->
     <div>
-      <h3>Inercija Osa y-y</h3>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Major Axis y-y Properties</h3>
       <table>
-        <tr><td>Moment inercije (I<sub>y</sub>)</td><td class="val">${(c.Iy/1e6).toFixed(3)}</td><td class="unit">×10⁶ mm⁴</td></tr>
-        <tr><td>Elast. otporni m. (W<sub>el,y</sub>)</td><td class="val">${(c.Wely/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
-        <tr><td>Plast. otporni m. (W<sub>pl,y</sub>)</td><td class="val">${(c.Wply/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+        <tr><td>Second moment ($I_y$)</td><td class="val">${(c.Iy/1e6).toFixed(3)}</td><td class="unit">×10⁶ mm⁴</td></tr>
+        <tr><td>Radius of gyration ($i_y$)</td><td class="val">${c.iy.toFixed(1)}</td><td class="unit">mm</td></tr>
+        <tr><td>Elastic modulus ($W_{el,y}$)</td><td class="val">${(c.Wely/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+        <tr><td>Plastic modulus ($W_{pl,y}$)</td><td class="val">${(c.Wply/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
       </table>
     </div>
 
+    <!-- 4. Inercija Z-Z -->
     <div>
-      <h3>Računska Nosivost (S235)</h3>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Minor Axis z-z Properties</h3>
       <table>
-        <tr><td>Aksijalni pritisak N<sub>pl,Rd</sub></td><td class="val">${c.NplRd.toFixed(1)}</td><td class="unit">kN</td></tr>
-        <tr><td>Smicanje V<sub>pl,Rd,z</sub></td><td class="val">${c.VplRdz.toFixed(1)}</td><td class="unit">kN</td></tr>
-        <tr><td>Savijanje M<sub>pl,Rd,y</sub></td><td class="val">${c.MplRdy.toFixed(2)}</td><td class="unit">kNm</td></tr>
+        <tr><td>Second moment ($I_z$)</td><td class="val">${(c.Iz/1e6).toFixed(3)}</td><td class="unit">×10⁶ mm⁴</td></tr>
+        <tr><td>Radius of gyration ($i_z$)</td><td class="val">${c.iz.toFixed(1)}</td><td class="unit">mm</td></tr>
+        <tr><td>Elastic modulus ($W_{el,z}$)</td><td class="val">${(c.Welz/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+        <tr><td>Plastic modulus ($W_{pl,z}$)</td><td class="val">${(c.Wplz/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+      </table>
+    </div>
+
+    <!-- 5. Torzija i Vitoperenje -->
+    <div>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Torsional & Warping Properties</h3>
+      <table>
+        <tr><td>Torsion constant ($I_T$)</td><td class="val">${(c.IT/1e3).toFixed(2)}</td><td class="unit">×10³ mm⁴</td></tr>
+        <tr><td>Torsion modulus ($W_T$)</td><td class="val">${(c.WT/1e3).toFixed(2)}</td><td class="unit">×10³ mm³</td></tr>
+        <tr><td>Warping constant ($I_w$)</td><td class="val">${(c.Iw/1e6).toFixed(3)}</td><td class="unit">×10⁶ mm⁶</td></tr>
+        <tr><td>Warping modulus ($W_w$)</td><td class="val">${(c.Ww/1e3).toFixed(2)}</td><td class="unit">×10³ mm⁴</td></tr>
+      </table>
+    </div>
+
+    <!-- 6. Računska Aksijalna i Smičuća Nosivost -->
+    <div>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Axial Force & Shear Resistance (S235)</h3>
+      <table>
+        <tr><td>Axial resistance ($N_{pl,Rd}$)</td><td class="val">${c.NplRd.toFixed(2)}</td><td class="unit">kN</td></tr>
+        <tr><td>Shear resistance z-z ($V_{pl,Rd,z}$)</td><td class="val">${c.VplRdz.toFixed(2)}</td><td class="unit">kN</td></tr>
+        <tr><td>Shear resistance y-y ($V_{pl,Rd,y}$)</td><td class="val">${c.VplRdy.toFixed(2)}</td><td class="unit">kN</td></tr>
+      </table>
+    </div>
+
+    <!-- 7. Moment Savijanja Y-Y i Z-Z -->
+    <div>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Bending Resistance (S235)</h3>
+      <table>
+        <tr><td>Elastic bending y-y ($M_{el,Rd,y}$)</td><td class="val">${c.MelRdy.toFixed(2)}</td><td class="unit">kNm</td></tr>
+        <tr><td>Plastic bending y-y ($M_{pl,Rd,y}$)</td><td class="val">${c.MplRdy.toFixed(2)}</td><td class="unit">kNm</td></tr>
+        <tr><td>Elastic bending z-z ($M_{el,Rd,z}$)</td><td class="val">${c.MelRdz.toFixed(2)}</td><td class="unit">kNm</td></tr>
+        <tr><td>Plastic bending z-z ($M_{pl,Rd,z}$)</td><td class="val">${c.MplRdz.toFixed(2)}</td><td class="unit">kNm</td></tr>
+      </table>
+    </div>
+
+    <!-- 8. Izvijanje i Klasifikacija -->
+    <div>
+      <h3 style="color:var(--muted); font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Buckling & Section Classification</h3>
+      <table>
+        <tr><td>Buckling curve y-y</td><td class="val">${c.buckY}</td><td class="unit"></td></tr>
+        <tr><td>Buckling curve z-z</td><td class="val">${c.buckZ}</td><td class="unit"></td></tr>
+        <tr><td>Web in pure bending y-y</td><td class="val">Class ${c.cWebB}</td><td class="unit"></td></tr>
+        <tr><td>Web in uniform compression</td><td class="val">Class ${c.cWebC}</td><td class="unit"></td></tr>
+        <tr><td>Flanges in uniform compression</td><td class="val">Class ${c.cFlanC}</td><td class="unit"></td></tr>
       </table>
     </div>
   `;
@@ -516,6 +694,8 @@ function renderTablesHTML(c, containerId) {
 
 function drawSVG(typeKey, c, containerId) {
   const container = document.getElementById(containerId);
+  if (!container) return;
+
   const maxDim = Math.max(c.h, c.b);
   const scale = 160 / maxDim;
   const h = c.h * scale, b = c.b * scale, tw = Math.max(c.tw * scale, 2), tf = Math.max(c.tf * scale, 2);
@@ -532,7 +712,90 @@ function drawSVG(typeKey, c, containerId) {
   `;
 }
 
-window.onload = initApp;
+// -------------------------------------------------------------
+// FUNKCIJE ZA IZVOZ U CSV I PDF
+// -------------------------------------------------------------
+function exportToCSV(source) {
+  const c = source === 'ai' ? activeCalcAi : activeCalcDb;
+  if (!c) return alert("Nema podataka za izvoz!");
+
+  const headers = [
+    "Oznaka", "h [mm]", "b [mm]", "tw [mm]", "tf [mm]", "r [mm]", "m [kg/m]", "P [m]", "A [mm2]",
+    "Av,z [mm2]", "Av,y [mm2]", "Iy [x10^6 mm4]", "iy [mm]", "Wel,y [x10^3 mm3]", "Wpl,y [x10^3 mm3]",
+    "Iz [x10^6 mm4]", "iz [mm]", "Wel,z [x10^3 mm3]", "Wpl,z [x10^3 mm3]", "IT [x10^3 mm4]", "WT [x10^3 mm3]",
+    "Iw [x10^6 mm6]", "Ww [x10^3 mm4]", "Npl,Rd [kN]", "Vpl,Rd,z [kN]", "Vpl,Rd,y [kN]", "Mel,Rd,y [kNm]",
+    "Mpl,Rd,y [kNm]", "Mel,Rd,z [kNm]", "Mpl,Rd,z [kNm]", "Buckling y-y", "Buckling z-z", "Class Web Bending", "Class Web Comp", "Class Flange Comp"
+  ];
+
+  const row = [
+    c.oznaka, c.h, c.b, c.tw, c.tf, c.r, c.m.toFixed(2), c.P.toFixed(3), Math.round(c.A),
+    Math.round(c.Avz), Math.round(c.Avy), (c.Iy/1e6).toFixed(4), c.iy.toFixed(1), (c.Wely/1e3).toFixed(2), (c.Wply/1e3).toFixed(2),
+    (c.Iz/1e6).toFixed(4), c.iz.toFixed(1), (c.Welz/1e3).toFixed(2), (c.Wplz/1e3).toFixed(2), (c.IT/1e3).toFixed(2), (c.WT/1e3).toFixed(2),
+    (c.Iw/1e6).toFixed(4), (c.Ww/1e3).toFixed(2), c.NplRd.toFixed(2), c.VplRdz.toFixed(2), c.VplRdy.toFixed(2), c.MelRdy.toFixed(2),
+    c.MplRdy.toFixed(2), c.MelRdz.toFixed(2), c.MplRdz.toFixed(2), c.buckY, c.buckZ, c.cWebB, c.cWebC, c.cFlanC
+  ];
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), row.join(",")].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${c.oznaka}_Eurocode3_Specifikacija.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportToPDF(source) {
+  const c = source === 'ai' ? activeCalcAi : activeCalcDb;
+  if (!c) return alert("Nema podataka za izvoz!");
+
+  const printWindow = window.open('', '', 'width=900,height=800');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Eurocode 3 Specifikacija - ${c.oznaka}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+          h1 { border-bottom: 2px solid #000; padding-bottom: 5px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 13px; }
+          th { background: #f0f0f0; }
+          .val { text-align: right; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <h1>EUROCODE 3 SPECIFIKACIJA: ${c.oznaka}</h1>
+        <p><strong>Klasa čelika:</strong> S235 (&gamma;<sub>M0</sub> = 1.00)</p>
+        
+        <table>
+          <tr><th colspan="2">Geometrijske Dimenzije</th><th colspan="2">Površina i Masa</th></tr>
+          <tr><td>Visina (h)</td><td class="val">${c.h} mm</td><td>Masa po m (m)</td><td class="val">${c.m.toFixed(2)} kg/m</td></tr>
+          <tr><td>Širina (b)</td><td class="val">${c.b} mm</td><td>Oplatna pov. (P)</td><td class="val">${c.P.toFixed(3)} m</td></tr>
+          <tr><td>Debljina hrpta (t<sub>w</sub>)</td><td class="val">${c.tw} mm</td><td>Površina presjeka (A)</td><td class="val">${Math.round(c.A)} mm²</td></tr>
+          <tr><td>Debljina pojasnice (t<sub>f</sub>)</td><td class="val">${c.tf} mm</td><td>Smičuća pov. A<sub>v,z</sub></td><td class="val">${Math.round(c.Avz)} mm²</td></tr>
+          <tr><td>Radijus zaobljenja (r)</td><td class="val">${c.r} mm</td><td>Smičuća pov. A<sub>v,y</sub></td><td class="val">${Math.round(c.Avy)} mm²</td></tr>
+        </table>
+
+        <table>
+          <tr><th colspan="2">Osa y-y (Glavna Osa)</th><th colspan="2">Osa z-z (Sporedna Osa)</th></tr>
+          <tr><td>Moment inercije (I<sub>y</sub>)</td><td class="val">${(c.Iy/1e6).toFixed(3)} &times;10⁶ mm⁴</td><td>Moment inercije (I<sub>z</sub>)</td><td class="val">${(c.Iz/1e6).toFixed(3)} &times;10⁶ mm⁴</td></tr>
+          <tr><td>Poluprečnik inercije (i<sub>y</sub>)</td><td class="val">${c.iy.toFixed(1)} mm</td><td>Poluprečnik inercije (i<sub>z</sub>)</td><td class="val">${c.iz.toFixed(1)} mm</td></tr>
+          <tr><td>Elast. otporni m. (W<sub>el,y</sub>)</td><td class="val">${(c.Wely/1e3).toFixed(2)} &times;10³ mm³</td><td>Elast. otporni m. (W<sub>el,z</sub>)</td><td class="val">${(c.Welz/1e3).toFixed(2)} &times;10³ mm³</td></tr>
+          <tr><td>Plast. otporni m. (W<sub>pl,y</sub>)</td><td class="val">${(c.Wply/1e3).toFixed(2)} &times;10³ mm³</td><td>Plast. otporni m. (W<sub>pl,z</sub>)</td><td class="val">${(c.Wplz/1e3).toFixed(2)} &times;10³ mm³</td></tr>
+        </table>
+
+        <table>
+          <tr><th colspan="4">Računska Nosivost (S235)</th></tr>
+          <tr><td>Aksijalni pritisak N<sub>pl,Rd</sub></td><td class="val">${c.NplRd.toFixed(2)} kN</td><td>Smicanje V<sub>pl,Rd,z</sub></td><td class="val">${c.VplRdz.toFixed(2)} kN</td></tr>
+          <tr><td>Savijanje M<sub>pl,Rd,y</sub></td><td class="val">${c.MplRdy.toFixed(2)} kNm</td><td>Savijanje M<sub>pl,Rd,z</sub></td><td class="val">${c.MplRdz.toFixed(2)} kNm</td></tr>
+        </table>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+}
 </script>
 
 </body>
