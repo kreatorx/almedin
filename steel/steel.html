@@ -34,7 +34,7 @@
     h1 { margin: 0; color: var(--accent); font-size: 1.6rem; }
     .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
 
-    /* Tabs */
+    /* Navigacijski Tabovi */
     .tabs {
       display: flex;
       gap: 10px;
@@ -64,7 +64,7 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Controls */
+    /* Kontrole i Unos */
     .controls {
       display: flex;
       gap: 14px;
@@ -152,7 +152,7 @@
 
     canvas { background: transparent; }
 
-    /* Tabela */
+    /* Tabela Specifikacija */
     .tables-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -174,6 +174,7 @@
     td.val { font-weight: 600; text-align: right; color: #60a5fa; }
     td.unit { color: var(--muted); font-size: 0.75rem; width: 60px; text-align: right; }
 
+    /* Raw JSON Accordion */
     details.raw-json {
       background: #090d16;
       border: 1px solid var(--border);
@@ -197,7 +198,7 @@
     <div class="subtitle">Google Gemini 2.5 Flash API & HTML5 Canvas Crtat (S235 čelik)</div>
   </header>
 
-  <!-- Tabs -->
+  <!-- Navigacijski Tabovi -->
   <div class="tabs">
     <button class="tab-btn active" data-tab="ai-profile">1. AI Profil</button>
     <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
@@ -227,7 +228,6 @@
       <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 16px;">
         <div>
           <div class="card">
-            <!-- Obratite pažnju na naslov: HTML5 Canvas -->
             <h2 class="card-title">Poprečni Presjek (HTML5 Canvas)</h2>
             <div class="canvas-wrapper">
               <canvas id="profileCanvas" width="280" height="280"></canvas>
@@ -251,7 +251,7 @@
     </div>
   </div>
 
-  <!-- TAB 2, 3, 4 REZERVISANI -->
+  <!-- OSTALI TABOVI -->
   <div id="tab-browser" class="tab-content"><div class="card"><h2>2. Preglednik Baze</h2></div></div>
   <div id="tab-ai-search" class="tab-content"><div class="card"><h2>3. AI Dimenzionisanje</h2></div></div>
   <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>4. Custom Profil</h2></div></div>
@@ -283,7 +283,7 @@ function formatSymbol(sym) {
 }
 
 // -------------------------------------------------------------
-// AI POZIV PREMA VERCEL BACKENDU
+// 1. AI POZIV PREMA VERCEL BACKENDU
 // -------------------------------------------------------------
 async function fetchProfileFromVercel() {
   const promptInput = document.getElementById('aiPromptInput');
@@ -336,7 +336,9 @@ async function fetchProfileFromVercel() {
     document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Generisano'})`;
     
     renderAiTables(data, 'aiSpecsContainer');
-    drawCanvasProfile(data.draw_commands);
+    
+    // Prosljeđivanje čitavog data objekta u crtač
+    drawCanvasProfile(data);
 
     statusEl.style.display = "none";
     resultsGrid.style.display = "grid";
@@ -356,28 +358,36 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// UNIVERZALNI CANVAS CRTAČ SA KOTIRANjEM, OSAMA Y/Z I RADIJUSIMA INERCIJE
+// 2. UNIVERZALNI CANVAS CRTAČ (SA KOTIRANjEM I OSAMA Y/Z)
 // -------------------------------------------------------------
-function drawCanvasProfile(data) {
+function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  
-  // Povećane dimenzije canvasa za smještaj kuta i oznaka
   const width = canvas.width;
   const height = canvas.height;
 
-  // Očisti prethodni crtež
   ctx.clearRect(0, 0, width, height);
 
-  if (!data || !data.draw_commands || !data.draw_commands.length) return;
+  if (!inputData) return;
 
-  const commands = data.draw_commands;
-  const dimensions = data.dimensions || [];
-  const major_y = data.major_y || [];
-  const minor_z = data.minor_z || [];
+  let commands = [];
+  let dimensions = [];
+  let major_y = [];
+  let minor_z = [];
 
-  // 1. Izračunavanje Bounding Box-a (graničnih dimenzija)
+  if (Array.isArray(inputData)) {
+    commands = inputData;
+  } else if (typeof inputData === 'object') {
+    commands = inputData.draw_commands || [];
+    dimensions = inputData.dimensions || [];
+    major_y = inputData.major_y || [];
+    minor_z = inputData.minor_z || [];
+  }
+
+  if (!commands.length) return;
+
+  // 1. Izračunavanje Bounding Box-a
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 
   commands.forEach(cmd => {
@@ -398,7 +408,6 @@ function drawCanvasProfile(data) {
   const bHeight = yMax - yMin || 40;
   const maxDim = Math.max(bWidth, bHeight);
 
-  // Margina od 50px za kotne linije
   const margin = 50;
   const scale = (width - 2 * margin) / maxDim;
   const cx = width / 2 - ((xMin + xMax) / 2) * scale;
@@ -407,38 +416,34 @@ function drawCanvasProfile(data) {
   const tx = (x) => cx + x * scale;
   const ty = (y) => cy + y * scale;
 
-  // 2. CRTIČANjE NEUTRALNIH OSA (y-y horizontalno, z-z vertikalno)
+  // 2. Crtanje neutralnih osa (y-y horizontalno, z-z vertikalno)
   ctx.save();
-  ctx.strokeStyle = '#ec4899'; // Roza / Magenta boja za ose
+  ctx.strokeStyle = '#ec4899'; // Pink boja
   ctx.lineWidth = 1;
-  ctx.setLineDash([6, 4]);
+  ctx.setLineDash([5, 4]);
 
   // Horizontalna osa y-y
   ctx.beginPath();
-  ctx.moveTo(15, cy);
-  ctx.lineTo(width - 15, cy);
-  ctx.stroke();
-
+  ctx.moveTo(15, cy); ctx.lineTo(width - 15, cy); ctx.stroke();
+  
   // Vertikalna osa z-z
   ctx.beginPath();
-  ctx.moveTo(cx, 15);
-  ctx.lineTo(cx, height - 15);
-  ctx.stroke();
+  ctx.moveTo(cx, 15); ctx.lineTo(cx, height - 15); ctx.stroke();
   ctx.restore();
 
-  // Ispis naziva osa y i z
-  ctx.font = 'bold 12px Segoe UI, sans-serif';
+  // Nazivi osa
+  ctx.font = 'bold 11px Segoe UI, sans-serif';
   ctx.fillStyle = '#ec4899';
-  ctx.fillText('y', width - 14, cy + 4);
+  ctx.fillText('y', width - 12, cy + 4);
   ctx.fillText('z', cx - 4, height - 4);
 
-  // Crvena tačka u težištu (0,0)
+  // Težište (0,0) - Crvena tačka
   ctx.fillStyle = '#ef4444';
   ctx.beginPath();
-  ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+  ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI);
   ctx.fill();
 
-  // 3. CRTIČANjE GEOMETRIJE POPREČNOG PRESJEKA
+  // 3. Crtanje geometrije presjeka
   ctx.beginPath();
   ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
   ctx.strokeStyle = '#38bdf8';
@@ -446,55 +451,43 @@ function drawCanvasProfile(data) {
 
   commands.forEach(cmd => {
     const type = cmd[0];
-    if (type === 'moveTo') {
-      ctx.moveTo(tx(cmd[1]), ty(cmd[2]));
-    } else if (type === 'lineTo') {
-      ctx.lineTo(tx(cmd[1]), ty(cmd[2]));
-    } else if (type === 'arcTo') {
-      ctx.arcTo(tx(cmd[1]), ty(cmd[2]), tx(cmd[3]), ty(cmd[4]), cmd[5] * scale);
-    } else if (type === 'arc') {
-      ctx.arc(tx(cmd[1]), ty(cmd[2]), cmd[3] * scale, cmd[4], cmd[5]);
-    } else if (type === 'closePath') {
-      ctx.closePath();
-    }
+    if (type === 'moveTo') ctx.moveTo(tx(cmd[1]), ty(cmd[2]));
+    else if (type === 'lineTo') ctx.lineTo(tx(cmd[1]), ty(cmd[2]));
+    else if (type === 'arcTo') ctx.arcTo(tx(cmd[1]), ty(cmd[2]), tx(cmd[3]), ty(cmd[4]), cmd[5] * scale);
+    else if (type === 'arc') ctx.arc(tx(cmd[1]), ty(cmd[2]), cmd[3] * scale, cmd[4], cmd[5]);
+    else if (type === 'closePath') ctx.closePath();
   });
 
-  ctx.fill('evenodd'); // Pravilo za unutrašnje rupe/šupljine
+  ctx.fill('evenodd'); // Ključno za unutrašnje rupe cijevi
   ctx.stroke();
 
-  // 4. CRTIČANjE RADIJUSA INERCIJE (i_y, i_z) NA OSAMA
+  // 4. Radijusi inercije (iy, iz) na osama
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
   if (iyItem || izItem) {
     ctx.save();
-    ctx.strokeStyle = '#fbbf24'; // Žuto-zlatna boja
-    ctx.fillStyle = '#fbbf24';
-    ctx.setLineDash([2, 2]);
+    ctx.fillStyle = '#fbbf24'; // Žuta boja
     ctx.font = '10px Segoe UI, sans-serif';
 
     if (iyItem && iyItem.val) {
       const iyPx = iyItem.val * scale;
-      ctx.beginPath();
-      ctx.arc(cx, cy - iyPx, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - iyPx, 2.5, 0, 2 * Math.PI); ctx.fill();
       ctx.fillText(`i_y=${iyItem.val}`, cx + 5, cy - iyPx + 3);
     }
     if (izItem && izItem.val) {
       const izPx = izItem.val * scale;
-      ctx.beginPath();
-      ctx.arc(cx + izPx, cy, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + izPx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
       ctx.fillText(`i_z=${izItem.val}`, cx + izPx - 10, cy - 6);
     }
     ctx.restore();
   }
 
-  // 5. INŽENjERSKO KOTIRANjE (h, b, tw, tf, r1, r2, r_o, r_i)
+  // 5. Inženjersko kotiranje
   drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty);
 }
 
-// Funkcija za crtanje kotnih linija i oznaka dimenzija
+// Funkcija za kotne linije i tekstualne oznake
 function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) {
   if (!dimensions || !dimensions.length) return;
 
@@ -506,44 +499,35 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   const r2Item = dimensions.find(d => d.symbol === 'r_2' || d.symbol === 'r_i');
 
   ctx.save();
-  ctx.strokeStyle = '#94a3b8'; // Siva boja za kote
+  ctx.strokeStyle = '#94a3b8';
   ctx.fillStyle = '#f1f5f9';
   ctx.font = '10px Segoe UI, sans-serif';
   ctx.lineWidth = 1;
 
-  // Pomoćna funkcija za crtanje kotne linije sa koticama
   function drawDimLine(x1, y1, x2, y2, text, offset, isHoriz) {
     let px1 = x1, py1 = y1, px2 = x2, py2 = y2;
     if (isHoriz) {
       py1 += offset; py2 += offset;
-      // Pomoćne linije od profila do kote
       ctx.beginPath();
       ctx.moveTo(x1, y1); ctx.lineTo(x1, py1 + (offset > 0 ? 4 : -4));
       ctx.moveTo(x2, y2); ctx.lineTo(x2, py2 + (offset > 0 ? 4 : -4));
       ctx.stroke();
-      // Glavna kotna linija
       ctx.beginPath();
       ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
       ctx.stroke();
-      // Kotice (kosi zarezi)
       drawTick(px1, py1); drawTick(px2, py2);
-      // Tekst kote
       ctx.textAlign = 'center';
       ctx.fillText(text, (px1 + px2) / 2, py1 + (offset > 0 ? 12 : -5));
     } else {
       px1 += offset; px2 += offset;
-      // Pomoćne linije od profila do kote
       ctx.beginPath();
       ctx.moveTo(x1, y1); ctx.lineTo(px1 + (offset > 0 ? 4 : -4), y1);
       ctx.moveTo(x2, y2); ctx.lineTo(px2 + (offset > 0 ? 4 : -4), y2);
       ctx.stroke();
-      // Glavna kotna linija
       ctx.beginPath();
       ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
       ctx.stroke();
-      // Kotice
       drawTick(px1, py1); drawTick(px2, py2);
-      // Tekst kote
       ctx.textAlign = 'right';
       ctx.fillText(text, px1 + (offset > 0 ? -5 : -5), (py1 + py2) / 2 + 3);
     }
@@ -556,17 +540,17 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
     ctx.stroke();
   }
 
-  // 1. Kota Visine (h) - Lijeva strana
+  // Kota h
   if (hItem) {
     drawDimLine(tx(xMin), ty(yMin), tx(xMin), ty(yMax), `h=${hItem.val}`, -22, false);
   }
 
-  // 2. Kota Širine (b) - Gornja strana
+  // Kota b
   if (bItem) {
     drawDimLine(tx(xMin), ty(yMin), tx(xMax), ty(yMin), `b=${bItem.val}`, -20, true);
   }
 
-  // 3. Tekstualne oznake debljina i radijusa (Desna strana gore)
+  // Tekstualne oznake debljina i radijusa
   const annX = tx(xMax) + 12;
   let annY = ty(yMin) + 10;
 
@@ -588,7 +572,7 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
 }
 
 // -------------------------------------------------------------
-// RENDANJE TABELA
+// 3. RENDANJE PARALELNIH TABELA (y-y i z-z u istom redu)
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
@@ -645,7 +629,9 @@ function renderAiTables(data, containerId) {
   `;
 }
 
-// CSV & PDF IZVOZ
+// -------------------------------------------------------------
+// 4. CSV I PDF IZVOZ
+// -------------------------------------------------------------
 function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   

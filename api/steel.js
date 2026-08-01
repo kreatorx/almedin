@@ -46,9 +46,7 @@ export default async function handler(req, res) {
          - ["arcTo", x1, y1, x2, y2, radius] (KLJUČNO ZA UNUTRAŠNJE RADIJUSE r1 i r2!)
          - ["arc", cx, cy, radius, startAngle, endAngle] (ZA CHS OKRUGLE CIJEVI)
          - ["closePath"]
-
-    3. JSON array objekte {} vracaj inline 
-
+ 
     OBLIK ZAHVTANOG JSON-A AKO JE PRONAĐEN:
     {
       "found": true,
@@ -122,6 +120,11 @@ export default async function handler(req, res) {
         ["closePath"]
       ]
     }
+
+    3. JSON array objekte {} vracaj inline ovako "dimensions": [ {"label": "Depth", "symbol": "h", "val": 300, "unit": "mm"}, {"label": "Width", "symbol": "b", "val": 200, "unit": "mm"}, {"label": "Web thickness", "symbol": "t_w", "val": 7.4, "unit": "mm"},...]..
+
+    4. Ako uneseni tekst nije ime profila nego se navodi zahtjev koji taj profil mora da ispuni, vrati listu profila koji zadovoljavaju taj zahtjev. Npr. ako korisnik unese "I profili M=500 N=1000", vrati sve I profile koji mogu podnijeti interakciju aksijalne sile 1000 i momenta 500.
+   
     `;
 
     try {
