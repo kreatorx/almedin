@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-    // 1. Potpuna CORS konfiguracija
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -8,7 +7,6 @@ export default async function handler(req, res) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
-    // 2. Obrada Preflight (OPTIONS) zahtjeva iz preglednika
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -29,18 +27,29 @@ export default async function handler(req, res) {
     }
 
     const systemPrompt = `
-    Ti si vrhunski inženjer konstrukter i ekspertski AI kalkulator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS).
-    Na osnovu korisničkog upita (npr. 'WB 300', 'IPE 200', 'W12x26', 'PFC 200', 'L 100x100x10'), identifikuj profil i vrati tačan čisti JSON objekat BEZ markdowna ili objašnjenja.
-    
-    Tvoj zadatak je da vratiš:
-    1. Sve specifične geometrijske dimenzije (uključujući specijalne parametre ako postoje: r1, r2, Sf-kosina pojasnice %, hi, d).
-    2. Izračunata ili tabelarna fizikalna i mehanička svojstva po Eurocode 3 za S235 čelik (gammaM0 = 1.00).
-    3. Tačne generisane SVG putanje (path 'd' string) za precizno crtanje poprečnog presjeka centriranog na (130,130) unutar 260x260 viewBox-a.
+    Ti si stručni inženjerski AI kalkulator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS).
 
-    KRITIČNO: U poljima 'symbol' i 'label' NEMOJ koristiti LaTeX sintaksu (poput $h$ ili $W_{el,y}$), nego čisti HTML format ili običan tekst (npr. 'W_el,y', 'I_y', 'h').
+    1. RIGOPOZNA PROVJERA VALIDNOSTI:
+       Ako unos korisnika (npr. 'ws 300', 'abc12', 'random_text') NE POSTOJI u priznatim standardima, vrati ISKLJUČIVO:
+       {
+         "found": false,
+         "error_message": "Profil ne postoji u priznatim svjetskim standardima."
+       }
 
-    Oblik JSON-a MORA biti tačno ovakav:
+    2. AKO PROFIL POSTOJI (npr. 'WB 300', 'IPE 240', 'W12x26', 'UPN 200', 'L 100x100x10', 'CHS 114.3x4.5'):
+       Vrati "found": true i sljedeću JSON strukturu:
+       - 'symbol' i 'label' POLJA MORAJU BITI ČISTI TEKST (NEMOJ KORISTITI LaTeX $ ZNAKOVE!). Npr. koristite 'W_el,y', 'I_y', 'h', 't_f'.
+       - 'draw_commands': Niz naredbi u MILIMETRIMA (mm) centriranih oko (0,0) koje HTML5 Canvas crta u milimetar!
+         Dozvoljene komande:
+         - ["moveTo", x, y]
+         - ["lineTo", x, y]
+         - ["arcTo", x1, y1, x2, y2, radius] (KLJUČNO ZA UNUTRAŠNJE RADIJUSE r1 i r2!)
+         - ["arc", cx, cy, radius, startAngle, endAngle] (ZA CHS OKRUGLE CIJEVI)
+         - ["closePath"]
+
+    OBLIK ZAHVTANOG JSON-A AKO JE PRONAĐEN:
     {
+      "found": true,
       "oznaka": "WB 300",
       "standard": "IS 808:1989",
       "shape": "I",
@@ -49,6 +58,7 @@ export default async function handler(req, res) {
         {"label": "Width", "symbol": "b", "val": 200, "unit": "mm"},
         {"label": "Web thickness", "symbol": "t_w", "val": 7.4, "unit": "mm"},
         {"label": "Flange thickness", "symbol": "t_f", "val": 10.0, "unit": "mm"},
+        {"label": "Inner depth", "symbol": "h_i", "val": 280.0, "unit": "mm"},
         {"label": "Root fillet radius", "symbol": "r_1", "val": 11.0, "unit": "mm"},
         {"label": "Toe radius", "symbol": "r_2", "val": 5.5, "unit": "mm"},
         {"label": "Flange slope", "symbol": "S_f", "val": 10.51, "unit": "%"}
@@ -94,23 +104,31 @@ export default async function handler(req, res) {
         {"label": "Web compression class", "symbol": "-", "val": "Class 1", "unit": ""},
         {"label": "Flange compression class", "symbol": "-", "val": "Class 1", "unit": ""}
       ],
-      "svg_path": "M 40,40 L 220,40 L 220,55 L 135,55 L 135,205 L 220,205 L 220,220 L 40,220 L 40,205 L 125,205 L 125,55 L 40,55 Z"
+      "draw_commands": [
+        ["moveTo", -100, -150],
+        ["lineTo", 100, -150],
+        ["lineTo", 100, -130],
+        ["arcTo", 3.7, -130, 3.7, 0, 11],
+        ["lineTo", 3.7, 130],
+        ["arcTo", 3.7, 130, 100, 130, 11],
+        ["lineTo", 100, 150],
+        ["lineTo", -100, 150],
+        ["lineTo", -100, 130],
+        ["arcTo", -3.7, 130, -3.7, 0, 11],
+        ["lineTo", -3.7, -130],
+        ["arcTo", -3.7, -130, -100, -130, 11],
+        ["closePath"]
+      ]
     }
     `;
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                },
-                contents: [
-                    { parts: [{ text: prompt }] }
-                ],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
                     temperature: 0.1,
                     responseMimeType: "application/json"

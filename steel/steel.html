@@ -114,7 +114,7 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: 300px 1fr;
+      grid-template-columns: 320px 1fr;
       gap: 20px;
     }
 
@@ -140,14 +140,18 @@
       align-items: center;
     }
 
-    .svg-wrapper {
+    .canvas-wrapper {
       background: #070a12;
       border-radius: 6px;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 16px;
-      min-height: 260px;
+      padding: 10px;
+      min-height: 280px;
+    }
+
+    canvas {
+      background: transparent;
     }
 
     /* Tabela - Smanjen font i kompaktni redovi */
@@ -192,7 +196,7 @@
 <div class="container">
   <header>
     <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
-    <div class="subtitle">Google Gemini 2.5 Flash API & Eurocode 3 proračun (S235 čelik)</div>
+    <div class="subtitle">Google Gemini 2.5 Flash API & HTML5 Canvas Crtat (S235 čelik)</div>
   </header>
 
   <!-- Tabs -->
@@ -225,8 +229,10 @@
       <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 16px;">
         <div>
           <div class="card">
-            <h2 class="card-title">Poprečni Presjek (SVG)</h2>
-            <div class="svg-wrapper" id="aiSvgContainer"></div>
+            <h2 class="card-title">Poprečni Presjek (HTML5 Canvas)</h2>
+            <div class="canvas-wrapper">
+              <canvas id="profileCanvas" width="280" height="280"></canvas>
+            </div>
           </div>
         </div>
 
@@ -246,24 +252,8 @@
     </div>
   </div>
 
-  <!-- TAB 2: PREGLEDNIK BAZE PROFILA -->
-  <div id="tab-browser" class="tab-content">
-    <div class="card">
-      <h2 class="card-title">Lokalna Baza Profila</h2>
-      <div class="controls">
-        <div class="form-group">
-          <label for="typeSelect">Tip profila</label>
-          <select id="typeSelect"></select>
-        </div>
-        <div class="form-group">
-          <label for="profileSelect">Oznaka profila</label>
-          <select id="profileSelect"></select>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 3 & 4 -->
+  <!-- TAB 2, 3, 4 REZERVISANI -->
+  <div id="tab-browser" class="tab-content"><div class="card"><h2>2. Preglednik Baze</h2></div></div>
   <div id="tab-ai-search" class="tab-content"><div class="card"><h2>3. AI Dimenzionisanje</h2></div></div>
   <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>4. Custom Profil</h2></div></div>
 
@@ -286,10 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Formatiranje simbola bez LaTeX znaka $
+// Čišćenje simbola od LaTeX dolara $
 function formatSymbol(sym) {
   if (!sym || sym === '-') return '';
-  return sym.replace(/_([a-zA-Z0-9,]+)/g, '<sub>$1</sub>');
+  let clean = sym.replace(/\$/g, '').trim();
+  return clean.replace(/_([a-zA-Z0-9,]+)/g, '<sub>$1</sub>');
 }
 
 // -------------------------------------------------------------
@@ -332,15 +323,21 @@ async function fetchProfileFromVercel() {
     const data = await response.json();
     currentAiData = data;
 
-    // Prikaz sirovog JSON-a
+    // Ispis sirovog JSON-a
     rawCode.textContent = JSON.stringify(data, null, 2);
     rawDetails.style.display = "block";
     rawDetails.open = false;
 
+    // PROVJERA PROFILA: Ako profil ne postoji u standardima
+    if (data.found === false) {
+      showStatus(data.error_message || `Profil "${promptText}" nije pronađen u priznatim standardima čelika!`, "error");
+      return;
+    }
+
     document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Generisano'})`;
     
     renderAiTables(data, 'aiSpecsContainer');
-    drawAiSVG(data.svg_path, 'aiSvgContainer');
+    drawCanvasProfile(data.draw_commands);
 
     statusEl.style.display = "none";
     resultsGrid.style.display = "grid";
@@ -360,7 +357,89 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// GENERISANJE PARALELNIH TABELA (y-y i z-z u istom redu)
+// INTERPRETIANJE I RENDANJE CANVAS POPREČNOG PRESJEKA
+// -------------------------------------------------------------
+function drawCanvasProfile(commands) {
+  const canvas = document.getElementById('profileCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Mreža i ose u pozadini
+  ctx.strokeStyle = '#26334d';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  ctx.moveTo(width / 2, 10);
+  ctx.lineTo(width / 2, height - 10);
+  ctx.moveTo(10, height / 2);
+  ctx.lineTo(width - 10, height / 2);
+  ctx.stroke();
+
+  ctx.setLineDash([]); // Vrati punu liniju
+
+  if (!commands || !commands.length) return;
+
+  // 1. Prvi prolaz: Izračunaj Bounding Box tačaka radi automatskog skaliranja
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+
+  commands.forEach(cmd => {
+    const type = cmd[0];
+    if (type === 'moveTo' || type === 'lineTo') {
+      xMin = Math.min(xMin, cmd[1]); xMax = Math.max(xMax, cmd[1]);
+      yMin = Math.min(yMin, cmd[2]); yMax = Math.max(yMax, cmd[2]);
+    } else if (type === 'arcTo') {
+      xMin = Math.min(xMin, cmd[1], cmd[3]); xMax = Math.max(xMax, cmd[1], cmd[3]);
+      yMin = Math.min(yMin, cmd[2], cmd[4]); yMax = Math.max(yMax, cmd[2], cmd[4]);
+    } else if (type === 'arc') {
+      xMin = Math.min(xMin, cmd[1] - cmd[3]); xMax = Math.max(xMax, cmd[1] + cmd[3]);
+      yMin = Math.min(yMin, cmd[2] - cmd[3]); yMax = Math.max(yMax, cmd[2] + cmd[3]);
+    }
+  });
+
+  const bWidth = xMax - xMin || 100;
+  const bHeight = yMax - yMin || 100;
+  const maxDim = Math.max(bWidth, bHeight);
+
+  // Skaliranje i centriranje na Canvas-u (280x280 sa 30px margina)
+  const scale = 220 / maxDim;
+  const cx = width / 2 - ((xMin + xMax) / 2) * scale;
+  const cy = height / 2 - ((yMin + yMax) / 2) * scale;
+
+  const tx = (x) => cx + x * scale;
+  const ty = (y) => cy + y * scale; // Invertovane Y koordinate
+
+  // 2. Drugi prolaz: Crtanje geometrije presjeka sa tačnim radijusima
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+
+  commands.forEach(cmd => {
+    const type = cmd[0];
+    if (type === 'moveTo') {
+      ctx.moveTo(tx(cmd[1]), ty(cmd[2]));
+    } else if (type === 'lineTo') {
+      ctx.lineTo(tx(cmd[1]), ty(cmd[2]));
+    } else if (type === 'arcTo') {
+      ctx.arcTo(tx(cmd[1]), ty(cmd[2]), tx(cmd[3]), ty(cmd[4]), cmd[5] * scale);
+    } else if (type === 'arc') {
+      ctx.arc(tx(cmd[1]), ty(cmd[2]), cmd[3] * scale, cmd[4], cmd[5]);
+    } else if (type === 'closePath') {
+      ctx.closePath();
+    }
+  });
+
+  ctx.fill();
+  ctx.stroke();
+}
+
+// -------------------------------------------------------------
+// RENDANJE PARALELNIH TABELA (y-y i z-z u istom redu)
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
@@ -378,7 +457,6 @@ function renderAiTables(data, containerId) {
   };
 
   container.innerHTML = `
-    <!-- Top Grid: Geometrija i Površina -->
     <div class="tables-grid">
       <div>
         <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Profile Dimensions</h3>
@@ -390,19 +468,18 @@ function renderAiTables(data, containerId) {
       </div>
     </div>
 
-    <!-- Middle Grid: PARALELNO y-y I z-z OSA U ISTOM REDU -->
+    <!-- PARALELNO y-y I z-z OSE U ISTOM REDU -->
     <div class="axis-row-grid" style="margin-top: 16px;">
-      <div style="background: rgba(56, 189, 248, 0.03); padding: 10px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
+      <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
         <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Major Axis y-y Properties</h3>
         <table>${buildRows(data.major_y)}</table>
       </div>
-      <div style="background: rgba(56, 189, 248, 0.03); padding: 10px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
+      <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
         <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Minor Axis z-z Properties</h3>
         <table>${buildRows(data.minor_z)}</table>
       </div>
     </div>
 
-    <!-- Bottom Grid: Torzija, Nosivost i Izvijanje -->
     <div class="tables-grid" style="margin-top: 16px;">
       <div>
         <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Torsional & Warping Properties</h3>
@@ -420,25 +497,9 @@ function renderAiTables(data, containerId) {
   `;
 }
 
-// Renderovanje AI generisane SVG putanje
-function drawAiSVG(pathData, containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  const d = pathData || "M 40,40 L 220,40 L 220,55 L 135,55 L 135,205 L 220,205 L 220,220 L 40,220 L 40,205 L 125,205 L 125,55 L 40,55 Z";
-
-  container.innerHTML = `
-    <svg width="260" height="260" viewBox="0 0 260 260">
-      <line x1="130" y1="10" x2="130" y2="250" stroke="#26334d" stroke-dasharray="4" />
-      <line x1="10" y1="130" x2="250" y2="130" stroke="#26334d" stroke-dasharray="4" />
-      <path d="${d}" fill="#38bdf8" fill-opacity="0.25" stroke="#38bdf8" stroke-width="2"/>
-    </svg>
-  `;
-}
-
-// CSV Izvoz
+// CSV & PDF IZVOZ
 function exportToCSV() {
-  if (!currentAiData) return alert("Nema podataka!");
+  if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   
   let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica"]];
   const groups = ['dimensions', 'area_properties', 'major_y', 'minor_z', 'torsion_warping', 'resistances_s235', 'buckling_classification'];
@@ -458,9 +519,8 @@ function exportToCSV() {
   document.body.removeChild(link);
 }
 
-// PDF Izvoz
 function exportToPDF() {
-  if (!currentAiData) return alert("Nema podataka!");
+  if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
 
   const printWindow = window.open('', '', 'width=900,height=800');
   printWindow.document.write(`
@@ -468,10 +528,10 @@ function exportToPDF() {
       <head>
         <title>${currentAiData.oznaka} - Specifikacija</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; }
           h1 { border-bottom: 2px solid #000; padding-bottom: 4px; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-          td, th { border: 1px solid #ccc; padding: 4px 8px; }
+          td, th { border: 1px solid #ccc; padding: 4px 6px; }
           th { background: #f0f0f0; }
           .val { text-align: right; font-weight: bold; }
         </style>
