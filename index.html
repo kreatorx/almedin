@@ -138,7 +138,7 @@
             justify-content: flex-end;
         }
 
-        .ai-fem-btn, .autoked-btn, .ceste-btn, .geotehnika-btn, .dimenzioniranje-btn, .betonlab-btn {
+        .ai-steel-btn, .ai-fem-btn, .autoked-btn, .ceste-btn, .geotehnika-btn, .dimenzioniranje-btn, .betonlab-btn {
             text-decoration: none;
             padding: 12px 20px;
             border-radius: 10px;
@@ -150,6 +150,10 @@
             align-items: center;
             gap: 8px;
             color: white;
+        }
+
+        .ai-steel-btn {
+            background: linear-gradient(135deg, #8ca8c2, #6da2e9);
         }
 
         .ai-fem-btn {
@@ -176,7 +180,7 @@
             background: linear-gradient(135deg, #a2a884, #bbb8ab);
         }
 
-        .ai-fem-btn:hover, .autoked-btn:hover, .ceste-btn:hover, .geotehnika-btn:hover, .dimenzioniranje-btn:hover, .betonlab-btn:hover {
+        .ai-steel-btn:hover, .ai-fem-btn:hover, .autoked-btn:hover, .ceste-btn:hover, .geotehnika-btn:hover, .dimenzioniranje-btn:hover, .betonlab-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 15px rgba(0,0,0,0.25);
         }
@@ -195,7 +199,7 @@
                 box-sizing: border-box;
             }
 
-            .ai-fem-btn, .autoked-btn, .ceste-btn, .geotehnika-btn, .dimenzioniranje-btn, .betonlab-btn {
+            .ai-steel-btn, .ai-fem-btn, .autoked-btn, .ceste-btn, .geotehnika-btn, .dimenzioniranje-btn, .betonlab-btn {
                 width: 100%;
                 justify-content: center;
                 box-sizing: border-box;
@@ -261,6 +265,9 @@
     <div class="main-container">
 
         <div class="top-nav-buttons">
+            <a href="steel/steel.html" class="ai-steel-btn">
+                AI Steel
+            </a>
             <a href="fem.html" class="ai-fem-btn">
                 AI FEM Solver
             </a>
