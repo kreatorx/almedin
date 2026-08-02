@@ -176,7 +176,7 @@
     td.val { font-weight: 600; text-align: right; color: #60a5fa; }
     td.unit { color: var(--muted); font-size: 0.75rem; width: 60px; text-align: right; }
 
-    /* Tabela Selekcije / Dimenzionisanja */
+    /* Tabela Selekcije */
     .selection-banner {
       background: rgba(56, 189, 248, 0.08);
       border: 1px solid var(--accent);
@@ -245,7 +245,7 @@
       <div class="controls">
         <div class="form-group" style="flex: 3;">
           <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'gornja flansa 5 pri osi a 3 na kraju...' ILI 'I profili M=500 N=1000')</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. I profili M=500 N=1000, HEB za N=800kN, ili IPE 240">
+          <input type="text" id="aiPromptInput" placeholder="Npr. gornja flansa 5 pri osi a 3 na kraju..., I profili M=500 N=1000, ili IPE 240">
         </div>
         <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
       </div>
@@ -329,7 +329,7 @@ async function fetchProfileFromVercel() {
   const btn = document.getElementById('btnAiSearch');
 
   if (!promptText) {
-    showStatus("Molimo unesite naziv profila ili opterećenje!", "error");
+    showStatus("Molimo unesite naziv profila, opis ili opterećenje!", "error");
     return;
   }
 
@@ -366,7 +366,6 @@ async function fetchProfileFromVercel() {
       return;
     }
 
-    // Prikaz tabele selekcije/dimenzionisanja ako je raditi o zahtjevu opterećenja
     if (data.is_selection && data.suitable_profiles && data.suitable_profiles.length) {
       renderSelectionTable(data, selectionContainer);
       selectionContainer.style.display = "block";
@@ -395,7 +394,7 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// TABELA SELEKCIJE / DIMENZIONISANjA
+// TABELA SELEKCIJE / DIMENZIONISANjA (BOSANSKI JEZIK)
 // -------------------------------------------------------------
 function renderSelectionTable(data, container) {
   let html = `
@@ -450,7 +449,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// 2. UNIVERZALNI CANVAS CRTAČ (SA POPRAVLjENOM Y-OSOM I KOTIRANjEM)
+// 2. CANVAS CRTAČ SA ELIPSOM INERCIJE, KOTAMA I OSAMA Y/Z
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -497,10 +496,9 @@ function drawCanvasProfile(inputData) {
   const cy = height / 2 - ((yMin + yMax) / 2) * scale;
 
   const tx = (x) => cx + x * scale;
-  // KLJUČNO: Invertujemo Y osu da matematički +Y ide GORE na ekranu!
   const ty = (y) => cy - y * scale;
 
-  // 2. Neutralne ose y-y i z-z
+  // 2. Neutralne ose y-y i z-z (Pink boja)
   ctx.save();
   ctx.strokeStyle = '#ec4899';
   ctx.lineWidth = 1;
@@ -515,11 +513,11 @@ function drawCanvasProfile(inputData) {
   ctx.fillText('y', width - 12, cy + 4);
   ctx.fillText('z', cx - 4, height - 4);
 
-  // Težište (0,0) - Crvena tačka
+  // Težište (0,0)
   ctx.fillStyle = '#ef4444';
   ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
 
-  // 3. Crtanje geometrije presjeka
+  // 3. Poprečni presjek
   ctx.beginPath();
   ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
   ctx.strokeStyle = '#38bdf8';
@@ -537,39 +535,47 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // 4. Radijusi inercije (iy, iz) na osama
+  // 4. ELIPSA INERCIJE I RADIJUSI INERCIJE (iy, iz)
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
-  if (iyItem || izItem) {
+  if (iyItem && iyItem.val && izItem && izItem.val) {
+    const iyPx = iyItem.val * scale;
+    const izPx = izItem.val * scale;
+
+    // A) Crtanje tanke žute elipse inercije
+    ctx.save();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, iyPx, izPx, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    // B) Tačke i oznake radijusa inercije
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    if (iyItem && iyItem.val) {
-      const iyPx = iyItem.val * scale;
-      ctx.beginPath(); ctx.arc(cx, cy - iyPx, 2.5, 0, 2 * Math.PI); ctx.fill();
-      ctx.fillText(`i_y=${iyItem.val}`, cx + 5, cy - iyPx + 3);
-    }
-    if (izItem && izItem.val) {
-      const izPx = izItem.val * scale;
-      ctx.beginPath(); ctx.arc(cx + izPx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
-      ctx.fillText(`i_z=${izItem.val}`, cx + izPx - 10, cy - 6);
-    }
+    ctx.beginPath(); ctx.arc(cx + iyPx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillText(`i_y=${iyItem.val}`, cx + iyPx + 4, cy - 4);
+
+    ctx.beginPath(); ctx.arc(cx, cy - izPx, 2.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillText(`i_z=${izItem.val}`, cx + 5, cy - izPx - 2);
     ctx.restore();
   }
 
-  // 5. Kotiranje
   drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty);
 }
 
 function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) {
   if (!dimensions || !dimensions.length) return;
 
-  const hItem = dimensions.find(d => d.symbol === 'h' || d.label.toLowerCase().includes('depth'));
-  const bItem = dimensions.find(d => d.symbol === 'b' || d.symbol === 'b_1' || d.label.toLowerCase().includes('width'));
+  const hItem = dimensions.find(d => d.symbol === 'h' || d.label.toLowerCase().includes('visina'));
+  const bItem = dimensions.find(d => d.symbol === 'b' || d.symbol === 'b_1' || d.label.toLowerCase().includes('širina'));
   const twItem = dimensions.find(d => d.symbol === 't_w' || d.symbol === 'tw' || d.symbol === 't');
-  const tfItem = dimensions.find(d => d.symbol === 't_f' || d.symbol === 'tf' || d.symbol === 't_f1_center');
+  const tfItem = dimensions.find(d => d.symbol === 't_f' || d.symbol === 'tf' || d.symbol === 't_f1_osa');
   const r1Item = dimensions.find(d => d.symbol === 'r_1' || d.symbol === 'r' || d.symbol === 'r_o');
   const r2Item = dimensions.find(d => d.symbol === 'r_2' || d.symbol === 'r_i');
 
@@ -608,11 +614,9 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
     ctx.beginPath(); ctx.moveTo(x - 3, y + 3); ctx.lineTo(x + 3, y - 3); ctx.stroke();
   }
 
-  // Kota h i b
   if (hItem) drawDimLine(tx(xMin), ty(yMax), tx(xMin), ty(yMin), `h=${hItem.val}`, -22, false);
   if (bItem) drawDimLine(tx(xMin), ty(yMax), tx(xMax), ty(yMax), `b=${bItem.val}`, -20, true);
 
-  // Oznake debljina i radijusa
   const annX = tx(xMax) + 12;
   let annY = ty(yMax) + 10;
   ctx.fillStyle = '#38bdf8';
@@ -630,7 +634,7 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
 }
 
 // -------------------------------------------------------------
-// RENDANJE TABELA SPECIFIKACIJA
+// RENDANJE PARALELNIH TABELA SPECIFIKACIJA (BOSANSKI JEZIK)
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
@@ -650,37 +654,37 @@ function renderAiTables(data, containerId) {
   container.innerHTML = `
     <div class="tables-grid">
       <div>
-        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Profile Dimensions</h3>
+        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Geometrijske Dimenzije</h3>
         <table>${buildRows(data.dimensions)}</table>
       </div>
       <div>
-        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Area & Mass Properties</h3>
+        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Površina i Masa</h3>
         <table>${buildRows(data.area_properties)}</table>
       </div>
     </div>
 
     <div class="axis-row-grid" style="margin-top: 16px;">
       <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
-        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Major Axis y-y Properties</h3>
+        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Glavne Ose y-y</h3>
         <table>${buildRows(data.major_y)}</table>
       </div>
       <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
-        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Minor Axis z-z Properties</h3>
+        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Sporedne Ose z-z</h3>
         <table>${buildRows(data.minor_z)}</table>
       </div>
     </div>
 
     <div class="tables-grid" style="margin-top: 16px;">
       <div>
-        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Torsional & Warping Properties</h3>
+        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Torzija i Vitoperenje</h3>
         <table>${buildRows(data.torsion_warping)}</table>
       </div>
       <div>
-        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Resistances (S235)</h3>
+        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Računska Nosivost (S235)</h3>
         <table>${buildRows(data.resistances_s235)}</table>
       </div>
       <div>
-        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Buckling & Classification</h3>
+        <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Izvijanje i Klasifikacija</h3>
         <table>${buildRows(data.buckling_classification)}</table>
       </div>
     </div>
@@ -732,12 +736,12 @@ function exportToPDF() {
         <h1>EUROCODE 3 SPECIFIKACIJA: ${currentAiData.oznaka} (${currentAiData.standard || ''})</h1>
         <p>Klasa čelika: S235 (&gamma;<sub>M0</sub> = 1.00)</p>
         
-        <h3>Geometrija & Površina</h3>
+        <h3>Geometrijske Dimenzije & Površina</h3>
         <table>${currentAiData.dimensions.map(i => `<tr><td>${i.label}</td><td class="val">${i.val} ${i.unit}</td></tr>`).join('')}</table>
 
         <h3>Osa y-y i z-z</h3>
         <table>
-          <tr><th>Major Axis y-y</th><th>Minor Axis z-z</th></tr>
+          <tr><th>Svojstva Oko Glavne Ose y-y</th><th>Svojstva Oko Sporedne Ose z-z</th></tr>
           <tr>
             <td><table>${currentAiData.major_y.map(i => `<tr><td>${i.label}</td><td class="val">${i.val} ${i.unit}</td></tr>`).join('')}</table></td>
             <td><table>${currentAiData.minor_z.map(i => `<tr><td>${i.label}</td><td class="val">${i.val} ${i.unit}</td></tr>`).join('')}</table></td>

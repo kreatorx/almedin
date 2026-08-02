@@ -28,108 +28,108 @@ export default async function handler(req, res) {
 
     const systemPrompt = `
     Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS) po Eurocode 3 (S235 čelik, gammaM0 = 1.00).
+    SVI ISPISI I LABELE MORAJU BITI NA BOSANSKOM JEZIKU!
 
     1. RIGOPOZNA PROVJERA VALIDNOSTI:
-       Ako unos korisnika (npr. 'ws 300', 'abc12', 'random_text') NE POSTOJI i NIJE validan inženjerski opis profila niti zahtjev za dimenzionisanje, vrati ISKLJUČIVO:
+       Ako unos korisnika NE POSTOJI i NIJE validan inženjerski opis profila niti zahtjev za dimenzionisanje, vrati ISKLJUČIVO:
        {
          "found": false,
          "error_message": "Profil ne postoji u priznatim svjetskim standardima, niti je prepoznat validan inženjerski opis ili zahtjev za dimenzionisanje."
        }
 
-    2. NAČINI RADA:
-
-       A) PRETRAGA POSTOJEĆEG PROFILA ILI GENERALIZOVANI OPIS PROFILA (npr. 'WB 300', 'IPE 240', 'SHS 40x40x5', 'gornja flansa 5 pri osi a 3 na kraju, donja flansa 3 pri osi a 1 na kraju, rebro 4'):
+    2. NAČINI RADA (JEZIK ISKLJUČIVO BOSANSKI):
+       
+       A) PRETRAGA ILI GENERALIZOVANI OPIS PROFILA:
           - Vrati "found": true, "is_selection": false.
-          - Vrati pune geometrijske, fizikalne i nosivosne podatke te 'draw_commands' za taj profil.
+          - Vrati geometrijske, fizikalne i nosivosne podatke na bosanskom jeziku.
 
-       B) DIMENZIONISANJE / SELEKCIJA NA OSNOVU OPTEREĆENJA (npr. 'I profili M=500 N=1000', 'HEB za N=800kN', 'Najlakši IPE za M=150kNm'):
+       B) DIMENZIONISANJE NA OSNOVU OPTEREĆENJA:
           - Analiziraj uticajne sile (N_Ed u kN, M_Ed u kNm, V_Ed u kN).
-          - Proračunaj i provjeri interakciju nosivosti po Eurocode 3 za S235 čelik (N_Ed / N_pl,Rd + M_Ed / M_pl,Rd <= 1.0).
-          - Izaberi NAJLAKŠI / OPTIMALNI profil koji zadovoljava uslove kao primarni profil u odgovoru (sa potpunim 'dimensions', 'draw_commands', itd.).
-          - Vrati "found": true, "is_selection": true, i "suitable_profiles" - listu kandidata koji zadovoljavaju zahtjev, rangiranih od najoptimalnijeg:
-            "suitable_profiles": [
-              {"oznaka": "HEB 280", "m": 103.0, "utilization": 84.5, "N_pl_Rd": 3102.0, "M_pl_Rd": 583.4, "status": "OPTIMALNO"},
-              {"oznaka": "HEB 300", "m": 117.0, "utilization": 72.1, "N_pl_Rd": 3500.0, "M_pl_Rd": 680.0, "status": "ZADOVOLJAVA"}
-            ]
+          - Vrati "found": true, "is_selection": true, i "suitable_profiles" sa tabelom na bosanskom.
 
     3. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
-       Svaki objekat unutar JSON nizova (dimensions, area_properties, major_y, minor_z, torsion_warping, resistances_s235, buckling_classification, suitable_profiles) obavezno piši u JEDNOM REDU (inline format), npr:
-       "dimensions": [ {"label": "Depth", "symbol": "h", "val": 300, "unit": "mm"}, {"label": "Width", "symbol": "b", "val": 200, "unit": "mm"} ]
+       Svaki objekat unutar JSON nizova (dimensions, area_properties, major_y, minor_z, torsion_warping, resistances_s235, buckling_classification, suitable_profiles) obavezno piši u JEDNOM REDU (inline format).
 
-    4. PRAVILA ZA GENERISANJE CANVAS KOORDINATA ('draw_commands'):
-       - KOORDINATNI SISTEM je Dekartov sa težištem u (0,0):
-         Vertikala: +Y je GORE (gornja flansa), -Y je DOLE (donja flansa).
-         Horizontala: +X je DESNO, -X je LIJEVO.
-       - PRAVILO ZA RADIJUSE ('arcTo'):
-         NEMOJ stavljati 'lineTo' na istu tačku u koju ulazi 'arcTo'!
-         Sintaksa: ["arcTo", x_corner, y_corner, x_next, y_next, radius]. Olovka sama pravi prelaz sa prethodne tačke preko ugla (x_corner, y_corner) prema nastavku (x_next, y_next).
-       - Ako je zadat radijus na vanjskoj ivici pojasnice (npr. r=2 na X=50, Y=100), upotrijebi 'arcTo' na toj ivici umjesto oštrog 'lineTo'.
-       - 'symbol' i 'label' POLJA MORAJU BITI ČISTI TEKST (NEMOJ KORISTITI LaTeX $ ZNAKOVE!). Npr. koristite 'W_el,y', 'I_y', 'h', 't_f'.
+    4. PRAVILA ZA LABELE I SIMBOLE:
+       - SVE LABELE MORAJU BITI NA BOSANSKOM JEZIKU (npr. 'Visina presjeka', 'Širina pojasnice', 'Debljina hrpta', 'Aksijalni moment inercije', 'Poluprečnik inercije', 'Elastični otporni moment', 'Plastični otporni moment', 'Aksijalna nosivost', 'Nosivost na smicanje').
+       - Za male vrijednosti momenata inercije koristi 3 decimalna mjesta (npr. 0.500 ili 0.501).
+       - 'symbol' i 'label' POLJA MORAJU BITI ČISTI TEKST (NEMOJ KORISTITI LaTeX $ ZNAKOVE!). Npr. 'W_el,y', 'I_y', 'h', 't_f'.
+       - KOORDINATNI SISTEM CANVAS: Dekartov sa težištem u (0,0) (+Y gore, -Y dole, +X desno, -X lijevo).
        - Dozvoljene komande: ["moveTo", x, y], ["lineTo", x, y], ["arcTo", x1, y1, x2, y2, radius], ["arc", cx, cy, radius, startAngle, endAngle], ["closePath"].
 
-    OBLIK JSON STRUKTURE AKO JE PRONAĐEN PROFIL ILI DIMENZIONISANJE:
+    OBLIK JSON STRUKTURE AKO JE PRONAĐEN PROFIL:
     {
       "found": true,
       "is_selection": false,
-      "oznaka": "Custom I-profil",
+      "oznaka": "Proizvoljni I-profil",
       "standard": "Sopstveni opis",
       "shape": "I",
       "dimensions": [
-        {"label": "Depth", "symbol": "h", "val": 200, "unit": "mm"},
-        {"label": "Top Flange Width", "symbol": "b_1", "val": 100, "unit": "mm"},
-        {"label": "Bottom Flange Width", "symbol": "b_2", "val": 100, "unit": "mm"},
-        {"label": "Web thickness", "symbol": "t_w", "val": 4.0, "unit": "mm"},
-        {"label": "Top Flange center thickness", "symbol": "t_f1_center", "val": 5.0, "unit": "mm"},
-        {"label": "Top Flange edge thickness", "symbol": "t_f1_edge", "val": 3.0, "unit": "mm"},
-        {"label": "Bottom Flange center thickness", "symbol": "t_f2_center", "val": 3.0, "unit": "mm"},
-        {"label": "Bottom Flange edge thickness", "symbol": "t_f2_edge", "val": 1.0, "unit": "mm"},
-        {"label": "Web Fillet radius", "symbol": "r_1", "val": 3.0, "unit": "mm"},
-        {"label": "Top Flange Edge radius", "symbol": "r_2", "val": 2.0, "unit": "mm"}
+        {"label": "Visina presjeka", "symbol": "h", "val": 200, "unit": "mm"},
+        {"label": "Širina gornje pojasnice", "symbol": "b_1", "val": 100, "unit": "mm"},
+        {"label": "Širina donje pojasnice", "symbol": "b_2", "val": 100, "unit": "mm"},
+        {"label": "Debljina hrpta", "symbol": "t_w", "val": 4.0, "unit": "mm"},
+        {"label": "Debljina gornje pojasnice u osi", "symbol": "t_f1_osa", "val": 5.0, "unit": "mm"},
+        {"label": "Debljina gornje pojasnice na kraju", "symbol": "t_f1_kraj", "val": 3.0, "unit": "mm"},
+        {"label": "Debljina donje pojasnice u osi", "symbol": "t_f2_osa", "val": 3.0, "unit": "mm"},
+        {"label": "Debljina donje pojasnice na kraju", "symbol": "t_f2_kraj", "val": 1.0, "unit": "mm"},
+        {"label": "Radijus uz hrbat", "symbol": "r_1", "val": 3.0, "unit": "mm"},
+        {"label": "Radijus ivice gornje pojasnice", "symbol": "r_2", "val": 2.0, "unit": "mm"}
       ],
       "area_properties": [
-        {"label": "Weight", "symbol": "m", "val": 12.5, "unit": "kg/m"},
-        {"label": "Sectional Area", "symbol": "A", "val": 1590, "unit": "mm²"}
+        {"label": "Masa po metru", "symbol": "m", "val": 10.8, "unit": "kg/m"},
+        {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 1376, "unit": "mm²"}
       ],
       "major_y": [
-        {"label": "Second moment of area", "symbol": "I_y", "val": 10.5, "unit": "×10⁶ mm⁴"},
-        {"label": "Radius of gyration", "symbol": "i_y", "val": 81.2, "unit": "mm"},
-        {"label": "Elastic section modulus", "symbol": "W_el,y", "val": 105.0, "unit": "×10³ mm³"},
-        {"label": "Plastic section modulus", "symbol": "W_pl,y", "val": 120.0, "unit": "×10³ mm³"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 7.87, "unit": "×10⁶ mm⁴"},
+        {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 75.6, "unit": "mm"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,y", "val": 69.8, "unit": "×10³ mm³"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,y", "val": 85.0, "unit": "×10³ mm³"}
       ],
       "minor_z": [
-        {"label": "Second moment of area", "symbol": "I_z", "val": 0.85, "unit": "×10⁶ mm⁴"},
-        {"label": "Radius of gyration", "symbol": "i_z", "val": 23.1, "unit": "mm"},
-        {"label": "Elastic section modulus", "symbol": "W_el,z", "val": 17.0, "unit": "×10³ mm³"},
-        {"label": "Plastic section modulus", "symbol": "W_pl,z", "val": 26.0, "unit": "×10³ mm³"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_z", "val": 0.500, "unit": "×10⁶ mm⁴"},
+        {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 19.1, "unit": "mm"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 10.0, "unit": "×10³ mm³"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 15.0, "unit": "×10³ mm³"}
       ],
       "torsion_warping": [
-        {"label": "Torsion constant", "symbol": "I_T", "val": 12.0, "unit": "×10³ mm⁴"},
-        {"label": "Torsion modulus", "symbol": "W_T", "val": 3.2, "unit": "×10³ mm³"},
-        {"label": "Warping constant", "symbol": "I_w", "val": 5.2, "unit": "×10⁶ mm⁶"},
-        {"label": "Warping modulus", "symbol": "W_w", "val": 1.2, "unit": "×10³ mm⁴"}
+        {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 4.80, "unit": "×10³ mm⁴"},
+        {"label": "Otporni moment pri uvijanju", "symbol": "W_T", "val": 1.50, "unit": "×10³ mm³"},
+        {"label": "Sektorski moment inercije", "symbol": "I_w", "val": 2.10, "unit": "×10⁶ mm⁶"},
+        {"label": "Sektorski otporni moment", "symbol": "W_w", "val": 0.50, "unit": "×10³ mm⁴"}
       ],
       "resistances_s235": [
-        {"label": "Axial resistance", "symbol": "N_pl,Rd", "val": 373.65, "unit": "kN"},
-        {"label": "Shear resistance z-z", "symbol": "V_pl,Rd,z", "val": 105.2, "unit": "kN"},
-        {"label": "Shear resistance y-y", "symbol": "V_pl,Rd,y", "val": 80.5, "unit": "kN"},
-        {"label": "Elastic bending y-y", "symbol": "M_el,Rd,y", "val": 24.67, "unit": "kNm"},
-        {"label": "Plastic bending y-y", "symbol": "M_pl,Rd,y", "val": 28.20, "unit": "kNm"},
-        {"label": "Elastic bending z-z", "symbol": "M_el,Rd,z", "val": 3.99, "unit": "kNm"},
-        {"label": "Plastic bending z-z", "symbol": "M_pl,Rd,z", "val": 6.11, "unit": "kNm"}
+        {"label": "Aksijalna nosivost", "symbol": "N_pl,Rd", "val": 323.36, "unit": "kN"},
+        {"label": "Nosivost na smicanje z-z", "symbol": "V_pl,Rd,z", "val": 104.2, "unit": "kN"},
+        {"label": "Nosivost na smicanje y-y", "symbol": "V_pl,Rd,y", "val": 81.4, "unit": "kN"},
+        {"label": "Elastični moment savijanja y-y", "symbol": "M_el,Rd,y", "val": 16.40, "unit": "kNm"},
+        {"label": "Plastični moment savijanja y-y", "symbol": "M_pl,Rd,y", "val": 19.98, "unit": "kNm"}
       ],
       "buckling_classification": [
-        {"label": "Buckling curve y-y", "symbol": "-", "val": "b", "unit": ""},
-        {"label": "Buckling curve z-z", "symbol": "-", "val": "c", "unit": ""},
-        {"label": "Web bending class", "symbol": "-", "val": "Class 1", "unit": ""},
-        {"label": "Web compression class", "symbol": "-", "val": "Class 1", "unit": ""},
-        {"label": "Flange compression class", "symbol": "-", "val": "Class 1", "unit": ""}
+        {"label": "Kriva izvijanja y-y", "symbol": "-", "val": "b", "unit": ""},
+        {"label": "Kriva izvijanja z-z", "symbol": "-", "val": "c", "unit": ""},
+        {"label": "Klasa hrpta (savijanje)", "symbol": "-", "val": "Klasa 1", "unit": ""},
+        {"label": "Klasa hrpta (pritisak)", "symbol": "-", "val": "Klasa 1", "unit": ""},
+        {"label": "Klasa pojasnice (pritisak)", "symbol": "-", "val": "Klasa 1", "unit": ""}
       ],
       "draw_commands": [
         ["moveTo", -50, 97],
         ["arcTo", 50, 97, 50, 95, 2],
-        ["lineTo", 50, 97],
-        ["lineTo", 2, 95],
-        ["arcTo", 2, 95, 2, 92, 3]
+        ["lineTo", 50, 95],
+        ["lineTo", 2, 97.5],
+        ["arcTo", 2, 97.5, 2, 90, 3],
+        ["lineTo", 2, -97.5],
+        ["arcTo", 2, -97.5, 50, -98.5, 3],
+        ["lineTo", 50, -98.5],
+        ["lineTo", 50, -99.5],
+        ["lineTo", -50, -99.5],
+        ["lineTo", -50, -98.5],
+        ["arcTo", -2, -97.5, -2, -90, 3],
+        ["lineTo", -2, 90],
+        ["arcTo", -2, 97.5, -50, 95, 3],
+        ["lineTo", -50, 95],
+        ["lineTo", -50, 97],
+        ["closePath"]
       ]
     }
     `;
