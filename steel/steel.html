@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Baza & AI Čelični Profili — Eurocode 3</title>
+  <title>AI Steel Profil by Almedin</title>
   <link rel="shortcut icon" href="#">
   
   <!-- KaTeX CSS i JS za renderovanje LaTeX formula u tooltip-u -->
@@ -73,25 +73,50 @@
 
     .controls {
       display: flex;
-      gap: 14px;
+      flex-direction: column;
+      gap: 12px;
       background: var(--card-bg);
-      padding: 14px;
+      padding: 16px;
       border-radius: 8px;
       border: 1px solid var(--border);
       margin-bottom: 20px;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 14px;
       align-items: flex-end;
     }
 
     .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; }
     label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: bold; }
     
-    input, select {
+    input[type="text"], select {
       background: var(--bg);
       color: var(--text);
       border: 1px solid var(--border);
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 0.95rem;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--accent);
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
     }
 
     button.btn-action {
@@ -329,8 +354,8 @@
 
 <div class="container">
   <header>
-    <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
-    <div class="subtitle">Google Gemini 3.5 Flash API & HTML5 Canvas Crtač (S235 čelik)</div>
+    <h1>Baza & AI Proračun Profila — Eurocode 3 (beta)</h1>
+    <div class="subtitle">Google Gemini 3.6 Flash API generator čeličnih profila</div>
   </header>
 
   <div class="tabs">
@@ -341,14 +366,21 @@
 
   <div id="tab-ai-profile" class="tab-content active">
     <div class="card">
-      <h2 class="card-title">Pretraga Profila Ili Dimenzionisanje Na Osnovu Opterećenja</h2>
+      <h2 class="card-title">Pretraga Profila ili Dimenzionisanje Na Osnovu Opterećenja</h2>
       <div class="controls">
-        <div class="form-group" style="flex: 3;">
-          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Upotrijebite strelice ▲/▼ za historiju upita)</label>
-          <input type="text" id="aiPromptInput" list="promptHistoryDatalist" autocomplete="off" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 340">
-          <datalist id="promptHistoryDatalist"></datalist>
+        <div class="controls-row">
+          <div class="form-group">
+            <label for="aiPromptInput">Unesite profil, opis ili sile opterećenja (strelice ▲/▼ za historiju upita)</label>
+            <input type="text" id="aiPromptInput" list="promptHistoryDatalist" autocomplete="off" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 340">
+            <datalist id="promptHistoryDatalist"></datalist>
+          </div>
+          <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
         </div>
-        <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
+        
+        <label class="checkbox-label" for="chkExtendedParams">
+          <input type="checkbox" id="chkExtendedParams">
+          Prikaži Proširenu Analizu (Smicanje, Torzija, Vitoperenje/Warping, PNA, Wagner parametri, Požarni faktor $A_m/V$)
+        </label>
       </div>
 
       <details id="rawJsonDetails" class="raw-json" style="display: none;">
@@ -526,7 +558,10 @@ function escapeHtml(str) {
 
 async function fetchProfileFromVercel() {
   const promptInput = document.getElementById('aiPromptInput');
+  const chkExtended = document.getElementById('chkExtendedParams');
   const promptText = promptInput ? promptInput.value.trim() : '';
+  const isExtended = chkExtended ? chkExtended.checked : false;
+
   const resultsGrid = document.getElementById('aiResultsGrid');
   const rawDetails = document.getElementById('rawJsonDetails');
   const rawCode = document.getElementById('rawJsonCode');
@@ -545,14 +580,17 @@ async function fetchProfileFromVercel() {
   historyIndex = -1;
 
   const startTime = performance.now();
-  updateStatus('loading', 'AI Generisanje u toku...', 'Molimo sačekajte, analiziram profil i vršim proračune po EC3.');
+  updateStatus('loading', 'AI Generisanje u toku...', `Molimo sačekajte, vršim ${isExtended ? 'PROŠIRENU' : 'osnovnu'} analizu po EC3.`);
   btn.disabled = true;
 
   try {
     const response = await fetch('/api/steel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptText })
+      body: JSON.stringify({ 
+        prompt: promptText,
+        extended: isExtended 
+      })
     });
 
     const data = await response.json();
@@ -784,7 +822,6 @@ function drawCanvasProfile(inputData) {
 
       const axisLen = maxDim * scale * 0.55;
 
-      // Osa u-u (pod uglom alphaRad)
       const ux = axisLen * Math.cos(alphaRad);
       const uy = axisLen * Math.sin(alphaRad);
 
@@ -793,7 +830,6 @@ function drawCanvasProfile(inputData) {
       ctx.lineTo(cx + ux, cy + uy);
       ctx.stroke();
 
-      // Osa v-v (okomita na u-u)
       const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
       const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
 
@@ -810,7 +846,6 @@ function drawCanvasProfile(inputData) {
       ctx.restore();
     }
 
-    // CRTANJE ELIPSE INERCIJE
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
@@ -821,18 +856,15 @@ function drawCanvasProfile(inputData) {
     ctx.stroke();
     ctx.restore();
 
-    // RADIALNE TAČKE NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    // Tačka NA u-osi (dužina radiusOnU = i_v) -> Oznaka i_v!
     const ptUx = cx + radiusOnU * Math.cos(alphaRad);
     const ptUy = cy + radiusOnU * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
     ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptUx + 4, ptUy - 4);
 
-    // Tačka NA v-osi (dužina radiusOnV = i_u) -> Oznaka i_u!
     const ptVx = cx + radiusOnV * Math.cos(alphaRad + Math.PI / 2);
     const ptVy = cy + radiusOnV * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
@@ -907,6 +939,9 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   ctx.restore();
 }
 
+// -------------------------------------------------------------
+// RENDER TABELA: DINAMIČKI RENDERA I PROŠIRENE TABELE AKO POSTOJE
+// -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -952,6 +987,23 @@ function renderAiTables(data, containerId) {
     `;
   }
 
+  // DINAMIČKI BLOK ZA PROŠIRENE KATEGORIJE
+  let extendedSectionHtml = '';
+  if (data.shear_properties || data.torsion_warping_extended || data.stability_asymmetry || data.plasticity_extended || data.other_properties) {
+    extendedSectionHtml = `
+      <div style="margin-top:20px; border-top:2px dashed var(--accent); padding-top:16px;">
+        <h2 style="color:var(--accent); font-size:0.95rem; margin-top:0;">Proširena Analiza Poprečnog Presjeka (DLUBAL / EC3 All Properties)</h2>
+        <div class="tables-grid">
+          ${data.shear_properties ? `<div><h3 style="color:var(--muted); font-size:0.82rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Smicanje (Shear)</h3><table>${buildRows(data.shear_properties)}</table></div>` : ''}
+          ${data.torsion_warping_extended ? `<div><h3 style="color:var(--muted); font-size:0.82rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Torzija & Vitoperenje (Warping)</h3><table>${buildRows(data.torsion_warping_extended)}</table></div>` : ''}
+          ${data.stability_asymmetry ? `<div><h3 style="color:var(--muted); font-size:0.82rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Stabilnost & Asimetrija</h3><table>${buildRows(data.stability_asymmetry)}</table></div>` : ''}
+          ${data.plasticity_extended ? `<div><h3 style="color:var(--muted); font-size:0.82rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Plastičnost & Neutralne Ose (PNA)</h3><table>${buildRows(data.plasticity_extended)}</table></div>` : ''}
+          ${data.other_properties ? `<div><h3 style="color:var(--muted); font-size:0.82rem; border-bottom:1px solid var(--border); padding-bottom:4px;">Požarni Faktori & Obim ($A_m/V$)</h3><table>${buildRows(data.other_properties)}</table></div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
   container.innerHTML = `
     <div class="tables-grid">
       <div>
@@ -991,6 +1043,8 @@ function renderAiTables(data, containerId) {
         <table>${buildRows(data.buckling_classification)}</table>
       </div>
     </div>
+
+    ${extendedSectionHtml}
   `;
 }
 
@@ -998,7 +1052,11 @@ function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   
   let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica", "Formula"]];
-  const groups = ['dimensions', 'area_properties', 'major_y', 'minor_z', 'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification'];
+  const groups = [
+    'dimensions', 'area_properties', 'major_y', 'minor_z', 
+    'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification',
+    'shear_properties', 'torsion_warping_extended', 'stability_asymmetry', 'plasticity_extended', 'other_properties'
+  ];
 
   groups.forEach(g => {
     if (currentAiData[g]) {
