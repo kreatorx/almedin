@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baza & AI Čelični Profili — Eurocode 3</title>
   
-  <!-- KaTeX CSS i JS za renderovanje LaTeX formula u tooltip-u -->
+  <!-- KaTeX CSS i JS biblioteka -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
@@ -220,7 +220,7 @@
       z-index: 9999;
       display: none;
       min-width: 220px;
-      max-width: 340px;
+      max-width: 360px;
       backdrop-filter: blur(8px);
     }
 
@@ -234,8 +234,8 @@
     }
 
     .katex-formula-box {
-      font-size: 1.05rem;
-      padding: 4px 0;
+      font-size: 1.1rem;
+      padding: 6px 0;
       color: #38bdf8;
       overflow-x: auto;
     }
@@ -321,7 +321,6 @@
 
       <div id="aiStatus" class="status-msg" style="margin-top: 12px;"></div>
 
-      <!-- Sekcija za rezultate dimenzionisanja -->
       <div id="selectionResultsContainer" style="display: none; margin-top: 16px;"></div>
 
       <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 16px;">
@@ -375,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Zatvaranje tooltipa pri kliku van njega
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('formulaTooltip');
     if (tooltip && !e.target.classList.contains('info-btn')) {
@@ -396,7 +394,7 @@ function formatSymbol(sym) {
 function handleInfoClick(e) {
   e.stopPropagation();
   const btn = e.currentTarget;
-  const formula = btn.getAttribute('data-formula') || 'N/A';
+  const rawFormula = btn.getAttribute('data-formula') || 'N/A';
   const label = btn.getAttribute('data-label') || 'Proračun';
   const tooltip = document.getElementById('formulaTooltip');
 
@@ -411,19 +409,19 @@ function handleInfoClick(e) {
   const container = document.getElementById('katexFormulaContainer');
   if (window.katex && container) {
     try {
-      katex.render(formula, container, {
+      katex.render(rawFormula, container, {
         throwOnError: false,
         displayMode: true
       });
     } catch (err) {
-      container.textContent = formula;
+      container.textContent = rawFormula;
     }
   } else if (container) {
-    container.textContent = formula;
+    container.textContent = rawFormula;
   }
 
   const rect = btn.getBoundingClientRect();
-  const tooltipWidth = 280;
+  const tooltipWidth = 300;
   
   let leftPos = rect.left + window.scrollX - tooltipWidth + 30;
   if (leftPos < 10) leftPos = 10;
@@ -635,7 +633,7 @@ function drawCanvasProfile(inputData) {
   ctx.fillText('y', width - 12, cy + 4);
   ctx.fillText('z', cx - 4, height - 4);
 
-  // 3. TEŽIŠTE G(0,0) SA OZNNAKOM
+  // 3. TEŽIŠTE G(0,0) SA OZNAKOM
   ctx.save();
   ctx.strokeStyle = '#ef4444';
   ctx.lineWidth = 1;
@@ -671,7 +669,6 @@ function drawCanvasProfile(inputData) {
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
   const alphaDeg = inputData.alpha_deg || 0;
-  // Čisti matematički ugao u radijanima
   const alphaRad = (alphaDeg * Math.PI) / 180;
 
   const iuVal = inputData.i_u || (iyItem ? iyItem.val : 0);
@@ -681,7 +678,6 @@ function drawCanvasProfile(inputData) {
     const iuPx = iuVal * scale;
     const ivPx = ivVal * scale;
 
-    // A) ROTIRANE GLAVNE OSE INERCIJE u-u I v-v (Žute isprekidane linije)
     if (Math.abs(alphaDeg) > 0.1) {
       ctx.save();
       ctx.strokeStyle = '#fbbf24';
@@ -690,7 +686,6 @@ function drawCanvasProfile(inputData) {
 
       const axisLen = maxDim * scale * 0.55;
 
-      // Osa u-u (pod uglom alphaRad u matematičkom sistemu)
       const ux = axisLen * Math.cos(alphaRad);
       const uy = axisLen * Math.sin(alphaRad);
 
@@ -699,7 +694,6 @@ function drawCanvasProfile(inputData) {
       ctx.lineTo(cx + ux, cy - uy);
       ctx.stroke();
 
-      // Osa v-v (upravna na u-u, ugao alphaRad + PI/2)
       const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
       const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
 
@@ -708,7 +702,6 @@ function drawCanvasProfile(inputData) {
       ctx.lineTo(cx + vx, cy - vy);
       ctx.stroke();
 
-      // Oznake osa u i v
       ctx.font = 'bold 10px Segoe UI, sans-serif';
       ctx.fillStyle = '#fbbf24';
       ctx.fillText('u', cx + ux + (ux >= 0 ? 4 : -10), cy - uy + (uy >= 0 ? -4 : 10));
@@ -717,7 +710,6 @@ function drawCanvasProfile(inputData) {
       ctx.restore();
     }
 
-    // B) ROTIRANA ELIPSA INERCIJE (-alphaRad zbog obrnute Y-ose platna)
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
@@ -728,18 +720,15 @@ function drawCanvasProfile(inputData) {
     ctx.stroke();
     ctx.restore();
 
-    // C) TAČKE I OZNAKE POLUPREČNIKA INERCIJE NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    // Tačka i_u duž ose u (ugao alphaRad)
     const ptUx = cx + iuPx * Math.cos(alphaRad);
     const ptUy = cy - iuPx * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
     ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
 
-    // Tačka i_v duž ose v (ugao alphaRad + PI/2)
     const ptVx = cx + ivPx * Math.cos(alphaRad + Math.PI / 2);
     const ptVy = cy - ivPx * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
@@ -824,7 +813,7 @@ function renderAiTables(data, containerId) {
   const buildRows = (arr) => {
     if (!arr || !arr.length) return '<tr><td colspan="4">-</td></tr>';
     return arr.map(item => {
-      const formulaAttr = escapeHtml(item.formula || 'Formula je geometrijski ili standardom zadana');
+      const formulaAttr = escapeHtml(item.formula || '\\text{Zadano standardom}');
       const labelAttr = escapeHtml(item.label || '');
       return `
         <tr>
