@@ -28,7 +28,7 @@
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 20px 20px 60px 20px; /* Dodan razmak na dnu zbog fiksiranog status bara */
+      padding: 20px 20px 60px 20px;
     }
 
     .container { max-width: 1400px; margin: 0 auto; }
@@ -283,7 +283,6 @@
     details.raw-json summary { cursor: pointer; color: var(--accent); font-weight: bold; font-size: 0.85rem; }
     details.raw-json pre { margin: 8px 0 0 0; background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; color: #34d399; font-family: monospace; font-size: 0.8rem; }
 
-    /* FIKSIRANI STATUS BAR NA DNU EKRANA */
     #bottomStatusBar {
       position: fixed;
       bottom: 0;
@@ -390,7 +389,6 @@
 
 </div>
 
-<!-- FIKSIRANI STATUS BAR NA DNU EKRANA -->
 <div id="bottomStatusBar">
   <span id="statusDotIndicator" class="status-dot ready"></span>
   <span id="statusMainText">Spremno za rad</span>
@@ -402,7 +400,6 @@
 <script>
 let currentAiData = null;
 
-// HISTORIJA PROMPTOVA U MEMORIJI
 let promptHistory = [];
 let historyIndex = -1;
 let tempPromptValue = '';
@@ -413,7 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnAi) btnAi.addEventListener('click', fetchProfileFromVercel);
 
-  // NAVIGACIJA STRELICAMA GORE / DOLE UNUTAR INPUT POLJA
   if (promptInput) {
     promptInput.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowUp') {
@@ -462,7 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateStatus('ready', 'Spremno', 'Unesite opis profila ili opterećenje.');
 });
 
-// AŽURIRANJE STATUS BARA
 function updateStatus(state, mainText, subText = '') {
   const dot = document.getElementById('statusDotIndicator');
   const mainEl = document.getElementById('statusMainText');
@@ -473,7 +468,6 @@ function updateStatus(state, mainText, subText = '') {
   if (subEl) subEl.textContent = subText;
 }
 
-// AŽURIRANJE DATALIST OPCIJA ZA PADAJUĆU LISTU
 function updateDatalistUI() {
   const datalist = document.getElementById('promptHistoryDatalist');
   if (!datalist) return;
@@ -530,9 +524,6 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// -------------------------------------------------------------
-// 1. POZIV AI MODELA — NEDESTRUKTIVNO OSVJEŽAVANJE I STATUS BAR
-// -------------------------------------------------------------
 async function fetchProfileFromVercel() {
   const promptInput = document.getElementById('aiPromptInput');
   const promptText = promptInput ? promptInput.value.trim() : '';
@@ -547,7 +538,6 @@ async function fetchProfileFromVercel() {
     return;
   }
 
-  // Dodavanje u historiju
   if (!promptHistory.includes(promptText)) {
     promptHistory.push(promptText);
     updateDatalistUI();
@@ -567,12 +557,11 @@ async function fetchProfileFromVercel() {
 
     const data = await response.json();
 
-    // HVTANJE PREKORAČENJA KVOTE (HTTP 429)
     if (response.status === 429) {
       updateStatus(
         'error', 
         'Besplatni limit prekoračen (429)', 
-        'Dostignut je besplatni broj zahtjeva Google Gemini API-ja (20 req/min). Sačekajte ~35 sekundi pa kliknite ponovo.'
+        'Dostignut je besplatni broj zahtjeva Google Gemini API-ja. Sačekajte ~30 sekundi pa pokušajte ponovo.'
       );
       btn.disabled = false;
       return;
@@ -582,14 +571,12 @@ async function fetchProfileFromVercel() {
       throw new Error(data.error || `Greška HTTP Status: ${response.status}`);
     }
 
-    // AKO PROFIL NIJE PRONAĐEN (SAČUVAJ PRETHODNI EKRAN I JSON)
     if (data.found === false) {
       updateStatus('error', 'Profil ne postoji', data.error_message || 'Zadani profil nije pronađen u standardima. Prethodni profil je zadržan.');
       btn.disabled = false;
       return;
     }
 
-    // USPJEŠNO PRORAČUNATO: SADA ZAMIJENI PODATKE NA EKRANU
     currentAiData = data;
 
     rawCode.textContent = JSON.stringify(data, null, 2);
@@ -674,7 +661,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// 2. CANVAS CRTAČ — SA TEORIJSKI TAČNOM ELIPSOM INERCIJE
+// CANVAS CRTAČ — EGZAKTNOM METODOM POLUPREČNIKA INERCIJE (i_u na v-osi, i_v na u-osi)
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -769,7 +756,7 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // Rotirana elipsa inercije i ose u-v
+  // ROTIRANA ELIPSA INERCIJE I OSA u-v
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
@@ -783,6 +770,9 @@ function drawCanvasProfile(inputData) {
     const iuPx = iuVal * scale;
     const ivPx = ivVal * scale;
 
+    // PO FIZICI I TEORIJI ELIPSE INERCIJE:
+    // Na u-osi nanosi se i_v (udaljenost od v-ose)
+    // Na v-osi nanosi se i_u (udaljenost od u-ose)
     const radiusOnU = ivPx; 
     const radiusOnV = iuPx; 
 
@@ -794,6 +784,7 @@ function drawCanvasProfile(inputData) {
 
       const axisLen = maxDim * scale * 0.55;
 
+      // Osa u-u (pod uglom alphaRad)
       const ux = axisLen * Math.cos(alphaRad);
       const uy = axisLen * Math.sin(alphaRad);
 
@@ -802,6 +793,7 @@ function drawCanvasProfile(inputData) {
       ctx.lineTo(cx + ux, cy + uy);
       ctx.stroke();
 
+      // Osa v-v (okomita na u-u)
       const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
       const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
 
@@ -818,6 +810,7 @@ function drawCanvasProfile(inputData) {
       ctx.restore();
     }
 
+    // CRTANJE ELIPSE INERCIJE
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
@@ -828,15 +821,18 @@ function drawCanvasProfile(inputData) {
     ctx.stroke();
     ctx.restore();
 
+    // RADIALNE TAČKE NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
+    // Tačka NA u-osi (dužina radiusOnU = i_v) -> Oznaka i_v!
     const ptUx = cx + radiusOnU * Math.cos(alphaRad);
     const ptUy = cy + radiusOnU * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
     ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptUx + 4, ptUy - 4);
 
+    // Tačka NA v-osi (dužina radiusOnV = i_u) -> Oznaka i_u!
     const ptVx = cx + radiusOnV * Math.cos(alphaRad + Math.PI / 2);
     const ptVy = cy + radiusOnV * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
@@ -920,11 +916,20 @@ function renderAiTables(data, containerId) {
     return arr.map(item => {
       const formulaAttr = escapeHtml(item.formula || '\\text{Zadano standardom}');
       const labelAttr = escapeHtml(item.label || '');
+      
+      let valDisplay = item.val;
+      if (item.symbol === 'chi' || item.symbol === '\\chi') {
+        valDisplay = `<strong style="color:var(--warning); font-size:0.9rem;">${item.val}</strong>`;
+      } else if (item.symbol === 'eta_buckling') {
+        const isOver = parseFloat(item.val) > 100;
+        valDisplay = `<strong style="color:${isOver ? 'var(--error)' : 'var(--success)'}; font-size:0.9rem;">${item.val} ${item.unit}</strong>`;
+      }
+
       return `
         <tr>
           <td>${item.label} (${formatSymbol(item.symbol)})</td>
-          <td class="val">${item.val}</td>
-          <td class="unit">${item.unit}</td>
+          <td class="val">${valDisplay}</td>
+          <td class="unit">${item.symbol === 'eta_buckling' ? '' : item.unit}</td>
           <td class="info-col">
             <span class="info-btn" 
                   data-formula="${formulaAttr}" 
@@ -936,6 +941,16 @@ function renderAiTables(data, containerId) {
       `;
     }).join('');
   };
+
+  let bucklingAnalysisHtml = '';
+  if (data.buckling_analysis && data.buckling_analysis.length) {
+    bucklingAnalysisHtml = `
+      <div style="margin-top: 16px; background: rgba(251, 191, 36, 0.04); padding: 10px; border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.2);">
+        <h3 style="color:var(--warning); font-size:0.88rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Detaljna Analiza Izvijanja (EN 1993-1-1)</h3>
+        <table>${buildRows(data.buckling_analysis)}</table>
+      </div>
+    `;
+  }
 
   container.innerHTML = `
     <div class="tables-grid">
@@ -960,6 +975,8 @@ function renderAiTables(data, containerId) {
       </div>
     </div>
 
+    ${bucklingAnalysisHtml}
+
     <div class="tables-grid" style="margin-top: 16px;">
       <div>
         <h3 style="color:var(--muted); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Torzija i Vitoperenje</h3>
@@ -981,7 +998,7 @@ function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   
   let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica", "Formula"]];
-  const groups = ['dimensions', 'area_properties', 'major_y', 'minor_z', 'torsion_warping', 'resistances_s235', 'buckling_classification'];
+  const groups = ['dimensions', 'area_properties', 'major_y', 'minor_z', 'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification'];
 
   groups.forEach(g => {
     if (currentAiData[g]) {

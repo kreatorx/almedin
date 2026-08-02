@@ -19,95 +19,116 @@ export default async function handler(req, res) {
     }
 
     const systemPrompt = `
-    Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS) po Eurocode 3 (S235 čelik, gammaM0 = 1.00).
+    Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS) po Eurocode 3 (S235 čelik, gammaM0 = 1.00, gammaM1 = 1.00, E = 210 GPa).
     SVI ISPISI I LABELE MORAJU BITI NA BOSANSKOM JEZIKU!
 
     1. RIGOPOZNA PROVJERA VALIDNOSTI:
        Ako unos korisnika NE POSTOJI i NIJE validan opis profila niti zahtjev za dimenzionisanje, vrati ISKLJUČIVO:
        { "found": false, "error_message": "Profil ne postoji u priznatim svjetskim standardima." }
 
-    2. TAČNA GEOMETRIJA, DISKRETIZACIJA I RADIJUSI:
-       - Pri proračunu težišta G(y_G, z_G) i momenata inercije (I_y, I_z, I_yz) DISKRETIZUJ presjek sa visokom preciznošću.
-       - Obavezno obuhvati površine unutrašnjih i vanjskih radijusa: A_fillet = (1 - pi/4)*r_1^2.
-       - Ako krakovi imaju promjenjivu debljinu (npr. sa t u korijenu na t_end na kraju), draw_commands MORAJU tačno prikazati kosinu krakova od korijena do kraja!
-       - Sve komande u draw_commands MORAJU biti pomjerene tako da je težište presjeka u tački (0,0).
+    2. PRAVILA ZA TAČNO GEOMETRIJSKO ISCRTAVANJE (draw_commands):
+       Sve koordinate u draw_commands MORAJU biti pomjerene tako da je težište G u tački (0,0).
+       Neka je x0 = -y_G i y0 = -z_G (donji lijevi ugao u težišnom sistemu).
 
-    3. STROGA LaTeX SINTAKSA ZA POLJE "formula":
-       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama (\\\\frac, \\\\gamma, \\\\cdot, \\\\sqrt, \\\\alpha, \\\\sum).
+       A) ZA L-PROFILE (h, b, t, r1, y_G, z_G):
+          - ["moveTo", x0, y0 + h]
+          - ["lineTo", x0 + t, y0 + h]
+          - ["lineTo", x0 + t, y0 + t + r1]
+          - ["arcTo", x0 + t, y0 + t, x0 + t + r1, y0 + t, r1]
+          - ["lineTo", x0 + b, y0 + t]
+          - ["lineTo", x0 + b, y0]
+          - ["lineTo", x0, y0]
+          - ["closePath"]
 
-    4. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
+    3. DETALJNA ANALIZA IZVIJANJA PO EC3 (AKO JE UNESENA DUŽINA IZVIJANJA ILI SILA):
+       Ako korisnik spomene dužinu izvijanja L_cr (npr. 2m) ili silu pritiska N_Ed (npr. 1000kN), u JSON odgovoru OBAVEZNO popuni niz "buckling_analysis" sa tačnim međurezultatima:
+       - Dužina izvijanja L_cr (m)
+       - Kritična Eulerova sila N_cr (kN)
+       - Relativna vitkost lambda_bar
+       - Faktor imperfekcije alpha_imp
+       - Pomoćni faktor Phi
+       - KOEFICIJENT IZVIJANJA chi
+       - Izvijajna nosivost N_b_Rd (kN)
+       - Stepen iskorištenosti na izvijanje eta_buckling (%)
+
+    4. STROGA LaTeX SINTAKSA ZA POLJE "formula":
+       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama.
+
+    5. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
        Obavezno piši objekte unutar nizova u JEDNOM REDU (inline format).
 
-    5. ROTACIJA GLAVNIH OSA INERCIJE (ZA NESIMETRIČNE PROFILE):
-       Za L-profile i nesimetrične presjeke vrati "alpha_deg" (ugao rotacije u stepenima), "i_u" i "i_v".
+    6. ROTACIJA GLAVNIH OSA INERCIJE (ZA NESIMETRIČNE PROFILE):
+       Za L-profile i nesimetrične presjeke vrati "alpha_deg", "i_u" i "i_v".
 
     OBLIK JSON STRUKTURE AKO JE PRONAĐEN PROFIL:
     {
       "found": true,
       "is_selection": false,
-      "oznaka": "L 50x20x5 (Konusni)",
-      "standard": "Sopstveni opis",
+      "oznaka": "L 180x180x16",
+      "standard": "EN 10056-1",
       "shape": "L",
-      "alpha_deg": -24.2,
-      "i_u": 16.5,
-      "i_v": 5.1,
+      "alpha_deg": -45.0,
+      "i_u": 69.4,
+      "i_v": 35.4,
       "dimensions": [
-        {"label": "Visina dužeg kraka", "symbol": "h", "val": 50, "unit": "mm", "formula": "h"},
-        {"label": "Širina kraćeg kraka", "symbol": "b", "val": 20, "unit": "mm", "formula": "b"},
-        {"label": "Debljina u korijenu", "symbol": "t", "val": 5, "unit": "mm", "formula": "t"},
-        {"label": "Debljina na krajevima", "symbol": "t_end", "val": 2, "unit": "mm", "formula": "t_{end}"},
-        {"label": "Unutrašnji radijus", "symbol": "r_1", "val": 5, "unit": "mm", "formula": "r_1"}
+        {"label": "Visina kraka", "symbol": "h", "val": 180, "unit": "mm", "formula": "h"},
+        {"label": "Širina kraka", "symbol": "b", "val": 180, "unit": "mm", "formula": "b"},
+        {"label": "Debljina kraka", "symbol": "t", "val": 16, "unit": "mm", "formula": "t"},
+        {"label": "Unutrašnji radijus", "symbol": "r_1", "val": 15, "unit": "mm", "formula": "r_1"},
+        {"label": "Vanjski radijus kraka", "symbol": "r_2", "val": 7.5, "unit": "mm", "formula": "r_2"}
       ],
       "area_properties": [
-        {"label": "Masa po metru", "symbol": "m", "val": 1.84, "unit": "kg/m", "formula": "m = A \\\\cdot \\\\rho_{steel}"},
-        {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 235, "unit": "mm²", "formula": "A = \\\\int dA"},
-        {"label": "Položaj težišta y_G", "symbol": "y_G", "val": 4.5, "unit": "mm", "formula": "y_G = \\\\frac{\\\\sum A_i \\\\cdot y_i}{A}"},
-        {"label": "Položaj težišta z_G", "symbol": "z_G", "val": 19.5, "unit": "mm", "formula": "z_G = \\\\frac{\\\\sum A_i \\\\cdot z_i}{A}"}
+        {"label": "Masa po metru", "symbol": "m", "val": 43.5, "unit": "kg/m", "formula": "m = A \\\\cdot \\\\rho"},
+        {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 5540, "unit": "mm²", "formula": "A"},
+        {"label": "Položaj težišta y_G", "symbol": "y_G", "val": 51.4, "unit": "mm", "formula": "y_G"},
+        {"label": "Položaj težišta z_G", "symbol": "z_G", "val": 51.4, "unit": "mm", "formula": "z_G"}
       ],
       "major_y": [
-        {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 0.060, "unit": "×10⁶ mm⁴", "formula": "I_y = \\\\sum (I_{y,i} + A_i \\\\cdot z_i^2)"},
-        {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 16.0, "unit": "mm", "formula": "i_y = \\\\sqrt{\\\\frac{I_y}{A}}"},
-        {"label": "Elastični otporni moment", "symbol": "W_el,y", "val": 1.96, "unit": "×10³ mm³", "formula": "W_{el,y} = \\\\frac{I_y}{z_{max}}"},
-        {"label": "Plastični otporni moment", "symbol": "W_pl,y", "val": 2.94, "unit": "×10³ mm³", "formula": "W_{pl,y} = \\\\sum A_i \\\\cdot |z_{G,i}|"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 16.8, "unit": "×10⁶ mm⁴", "formula": "I_y"},
+        {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 55.2, "unit": "mm", "formula": "i_y = \\\\sqrt{\\\\frac{I_y}{A}}"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,y", "val": 131.0, "unit": "×10³ mm³", "formula": "W_{el,y}"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,y", "val": 235.0, "unit": "×10³ mm³", "formula": "W_{pl,y}"}
       ],
       "minor_z": [
-        {"label": "Aksijalni moment inercije", "symbol": "I_z", "val": 0.006, "unit": "×10⁶ mm⁴", "formula": "I_z = \\\\sum (I_{z,i} + A_i \\\\cdot y_i^2)"},
-        {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 5.0, "unit": "mm", "formula": "i_z = \\\\sqrt{\\\\frac{I_z}{A}}"},
-        {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 0.38, "unit": "×10³ mm³", "formula": "W_{el,z} = \\\\frac{I_z}{y_{max}}"},
-        {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 0.57, "unit": "×10³ mm³", "formula": "W_{pl,z} = \\\\sum A_i \\\\cdot |y_{G,i}|"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_z", "val": 16.8, "unit": "×10⁶ mm⁴", "formula": "I_z"},
+        {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 55.2, "unit": "mm", "formula": "i_z = \\\\sqrt{\\\\frac{I_z}{A}}"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 131.0, "unit": "×10³ mm³", "formula": "W_{el,z}"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 235.0, "unit": "×10³ mm³", "formula": "W_{pl,z}"}
       ],
       "torsion_warping": [
-        {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 0.95, "unit": "×10³ mm⁴", "formula": "I_T = \\\\frac{1}{3} \\\\sum b_i \\\\cdot t_i^3"},
-        {"label": "Otporni moment pri uvijanju", "symbol": "W_T", "val": 0.19, "unit": "×10³ mm³", "formula": "W_T = \\\\frac{I_T}{t_{max}}"},
-        {"label": "Centrifugalni moment inercije", "symbol": "I_yz", "val": -0.015, "unit": "×10⁶ mm⁴", "formula": "I_{yz} = \\\\sum A_i \\\\cdot y_i \\\\cdot z_i"},
-        {"label": "Ugao rotacije glavnih osa", "symbol": "alpha", "val": -24.2, "unit": "°", "formula": "\\\\tan(2\\\\alpha) = \\\\frac{2 \\\\cdot I_{yz}}{I_z - I_y}"}
+        {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 491.5, "unit": "×10³ mm⁴", "formula": "I_T"},
+        {"label": "Otporni moment pri uvijanju", "symbol": "W_T", "val": 30.7, "unit": "×10³ mm³", "formula": "W_T"}
       ],
       "resistances_s235": [
-        {"label": "Aksijalna nosivost", "symbol": "N_pl,Rd", "val": 55.22, "unit": "kN", "formula": "N_{pl,Rd} = \\\\frac{A \\\\cdot f_y}{\\\\gamma_{M0}}"},
-        {"label": "Nosivost na smicanje z-z", "symbol": "V_pl,Rd,z", "val": 23.7, "unit": "kN", "formula": "V_{pl,Rd,z} = \\\\frac{A_{v,z} \\\\cdot \\\\frac{f_y}{\\\\sqrt{3}}}{\\\\gamma_{M0}}"},
-        {"label": "Nosivost na smicanje y-y", "symbol": "V_pl,Rd,y", "val": 9.5, "unit": "kN", "formula": "V_{pl,Rd,y} = \\\\frac{A_{v,y} \\\\cdot \\\\frac{f_y}{\\\\sqrt{3}}}{\\\\gamma_{M0}}"},
-        {"label": "Elastični moment savijanja y-y", "symbol": "M_el,Rd,y", "val": 0.46, "unit": "kNm", "formula": "M_{el,Rd,y} = \\\\frac{W_{el,y} \\\\cdot f_y}{\\\\gamma_{M0}}"},
-        {"label": "Plastični moment savijanja y-y", "symbol": "M_pl,Rd,y", "val": 0.69, "unit": "kNm", "formula": "M_{pl,Rd,y} = \\\\frac{W_{pl,y} \\\\cdot f_y}{\\\\gamma_{M0}}"}
+        {"label": "Aksijalna nosivost presjeka", "symbol": "N_pl,Rd", "val": 1297.2, "unit": "kN", "formula": "N_{pl,Rd} = \\\\frac{A \\\\cdot f_y}{\\\\gamma_{M0}}"}
+      ],
+      "buckling_analysis": [
+        {"label": "Računska dužina izvijanja", "symbol": "L_cr", "val": 2.0, "unit": "m", "formula": "L_{cr}"},
+        {"label": "Kritična Eulerova sila (v-v)", "symbol": "N_cr,v", "val": 1472.5, "unit": "kN", "formula": "N_{cr,v} = \\\\frac{\\\\pi^2 \\\\cdot E \\\\cdot I_v}{L_{cr}^2}"},
+        {"label": "Relativna vitkost", "symbol": "lambda_bar", "val": 0.94, "unit": "-", "formula": "\\\\bar{\\\\lambda} = \\\\sqrt{\\\\frac{A \\\\cdot f_y}{N_{cr}}}"},
+        {"label": "Faktor imperfekcije (Kriva c)", "symbol": "alpha", "val": 0.49, "unit": "-", "formula": "\\\\alpha"},
+        {"label": "Pomoćni koeficijent", "symbol": "Phi", "val": 1.12, "unit": "-", "formula": "\\\\Phi"},
+        {"label": "Koeficijent izvijanja", "symbol": "chi", "val": 0.57, "unit": "-", "formula": "\\\\chi = \\\\frac{1}{\\\\Phi + \\\\sqrt{\\\\Phi^2 - \\\\bar{\\\\lambda}^2}}"},
+        {"label": "Izvijajna nosivost (v-v)", "symbol": "N_b,Rd,v", "val": 1015.7, "unit": "kN", "formula": "N_{b,Rd,v} = \\\\frac{\\\\chi \\\\cdot A \\\\cdot f_y}{\\\\gamma_{M1}}"},
+        {"label": "Iskorištenost na izvijanje", "symbol": "eta_buckling", "val": 98.5, "unit": "%", "formula": "\\\\eta = \\\\frac{N_{Ed}}{N_{b,Rd,v}} \\\\cdot 100\\%"}
       ],
       "buckling_classification": [
-        {"label": "Kriva izvijanja y-y", "symbol": "-", "val": "b", "unit": "", "formula": "\\\\text{EN 1993-1-1 Tabela 6.2}"},
-        {"label": "Kriva izvijanja z-z", "symbol": "-", "val": "c", "unit": "", "formula": "\\\\text{EN 1993-1-1 Tabela 6.2}"},
+        {"label": "Kriva izvijanja", "symbol": "-", "val": "c", "unit": "", "formula": "Tabela 6.2 EN 1993-1-1"},
         {"label": "Klasa kraka (pritisak)", "symbol": "-", "val": "Klasa 1", "unit": "", "formula": "\\\\frac{h}{t} \\\\le 15\\\\varepsilon"}
       ],
       "draw_commands": [
-        ["moveTo", -4.5, 30.5],
-        ["lineTo", -2.5, 30.5],
-        ["lineTo", -0.5, -14.5],
-        ["arcTo", 0.5, -17.5, 15.5, -15.5, 5],
-        ["lineTo", 15.5, -17.5],
-        ["lineTo", 15.5, -19.5],
-        ["lineTo", -4.5, -19.5],
+        ["moveTo", -51.4, 128.6],
+        ["lineTo", -35.4, 128.6],
+        ["lineTo", -35.4, -20.4],
+        ["arcTo", -35.4, -35.4, -20.4, -35.4, 15],
+        ["lineTo", 128.6, -35.4],
+        ["lineTo", 128.6, -51.4],
+        ["lineTo", -51.4, -51.4],
         ["closePath"]
       ]
     }
     `;
 
-    // LISTA MODELA KOJI SE PROBAJU REDOM AKO PRVI HITNE RATE LIMIT (429)
     const modelsToTry = [
         "gemini-3.6-flash",
         "gemini-3.5-flash"
@@ -134,8 +155,8 @@ export default async function handler(req, res) {
 
             if (response.status === 429) {
                 console.warn(`Model ${modelName} prešao rate limit (429). Pokušavam sljedeći model...`);
-                lastError = "Dostignut je besplatni limit API zahtjeva (429). Sačekajte oko 30-40 sekundi pa pokušajte ponovo.";
-                continue; // Pokušaj sa sljedećim modelom iz liste
+                lastError = "Dostignut je besplatni limit API zahtjeva (429). Sačekajte oko 30 sekundi.";
+                continue;
             }
 
             if (!response.ok) {
@@ -146,7 +167,6 @@ export default async function handler(req, res) {
             let jsonString = data.candidates[0].content.parts[0].text;
             jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
 
-            // Sanitizacija unesenih LaTeX kosih crta
             jsonString = jsonString.replace(/(?<!\\)\\([a-zA-Z0-9_{}]+)/g, '\\\\$1');
 
             const profileData = JSON.parse(jsonString);
@@ -158,6 +178,5 @@ export default async function handler(req, res) {
         }
     }
 
-    // Ako su svi modeli otkazali zbog 429 limita:
     return res.status(429).json({ error: lastError || "Svi AI modeli su trenutno zauzeti. Sačekajte 30 sekundi." });
 }
