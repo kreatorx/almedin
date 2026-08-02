@@ -644,32 +644,82 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // 5. ELIPSA INERCIJE I RADIJUSI INERCIJE
+// -------------------------------------------------------------
+  // 5. ROTIRANA ELIPSA INERCIJE I GLAVNE OSE u-u / v-v
+  // -------------------------------------------------------------
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
-  if (iyItem && iyItem.val && izItem && izItem.val) {
-    const iyPx = iyItem.val * scale;
-    const izPx = izItem.val * scale;
+  const alphaDeg = inputData.alpha_deg || 0;
+  // Pretvaranje ugla u radijane sa korekcijom smera rotacije za Canvas
+  const alphaRad = -(alphaDeg * Math.PI) / 180;
 
+  // Određivanje poluprečnika inercije (glavne ose i_u, i_v ili geodetske i_y, i_z)
+  const iuVal = inputData.i_u || (iyItem ? iyItem.val : 0);
+  const ivVal = inputData.i_v || (izItem ? izItem.val : 0);
+
+  if (iuVal && ivVal) {
+    const iuPx = iuVal * scale;
+    const ivPx = ivVal * scale;
+
+    // A) ROTIRANE GLAVNE OSE INERCIJE u-u I v-v (Žute isprekidane linije pri rotaciji)
+    if (Math.abs(alphaDeg) > 0.1) {
+      ctx.save();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([4, 4]);
+
+      const axisLen = maxDim * scale * 0.6;
+
+      // Osa u-u (pod uglom alphaRad)
+      ctx.beginPath();
+      ctx.moveTo(cx - axisLen * Math.cos(alphaRad), cy + axisLen * Math.sin(alphaRad));
+      ctx.lineTo(cx + axisLen * Math.cos(alphaRad), cy - axisLen * Math.sin(alphaRad));
+      ctx.stroke();
+
+      // Osa v-v (upravna na u-u)
+      ctx.beginPath();
+      ctx.moveTo(cx - axisLen * Math.sin(alphaRad), cy - axisLen * Math.cos(alphaRad));
+      ctx.lineTo(cx + axisLen * Math.sin(alphaRad), cy + axisLen * Math.cos(alphaRad));
+      ctx.stroke();
+
+      // Oznake osa u i v
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('u', cx + axisLen * Math.cos(alphaRad) + 4, cy - axisLen * Math.sin(alphaRad) + 4);
+      ctx.fillText('v', cx - axisLen * Math.sin(alphaRad) - 4, cy - axisLen * Math.cos(alphaRad) - 4);
+
+      ctx.restore();
+    }
+
+    // B) ROTIRANA ELIPSA INERCIJE
     ctx.save();
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+    ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
+
     ctx.beginPath();
-    ctx.ellipse(cx, cy, iyPx, izPx, 0, 0, 2 * Math.PI);
+    // HTML5 Canvas ellipse prihvata ugao rotacije u radijanima
+    ctx.ellipse(cx, cy, iuPx, ivPx, alphaRad, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.restore();
 
+    // C) TAČKE I OZNAKE POLUPREČNIKA INERCIJE NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    ctx.beginPath(); ctx.arc(cx + iyPx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(`i_y=${iyItem.val}`, cx + iyPx + 4, cy - 4);
+    // Tačka duž ose u (ili y ako nema rotacije)
+    const ptUx = cx + iuPx * Math.cos(alphaRad);
+    const ptUy = cy - iuPx * Math.sin(alphaRad);
+    ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillText(alphaDeg !== 0 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
 
-    ctx.beginPath(); ctx.arc(cx, cy - izPx, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(`i_z=${izItem.val}`, cx + 5, cy - izPx - 2);
+    // Tačka duž ose v (ili z ako nema rotacije)
+    const ptVx = cx - ivPx * Math.sin(alphaRad);
+    const ptVy = cy - ivPx * Math.cos(alphaRad);
+    ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillText(alphaDeg !== 0 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptVx + 5, ptVy - 2);
     ctx.restore();
   }
 
