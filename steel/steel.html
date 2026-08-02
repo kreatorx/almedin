@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baza & AI Čelični Profili — Eurocode 3</title>
   
-  <!-- KaTeX CSS i JS biblioteka -->
+  <!-- KaTeX CSS i JS za renderovanje LaTeX formula u tooltip-u -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
@@ -41,7 +41,6 @@
     h1 { margin: 0; color: var(--accent); font-size: 1.6rem; }
     .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
 
-    /* Navigacijski Tabovi */
     .tabs {
       display: flex;
       gap: 10px;
@@ -71,7 +70,6 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Kontrole i Unos */
     .controls {
       display: flex;
       gap: 14px;
@@ -159,7 +157,6 @@
 
     canvas { background: transparent; }
 
-    /* Tabela Specifikacija */
     .tables-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -182,7 +179,6 @@
     td.unit { color: var(--muted); font-size: 0.75rem; width: 55px; text-align: right; }
     td.info-col { width: 24px; text-align: center; }
 
-    /* DUGME 'i' ZA FORMULU */
     .info-btn {
       display: inline-flex;
       align-items: center;
@@ -207,7 +203,6 @@
       box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
     }
 
-    /* TOOLTIP POPUP ELEMENAT */
     #formulaTooltip {
       position: absolute;
       background: #0f172a;
@@ -240,7 +235,6 @@
       overflow-x: auto;
     }
 
-    /* Tabela Selekcije */
     .selection-banner {
       background: rgba(56, 189, 248, 0.08);
       border: 1px solid var(--accent);
@@ -271,7 +265,6 @@
     .badge.optimal { background: rgba(52, 211, 153, 0.2); color: var(--success); border: 1px solid var(--success); }
     .badge.ok { background: rgba(56, 189, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); }
 
-    /* Raw JSON Accordion */
     details.raw-json {
       background: #090d16;
       border: 1px solid var(--border);
@@ -292,24 +285,22 @@
 <div class="container">
   <header>
     <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
-    <div class="subtitle">Google Gemini 2.5 Flash API & HTML5 Canvas Crtač (S235 čelik)</div>
+    <div class="subtitle">Google Gemini 3.5 Flash API & HTML5 Canvas Crtač (S235 čelik)</div>
   </header>
 
-  <!-- Navigacijski Tabovi -->
   <div class="tabs">
     <button class="tab-btn active" data-tab="ai-profile">1. AI Pretraga & Dimenzionisanje</button>
     <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
     <button class="tab-btn" data-tab="custom-calc">3. Proračun Proizvoljnog Profila (Uskoro)</button>
   </div>
 
-  <!-- TAB 1: AI PROFIL I DIMENZIONISANJE -->
   <div id="tab-ai-profile" class="tab-content active">
     <div class="card">
       <h2 class="card-title">Pretraga Profila Ili Dimenzionisanje Na Osnovu Opterećenja</h2>
       <div class="controls">
         <div class="form-group" style="flex: 3;">
-          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'L profil 50x20x5...', ili 'I profili M=500 N=1000')</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. L profil 50x20x5 debljina krajeva 2..., I profili M=500 N=1000, ili IPE 240">
+          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'L profil 100x65x7...', ili 'I profili M=500 N=1000')</label>
+          <input type="text" id="aiPromptInput" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 240">
         </div>
         <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
       </div>
@@ -349,13 +340,11 @@
     </div>
   </div>
 
-  <!-- OSTALI TABOVI -->
   <div id="tab-browser" class="tab-content"><div class="card"><h2>2. Preglednik Baze</h2></div></div>
   <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>3. Custom Profil</h2></div></div>
 
 </div>
 
-<!-- TOOLTIP POPUP ELEMENAT -->
 <div id="formulaTooltip"></div>
 
 <script>
@@ -388,9 +377,6 @@ function formatSymbol(sym) {
   return clean.replace(/_([a-zA-Z0-9,]+)/g, '<sub>$1</sub>');
 }
 
-// -------------------------------------------------------------
-// PREDIVNI KATEX TOOLTIP PREDSTAVLJAČ FORMULA
-// -------------------------------------------------------------
 function handleInfoClick(e) {
   e.stopPropagation();
   const btn = e.currentTarget;
@@ -435,9 +421,6 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// -------------------------------------------------------------
-// 1. AI POZIV PREMA VERCEL BACKENDU
-// -------------------------------------------------------------
 async function fetchProfileFromVercel() {
   const promptInput = document.getElementById('aiPromptInput');
   const promptText = promptInput ? promptInput.value.trim() : '';
@@ -513,9 +496,6 @@ function showStatus(text, type) {
   el.className = `status-msg ${type}`;
 }
 
-// -------------------------------------------------------------
-// TABELA SELEKCIJE / DIMENZIONISANjA
-// -------------------------------------------------------------
 function renderSelectionTable(data, container) {
   let html = `
     <div class="selection-banner">
@@ -569,7 +549,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// 2. CANVAS CRTAČ — SA POTPUNO USKLAĐENOM ROTACIJOM ELIPSE I OSA
+// CANVAS CRTAČ — SA SAŠVIM CENTRIRANIM PROFILOM I DLUBAL OSA ROTACIONALOM
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -589,7 +569,7 @@ function drawCanvasProfile(inputData) {
 
   if (!commands.length) return;
 
-  // 1. Bounding Box
+  // 1. Izračunavanje egzaktnog Bounding Box-a
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 
   commands.forEach(cmd => {
@@ -610,15 +590,17 @@ function drawCanvasProfile(inputData) {
   const bHeight = yMax - yMin || 40;
   const maxDim = Math.max(bWidth, bHeight);
 
-  const margin = 50;
+  const margin = 45;
   const scale = (width - 2 * margin) / maxDim;
+
+  // CENTRIRANJE PROFILA TAČNO U SREDINU CANVAS OKVIRA
   const cx = width / 2 - ((xMin + xMax) / 2) * scale;
-  const cy = height / 2 - ((yMin + yMax) / 2) * scale;
+  const cy = height / 2 + ((yMin + yMax) / 2) * scale; // Popravljen predznak za Y osu
 
   const tx = (x) => cx + x * scale;
   const ty = (y) => cy - y * scale;
 
-  // 2. Neutralne ose y-y i z-z (Pink boja)
+  // 2. Neutralne ose y-y i z-z (Pink boja kroz težište)
   ctx.save();
   ctx.strokeStyle = '#ec4899';
   ctx.lineWidth = 1;
@@ -633,17 +615,17 @@ function drawCanvasProfile(inputData) {
   ctx.fillText('y', width - 12, cy + 4);
   ctx.fillText('z', cx - 4, height - 4);
 
-  // 3. TEŽIŠTE G(0,0) SA OZNAKOM
+  // 3. Težište G(0,0) sa crvenom oznakom
   ctx.save();
   ctx.strokeStyle = '#ef4444';
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, 2 * Math.PI); ctx.stroke();
 
   ctx.fillStyle = '#ef4444';
-  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 2.2, 0, 2 * Math.PI); ctx.fill();
 
   ctx.font = 'bold 10px Segoe UI, sans-serif';
-  ctx.fillText('G(0,0)', cx + 7, cy + 12);
+  ctx.fillText('G(0,0)', cx + 6, cy + 12);
   ctx.restore();
 
   // 4. Poprečni presjek
@@ -664,7 +646,7 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // 5. POTPUNO USKLAĐENA ROTACIJA ELIPSE I GLAVNIH OSA u-u / v-v
+  // 5. TAČNO PODEŠEN DLUBAL SMJER ROTACIJE OSA u-v I ELIPSE
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
@@ -681,56 +663,60 @@ function drawCanvasProfile(inputData) {
     if (Math.abs(alphaDeg) > 0.1) {
       ctx.save();
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.9;
       ctx.setLineDash([4, 4]);
 
       const axisLen = maxDim * scale * 0.55;
 
+      // Osa u-u (Gore-desno za negativan alpha po DLUBAL/EC3 konvenciji)
       const ux = axisLen * Math.cos(alphaRad);
       const uy = axisLen * Math.sin(alphaRad);
 
       ctx.beginPath();
-      ctx.moveTo(cx - ux, cy + uy);
-      ctx.lineTo(cx + ux, cy - uy);
+      ctx.moveTo(cx - ux, cy - uy);
+      ctx.lineTo(cx + ux, cy + uy);
       ctx.stroke();
 
+      // Osa v-v (Dole-desno, okomito na u-u)
       const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
       const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
 
       ctx.beginPath();
-      ctx.moveTo(cx - vx, cy + vy);
-      ctx.lineTo(cx + vx, cy - vy);
+      ctx.moveTo(cx - vx, cy - vy);
+      ctx.lineTo(cx + vx, cy + vy);
       ctx.stroke();
 
       ctx.font = 'bold 10px Segoe UI, sans-serif';
       ctx.fillStyle = '#fbbf24';
-      ctx.fillText('u', cx + ux + (ux >= 0 ? 4 : -10), cy - uy + (uy >= 0 ? -4 : 10));
-      ctx.fillText('v', cx + vx + (vx >= 0 ? 4 : -10), cy - vy + (vy >= 0 ? -4 : 10));
+      ctx.fillText('u', cx + ux + (ux >= 0 ? 4 : -10), cy + uy + (uy >= 0 ? 4 : -4));
+      ctx.fillText('v', cx + vx + (vx >= 0 ? 4 : -10), cy + vy + (vy >= 0 ? 10 : -4));
 
       ctx.restore();
     }
 
+    // ROTIRANA ELIPSA INERCIJE
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
 
     ctx.beginPath();
-    ctx.ellipse(cx, cy, iuPx, ivPx, -alphaRad, 0, 2 * Math.PI);
+    ctx.ellipse(cx, cy, iuPx, ivPx, alphaRad, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.restore();
 
+    // RADIALNE TAČKE NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
     const ptUx = cx + iuPx * Math.cos(alphaRad);
-    const ptUy = cy - iuPx * Math.sin(alphaRad);
+    const ptUy = cy + iuPx * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
     ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
 
     const ptVx = cx + ivPx * Math.cos(alphaRad + Math.PI / 2);
-    const ptVy = cy - ivPx * Math.sin(alphaRad + Math.PI / 2);
+    const ptVy = cy + ivPx * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
     ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptVx + 5, ptVy - 2);
     ctx.restore();
@@ -803,9 +789,6 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   ctx.restore();
 }
 
-// -------------------------------------------------------------
-// RENDANJE PARALELNIH TABELA SPECIFIKACIJA
-// -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -872,9 +855,6 @@ function renderAiTables(data, containerId) {
   `;
 }
 
-// -------------------------------------------------------------
-// CSV I PDF IZVOZ
-// -------------------------------------------------------------
 function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   
