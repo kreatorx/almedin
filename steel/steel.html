@@ -171,10 +171,67 @@
     @media (max-width: 768px) { .axis-row-grid { grid-template-columns: 1fr; } }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    td, th { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    td, th { padding: 6px 6px; border-bottom: 1px solid var(--border); text-align: left; }
     th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
     td.val { font-weight: 600; text-align: right; color: #60a5fa; }
-    td.unit { color: var(--muted); font-size: 0.75rem; width: 60px; text-align: right; }
+    td.unit { color: var(--muted); font-size: 0.75rem; width: 55px; text-align: right; }
+    td.info-col { width: 24px; text-align: center; }
+
+    /* DUGME 'i' ZA FORMULU */
+    .info-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      font-size: 10px;
+      font-weight: bold;
+      font-family: serif;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease-in-out;
+    }
+    .info-btn:hover {
+      background: var(--accent);
+      color: #0b0f19;
+      transform: scale(1.15);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+    }
+
+    /* TOOLTIP POPUP */
+    #formulaTooltip {
+      position: absolute;
+      background: #0f172a;
+      color: #f1f5f9;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      display: none;
+      max-width: 320px;
+      backdrop-filter: blur(8px);
+    }
+
+    #formulaTooltip strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    #formulaTooltip code {
+      color: #34d399;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-weight: bold;
+      word-break: break-word;
+    }
 
     /* Tabela Selekcije */
     .selection-banner {
@@ -292,6 +349,9 @@
 
 </div>
 
+<!-- TOOLTIP POPUP ELEMENAT -->
+<div id="formulaTooltip"></div>
+
 <script>
 let currentAiData = null;
 
@@ -307,12 +367,52 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById(`tab-${e.target.getAttribute('data-tab')}`).classList.add('active');
     });
   });
+
+  // Automatsko zatvaranje tooltipe-a na klik van dugmeta
+  document.addEventListener('click', (e) => {
+    const tooltip = document.getElementById('formulaTooltip');
+    if (tooltip && !e.target.classList.contains('info-btn')) {
+      tooltip.style.display = 'none';
+    }
+  });
 });
 
 function formatSymbol(sym) {
   if (!sym || sym === '-') return '';
   let clean = sym.replace(/\$/g, '').trim();
   return clean.replace(/_([a-zA-Z0-9,]+)/g, '<sub>$1</sub>');
+}
+
+// Funkcija za prikaz tooltipe-a sa formulom
+function handleInfoClick(e) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  const formula = btn.getAttribute('data-formula') || 'Nema dostupne formule';
+  const label = btn.getAttribute('data-label') || 'Proračun';
+  const tooltip = document.getElementById('formulaTooltip');
+
+  if (!tooltip) return;
+
+  tooltip.innerHTML = `
+    <strong>Korištena Formula (${label}):</strong>
+    <code>${escapeHtml(formula)}</code>
+  `;
+  tooltip.style.display = 'block';
+
+  // Pozicioniranje tooltipe-a tik uz dugme
+  const rect = btn.getBoundingClientRect();
+  const tooltipWidth = 260;
+  
+  let leftPos = rect.left + window.scrollX - tooltipWidth + 20;
+  if (leftPos < 10) leftPos = 10;
+
+  tooltip.style.left = `${leftPos}px`;
+  tooltip.style.top = `${rect.bottom + window.scrollY + 6}px`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // -------------------------------------------------------------
@@ -394,7 +494,7 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// TABELA SELEKCIJE / DIMENZIONISANjA (BOSANSKI JEZIK)
+// TABELA SELEKCIJE / DIMENZIONISANjA
 // -------------------------------------------------------------
 function renderSelectionTable(data, container) {
   let html = `
@@ -449,7 +549,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// 2. CANVAS CRTAČ SA ELIPSOM INERCIJE, KOTAMA I OSAMA Y/Z
+// 2. CANVAS CRTAČ SA TEŽIŠTEM G(0,0), ELIPSOM INERCIJE I KOTAMA
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -513,30 +613,20 @@ function drawCanvasProfile(inputData) {
   ctx.fillText('y', width - 12, cy + 4);
   ctx.fillText('z', cx - 4, height - 4);
 
-  // -------------------------------------------------------------
-  // CRTANjE TEŽIŠTA G(0,0) SA OZNAKOM
-  // -------------------------------------------------------------
+  // 3. TEŽIŠTE G(0,0) SA OZNNAKOM
   ctx.save();
-  // Vanjski crveni krug oko težišta
   ctx.strokeStyle = '#ef4444';
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.stroke();
 
-  // Puna crvena tačka u težištu
   ctx.fillStyle = '#ef4444';
-  ctx.beginPath();
-  ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
 
-  // Tekstualna oznaka G(0,0)
   ctx.font = 'bold 10px Segoe UI, sans-serif';
-  ctx.fillStyle = '#ef4444';
   ctx.fillText('G(0,0)', cx + 7, cy + 12);
   ctx.restore();
 
-  // 3. Poprečni presjek
+  // 4. Poprečni presjek
   ctx.beginPath();
   ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
   ctx.strokeStyle = '#38bdf8';
@@ -554,7 +644,7 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // 4. ELIPSA INERCIJE I RADIJUSI INERCIJE (iy, iz)
+  // 5. ELIPSA INERCIJE I RADIJUSI INERCIJE
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
@@ -562,7 +652,6 @@ function drawCanvasProfile(inputData) {
     const iyPx = iyItem.val * scale;
     const izPx = izItem.val * scale;
 
-    // A) Crtanje tanke žute elipse inercije
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
     ctx.lineWidth = 0.8;
@@ -572,7 +661,6 @@ function drawCanvasProfile(inputData) {
     ctx.stroke();
     ctx.restore();
 
-    // B) Tačke i oznake radijusa inercije
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
@@ -653,21 +741,32 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
 }
 
 // -------------------------------------------------------------
-// RENDANJE PARALELNIH TABELA SPECIFIKACIJA (BOSANSKI JEZIK)
+// RENDANJE TABELA SA DUGMETOM 'i' U SVAKOM REDU
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   const buildRows = (arr) => {
-    if (!arr || !arr.length) return '<tr><td colspan="3">-</td></tr>';
-    return arr.map(item => `
-      <tr>
-        <td>${item.label} (${formatSymbol(item.symbol)})</td>
-        <td class="val">${item.val}</td>
-        <td class="unit">${item.unit}</td>
-      </tr>
-    `).join('');
+    if (!arr || !arr.length) return '<tr><td colspan="4">-</td></tr>';
+    return arr.map(item => {
+      const formulaAttr = escapeHtml(item.formula || 'Formula je geometrijski ili standardom zadana');
+      const labelAttr = escapeHtml(item.label || '');
+      return `
+        <tr>
+          <td>${item.label} (${formatSymbol(item.symbol)})</td>
+          <td class="val">${item.val}</td>
+          <td class="unit">${item.unit}</td>
+          <td class="info-col">
+            <span class="info-btn" 
+                  data-formula="${formulaAttr}" 
+                  data-label="${labelAttr}" 
+                  onclick="handleInfoClick(event)" 
+                  title="Prikaži formulu">i</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
   };
 
   container.innerHTML = `
@@ -716,12 +815,12 @@ function renderAiTables(data, containerId) {
 function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
   
-  let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica"]];
+  let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica", "Formula"]];
   const groups = ['dimensions', 'area_properties', 'major_y', 'minor_z', 'torsion_warping', 'resistances_s235', 'buckling_classification'];
 
   groups.forEach(g => {
     if (currentAiData[g]) {
-      currentAiData[g].forEach(i => rows.push([g, i.label, i.symbol, i.val, i.unit]));
+      currentAiData[g].forEach(i => rows.push([g, i.label, i.symbol, i.val, i.unit, i.formula || '']));
     }
   });
 
