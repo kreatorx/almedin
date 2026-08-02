@@ -361,7 +361,6 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="ai-profile">1. AI Pretraga & Dimenzionisanje</button>
     <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
-    <button class="tab-btn" data-tab="custom-calc">3. Proračun Proizvoljnog Profila (Uskoro)</button>
   </div>
 
   <div id="tab-ai-profile" class="tab-content active">
@@ -987,7 +986,17 @@ function renderAiTables(data, containerId) {
     `;
   }
 
-  // DINAMIČKI BLOK ZA PROŠIRENE KATEGORIJE
+  // BLOK ZA GLAVNE OSE INERCIJE (u-v KOORDINATNI SISTEM & UGAO alpha)
+  let principalUvHtml = '';
+  if (data.principal_uv && data.principal_uv.length) {
+    principalUvHtml = `
+      <div style="margin-top: 16px; background: rgba(251, 191, 36, 0.06); padding: 10px; border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.3);">
+        <h3 style="color:var(--warning); font-size:0.88rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Glavne Ose Inercije — u-v Koordinatni Sistem & Ugao &alpha;</h3>
+        <table>${buildRows(data.principal_uv)}</table>
+      </div>
+    `;
+  }
+
   let extendedSectionHtml = '';
   if (data.shear_properties || data.torsion_warping_extended || data.stability_asymmetry || data.plasticity_extended || data.other_properties) {
     extendedSectionHtml = `
@@ -1018,14 +1027,16 @@ function renderAiTables(data, containerId) {
 
     <div class="axis-row-grid" style="margin-top: 16px;">
       <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
-        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Glavne Ose y-y</h3>
+        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Ose y-y</h3>
         <table>${buildRows(data.major_y)}</table>
       </div>
       <div style="background: rgba(56, 189, 248, 0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.1);">
-        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Sporedne Ose z-z</h3>
+        <h3 style="color:var(--accent); font-size:0.85rem; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:0;">Svojstva Oko Ose z-z</h3>
         <table>${buildRows(data.minor_z)}</table>
       </div>
     </div>
+
+    ${principalUvHtml}
 
     ${bucklingAnalysisHtml}
 
@@ -1053,10 +1064,10 @@ function exportToCSV() {
   
   let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica", "Formula"]];
   const groups = [
-    'dimensions', 'area_properties', 'major_y', 'minor_z', 
-    'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification',
-    'shear_properties', 'torsion_warping_extended', 'stability_asymmetry', 'plasticity_extended', 'other_properties'
-  ];
+  'dimensions', 'area_properties', 'major_y', 'minor_z', 'principal_uv',
+  'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification',
+  'shear_properties', 'torsion_warping_extended', 'stability_asymmetry', 'plasticity_extended', 'other_properties'
+];
 
   groups.forEach(g => {
     if (currentAiData[g]) {

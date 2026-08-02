@@ -18,79 +18,50 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'GEMINI_API_KEY_STEEL nije podešen u Vercel Environment Variables.' });
     }
 
-    // DINAMIČKE UPUTE ZAVISNO OD CHECKBOX-A ZA PROŠIRENU ANALIZU
     let extendedPromptInstructions = "";
     if (extended) {
         extendedPromptInstructions = `
     KORISNIK JE ODABRAO PROŠIRENU ANALIZU (ALL SECTION PROPERTIES):
     U JSON odgovor OBAVEZNO dodaj i sljedeće napredne nizove objekata:
-
-    1. "shear_properties":
-       - Posmična površina A_y (cm²)
-       - Posmična površina A_z ili A_v (cm²)
-       - Koordinate centra smicanja y_sc, z_sc u odnosu na težište (mm)
-
-    2. "torsion_warping_extended":
-       - St. Venant torzijska konstanta I_t (cm⁴)
-       - Torzijski otporni moment W_t (cm³)
-       - Sektorski moment inercije / konstanta vitoperenja I_w (cm⁶)
-       - Max sektorska koordinata max_omega (cm²)
-       - Sektorski otporni moment W_w (cm⁴)
-
-    3. "stability_asymmetry":
-       - Wagnerov parametar asimetrije r_v (mm)
-       - Wagnerov parametar asimetrije u odnosu na centar smicanja r_u,SC (mm)
-
-    4. "plasticity_extended":
-       - Plastične neutralne ose: y_pl, z_pl, u_pl, v_pl (mm od težišta)
-       - Plastični faktor oblika alpha_pl,y = W_pl,y / W_el,y
-       - Plastični faktor oblika alpha_pl,u = W_pl,u / W_el,u
-       - Plastični faktor oblika alpha_pl,v = W_pl,v / W_el,v
-
-    5. "other_properties":
-       - Faktor presjeka A_m/V (1/m) za požarni proračun
-       - Obim izložen bojenju A_m (m²/m)
-       - Zapremina po metru V (cm³/m)
+    1. "shear_properties": A_y, A_z/A_v, y_sc, z_sc
+    2. "torsion_warping_extended": I_t, W_t, I_w, max_omega, W_w
+    3. "stability_asymmetry": r_v, r_u,SC
+    4. "plasticity_extended": y_pl, z_pl, u_pl, v_pl, alpha_pl,y, alpha_pl,u, alpha_pl,v
+    5. "other_properties": A_m/V, A_m, V
         `;
     }
 
     const systemPrompt = `
-    Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS) po Eurocode 3 (S235 čelik, gammaM0 = 1.00, gammaM1 = 1.00, E = 210 GPa).
+    Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila po Eurocode 3 (S235 čelik, gammaM0 = 1.00, gammaM1 = 1.00, E = 210 GPa).
     SVI ISPISI I LABELE MORAJU BITI NA BOSANSKOM JEZIKU!
 
     1. RIGOPOZNA PROVJERA VALIDNOSTI:
        Ako unos korisnika NE POSTOJI i NIJE validan opis profila niti zahtjev za dimenzionisanje, vrati ISKLJUČIVO:
        { "found": false, "error_message": "Profil ne postoji u priznatim svjetskim standardima." }
 
-    2. PRAVILA ZA TAČNO GEOMETRIJSKO ISCRTAVANJE (draw_commands):
-       Sve koordinate u draw_commands MORAJU biti pomjerene tako da je težište G u tački (0,0).
-       Neka je x0 = -y_G i y0 = -z_G (donji lijevi ugao u težišnom sistemu).
-       
-       A) ZA L-PROFILE (h, b, t, r1, y_G, z_G):
-          - ["moveTo", x0, y0 + h]
-          - ["lineTo", x0 + t, y0 + h]
-          - ["lineTo", x0 + t, y0 + t + r1]
-          - ["arcTo", x0 + t, y0 + t, x0 + t + r1, y0 + t, r1]
-          - ["lineTo", x0 + b, y0 + t]
-          - ["lineTo", x0 + b, y0]
-          - ["lineTo", x0, y0]
-          - ["closePath"]
+    2. OBAVEZAN NIZ "principal_uv" (GLAVNE OSE INERCIJE I UGAO alpha):
+       U SVAKOM ODGOVORU MORAŠ VRATITI NIZ "principal_uv" KOJI SADRŽI:
+       - Ugao rotacije glavnih osa alpha (u stepenima °)
+       - Centrifugalni moment inercije I_yz (cm⁴)
+       - Moment inercije oko u-ose I_u (cm⁴)
+       - Moment inercije oko v-ose I_v (cm⁴)
+       - Poluprečnik inercije oko u-ose i_u (mm)
+       - Poluprečnik inercije oko v-ose i_v (mm)
+       - Otporni moment oko u-ose W_u (cm³)
+       - Otporni moment oko v-ose W_v (cm³)
 
-    3. DETALJNA ANALIZA IZVIJANJA PO EC3 (AKO JE UNESENA DUŽINA IZVIJANJA ILI SILA):
-       Ako korisnik spomene dužinu izvijanja L_cr ili silu pritiska N_Ed, popuni niz "buckling_analysis" sa tačnim međurezultatima (L_cr, N_cr, lambda_bar, alpha, Phi, chi, N_b_Rd, eta_buckling).
+    3. PRAVILA ZA TAČNO GEOMETRIJSKO ISCRTAVANJE (draw_commands):
+       Sve koordinate u draw_commands MORAJU biti pomjerene tako da je težište G u tački (0,0).
 
     ${extendedPromptInstructions}
 
     4. STROGA LaTeX SINTAKSA ZA POLJE "formula":
-       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama (\\\\frac, \\\\gamma, \\\\cdot, \\\\sqrt, \\\\alpha, \\\\sum).
+       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama.
 
     5. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
        Obavezno piši objekte unutar nizova u JEDNOM REDU (inline format).
 
-    6. ROTACIJA GLAVNIH OSA INERCIJE (ZA NESIMETRIČNE PROFILE):
-       Za L-profile i nesimetrične presjeke vrati "alpha_deg", "i_u" i "i_v".
-
-    OBLIK OSNOVNE JSON STRUKTURE:
+    OBLIK JSON STRUKTURE:
     {
       "found": true,
       "is_selection": false,
@@ -123,6 +94,16 @@ export default async function handler(req, res) {
         {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 55.2, "unit": "mm", "formula": "i_z = \\\\sqrt{\\\\frac{I_z}{A}}"},
         {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 131.0, "unit": "cm³", "formula": "W_{el,z}"},
         {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 235.0, "unit": "cm³", "formula": "W_{pl,z}"}
+      ],
+      "principal_uv": [
+        {"label": "Ugao rotacije glavnih osa", "symbol": "\\\\alpha", "val": -45.0, "unit": "°", "formula": "\\\\tan(2\\\\alpha) = \\\\frac{2 I_{yz}}{I_z - I_y}"},
+        {"label": "Centrifugalni moment inercije", "symbol": "I_yz", "val": 980.5, "unit": "cm⁴", "formula": "I_{yz} = \\\\int y z dA"},
+        {"label": "Glavni moment inercije I_u", "symbol": "I_u", "val": 2660.5, "unit": "cm⁴", "formula": "I_u = \\\\frac{I_y+I_z}{2} + \\\\sqrt{(\\\\frac{I_y-I_z}{2})^2 + I_{yz}^2}"},
+        {"label": "Glavni moment inercije I_v", "symbol": "I_v", "val": 699.5, "unit": "cm⁴", "formula": "I_v = \\\\frac{I_y+I_z}{2} - \\\\sqrt{(\\\\frac{I_y-I_z}{2})^2 + I_{yz}^2}"},
+        {"label": "Poluprečnik inercije u-ose", "symbol": "i_u", "val": 69.4, "unit": "mm", "formula": "i_u = \\\\sqrt{\\\\frac{I_u}{A}}"},
+        {"label": "Poluprečnik inercije v-ose", "symbol": "i_v", "val": 35.4, "unit": "mm", "formula": "i_v = \\\\sqrt{\\\\frac{I_v}{A}}"},
+        {"label": "Elastični otporni moment W_u", "symbol": "W_u", "val": 210.5, "unit": "cm³", "formula": "W_u = \\\\frac{I_u}{v_{max}}"},
+        {"label": "Elastični otporni moment W_v", "symbol": "W_v", "val": 85.2, "unit": "cm³", "formula": "W_v = \\\\frac{I_v}{u_{max}}"}
       ],
       "torsion_warping": [
         {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 49.15, "unit": "cm⁴", "formula": "I_T"},
@@ -187,8 +168,6 @@ export default async function handler(req, res) {
 
             let jsonString = data.candidates[0].content.parts[0].text;
             jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-
-            // Sanitizacija LaTeX kosih crta
             jsonString = jsonString.replace(/(?<!\\)\\([a-zA-Z0-9_{}]+)/g, '\\\\$1');
 
             const profileData = JSON.parse(jsonString);
