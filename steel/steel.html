@@ -547,7 +547,7 @@ async function fetchProfileFromVercel() {
     return;
   }
 
-  // DODAVANJE U HISTORIJU ZAHTJEVA
+  // Dodavanje u historiju
   if (!promptHistory.includes(promptText)) {
     promptHistory.push(promptText);
     updateDatalistUI();
@@ -565,15 +565,22 @@ async function fetchProfileFromVercel() {
       body: JSON.stringify({ prompt: promptText })
     });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("Ruta /api/steel ne postoji na lokalnom Live Serveru.");
-      }
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error || `Greška HTTP Status: ${response.status}`);
+    const data = await response.json();
+
+    // HVTANJE PREKORAČENJA KVOTE (HTTP 429)
+    if (response.status === 429) {
+      updateStatus(
+        'error', 
+        'Besplatni limit prekoračen (429)', 
+        'Dostignut je besplatni broj zahtjeva Google Gemini API-ja (20 req/min). Sačekajte ~35 sekundi pa kliknite ponovo.'
+      );
+      btn.disabled = false;
+      return;
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `Greška HTTP Status: ${response.status}`);
+    }
 
     // AKO PROFIL NIJE PRONAĐEN (SAČUVAJ PRETHODNI EKRAN I JSON)
     if (data.found === false) {

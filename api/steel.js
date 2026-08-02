@@ -34,10 +34,6 @@ export default async function handler(req, res) {
 
     3. STROGA LaTeX SINTAKSA ZA POLJE "formula":
        Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama (\\\\frac, \\\\gamma, \\\\cdot, \\\\sqrt, \\\\alpha, \\\\sum).
-       Pravilni primjeri:
-       - "formula": "M_{el,Rd,y} = \\\\frac{W_{el,y} \\\\cdot f_y}{\\\\gamma_{M0}}"
-       - "formula": "N_{pl,Rd} = \\\\frac{A \\\\cdot f_y}{\\\\gamma_{M0}}"
-       - "formula": "i_y = \\\\sqrt{\\\\frac{I_y}{A}}"
 
     4. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
        Obavezno piši objekte unutar nizova u JEDNOM REDU (inline format).
@@ -111,39 +107,57 @@ export default async function handler(req, res) {
     }
     `;
 
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
-                }
-            })
-        });
+    // LISTA MODELA KOJI SE PROBAJU REDOM AKO PRVI HITNE RATE LIMIT (429)
+    const modelsToTry = [
+        "gemini-3.6-flash",
+        "gemini-3.5-flash"
+    ];
 
-        const data = await response.json();
+    let lastError = null;
 
-        if (!response.ok) {
-            console.error("Gemini API Greška:", data);
-            return res.status(response.status).json({ error: data.error?.message || "Greška pri komunikaciji sa Gemini API." });
+    for (const modelName of modelsToTry) {
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                    }
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.status === 429) {
+                console.warn(`Model ${modelName} prešao rate limit (429). Pokušavam sljedeći model...`);
+                lastError = "Dostignut je besplatni limit API zahtjeva (429). Sačekajte oko 30-40 sekundi pa pokušajte ponovo.";
+                continue; // Pokušaj sa sljedećim modelom iz liste
+            }
+
+            if (!response.ok) {
+                console.error(`Gemini API Greška (${modelName}):`, data);
+                return res.status(response.status).json({ error: data.error?.message || "Greška pri komunikaciji sa Gemini API." });
+            }
+
+            let jsonString = data.candidates[0].content.parts[0].text;
+            jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+
+            // Sanitizacija unesenih LaTeX kosih crta
+            jsonString = jsonString.replace(/(?<!\\)\\([a-zA-Z0-9_{}]+)/g, '\\\\$1');
+
+            const profileData = JSON.parse(jsonString);
+            return res.status(200).json(profileData);
+
+        } catch (error) {
+            console.error(`Error sa modelom ${modelName}:`, error);
+            lastError = error.message;
         }
-
-        let jsonString = data.candidates[0].content.parts[0].text;
-        jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-
-        // DEKODIRANJE & SANITIZACIJA UNESENIH LaTeX KOSIH CRTA
-        // Automatski popravlja ne-escapeovane LaTeX komande u JSON stringu
-        jsonString = jsonString.replace(/(?<!\\)\\([a-zA-Z0-9_{}]+)/g, '\\\\$1');
-
-        const profileData = JSON.parse(jsonString);
-        return res.status(200).json(profileData);
-
-    } catch (error) {
-        console.error("Server Error:", error);
-        return res.status(500).json({ error: `Proračun neuspješan: ${error.message}` });
     }
+
+    // Ako su svi modeli otkazali zbog 429 limita:
+    return res.status(429).json({ error: lastError || "Svi AI modeli su trenutno zauzeti. Sačekajte 30 sekundi." });
 }
