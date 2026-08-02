@@ -13,6 +13,8 @@
       --muted: #94a3b8;
       --border: #26334d;
       --error: #f87171;
+      --success: #34d399;
+      --warning: #fbbf24;
     }
 
     body {
@@ -169,10 +171,41 @@
     @media (max-width: 768px) { .axis-row-grid { grid-template-columns: 1fr; } }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    td, th { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; }
-    th { color: var(--muted); font-weight: 500; font-size: 0.78rem; }
+    td, th { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
     td.val { font-weight: 600; text-align: right; color: #60a5fa; }
     td.unit { color: var(--muted); font-size: 0.75rem; width: 60px; text-align: right; }
+
+    /* Tabela Selekcije / Dimenzionisanja */
+    .selection-banner {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.88rem;
+      color: var(--accent);
+    }
+
+    .suitable-table {
+      width: 100%;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .suitable-table th { background: #0f172a; }
+    .suitable-table tr:hover { background: rgba(56, 189, 248, 0.05); cursor: pointer; }
+    
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .badge.optimal { background: rgba(52, 211, 153, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .badge.ok { background: rgba(56, 189, 248, 0.2); color: var(--accent); border: 1px solid var(--accent); }
 
     /* Raw JSON Accordion */
     details.raw-json {
@@ -200,22 +233,21 @@
 
   <!-- Navigacijski Tabovi -->
   <div class="tabs">
-    <button class="tab-btn active" data-tab="ai-profile">1. AI Profil</button>
+    <button class="tab-btn active" data-tab="ai-profile">1. AI Pretraga & Dimenzionisanje</button>
     <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
-    <button class="tab-btn" data-tab="ai-search">3. AI Dimenzionisanje (Uskoro)</button>
-    <button class="tab-btn" data-tab="custom-calc">4. Proračun Proizvoljnog Profila (Uskoro)</button>
+    <button class="tab-btn" data-tab="custom-calc">3. Proračun Proizvoljnog Profila (Uskoro)</button>
   </div>
 
-  <!-- TAB 1: AI PROFIL -->
+  <!-- TAB 1: AI PROFIL I DIMENZIONISANJE -->
   <div id="tab-ai-profile" class="tab-content active">
     <div class="card">
-      <h2 class="card-title">Pretraga Profila Preko AI Modela</h2>
+      <h2 class="card-title">Pretraga Profila Ili Dimenzionisanje Na Osnovu Opterećenja</h2>
       <div class="controls">
         <div class="form-group" style="flex: 3;">
-          <label for="aiPromptInput">Naziv ili opis profila (Svjetski Standardi: IPE, HEA, WB 300, SHS 40x40x5, W12x26, L, C...)</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. SHS 40x40x5, WB 300, IPE 240, HEA 300 ili opis 'C profil 200x80'">
+          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'gornja flansa 5 pri osi a 3 na kraju...' ILI 'I profili M=500 N=1000')</label>
+          <input type="text" id="aiPromptInput" placeholder="Npr. I profili M=500 N=1000, HEB za N=800kN, ili IPE 240">
         </div>
-        <button class="btn-action" id="btnAiSearch">Generiši Profil (AI)</button>
+        <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
       </div>
 
       <details id="rawJsonDetails" class="raw-json" style="display: none;">
@@ -224,6 +256,9 @@
       </details>
 
       <div id="aiStatus" class="status-msg" style="margin-top: 12px;"></div>
+
+      <!-- Sekcija za rezultate dimenzionisanja -->
+      <div id="selectionResultsContainer" style="display: none; margin-top: 16px;"></div>
 
       <div class="main-grid" id="aiResultsGrid" style="display: none; margin-top: 16px;">
         <div>
@@ -253,8 +288,7 @@
 
   <!-- OSTALI TABOVI -->
   <div id="tab-browser" class="tab-content"><div class="card"><h2>2. Preglednik Baze</h2></div></div>
-  <div id="tab-ai-search" class="tab-content"><div class="card"><h2>3. AI Dimenzionisanje</h2></div></div>
-  <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>4. Custom Profil</h2></div></div>
+  <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>3. Custom Profil</h2></div></div>
 
 </div>
 
@@ -275,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Čišćenje simbola od $ znakova i pravilno postavljanje indeksnih oznaka
 function formatSymbol(sym) {
   if (!sym || sym === '-') return '';
   let clean = sym.replace(/\$/g, '').trim();
@@ -292,16 +325,18 @@ async function fetchProfileFromVercel() {
   const resultsGrid = document.getElementById('aiResultsGrid');
   const rawDetails = document.getElementById('rawJsonDetails');
   const rawCode = document.getElementById('rawJsonCode');
+  const selectionContainer = document.getElementById('selectionResultsContainer');
   const btn = document.getElementById('btnAiSearch');
 
   if (!promptText) {
-    showStatus("Molimo unesite naziv ili opis profila!", "error");
+    showStatus("Molimo unesite naziv profila ili opterećenje!", "error");
     return;
   }
 
-  showStatus("Generišem profil i izračunavam svojstva...", "loading");
+  showStatus("Vršim AI analizu i dimenzionisanje...", "loading");
   btn.disabled = true;
   resultsGrid.style.display = "none";
+  selectionContainer.style.display = "none";
   rawDetails.style.display = "none";
 
   try {
@@ -313,7 +348,7 @@ async function fetchProfileFromVercel() {
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error("Ruta /api/steel ne postoji na lokalnom Live Serveru. Funkcija radi nakon deploy-a na Vercel.");
+        throw new Error("Ruta /api/steel ne postoji na lokalnom Live Serveru.");
       }
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error || `Greška HTTP Status: ${response.status}`);
@@ -322,22 +357,24 @@ async function fetchProfileFromVercel() {
     const data = await response.json();
     currentAiData = data;
 
-    // Prikaz sirovog JSON odgovora
     rawCode.textContent = JSON.stringify(data, null, 2);
     rawDetails.style.display = "block";
     rawDetails.open = false;
 
-    // Ako profil nije pronađen
     if (data.found === false) {
-      showStatus(data.error_message || `Profil "${promptText}" nije pronađen u priznatim standardima čelika!`, "error");
+      showStatus(data.error_message || `Unos "${promptText}" nije prepoznat!`, "error");
       return;
     }
 
-    document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Generisano'})`;
+    // Prikaz tabele selekcije/dimenzionisanja ako je raditi o zahtjevu opterećenja
+    if (data.is_selection && data.suitable_profiles && data.suitable_profiles.length) {
+      renderSelectionTable(data, selectionContainer);
+      selectionContainer.style.display = "block";
+    }
+
+    document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Optimizovano'})`;
     
     renderAiTables(data, 'aiSpecsContainer');
-    
-    // Prosljeđivanje čitavog data objekta u crtač
     drawCanvasProfile(data);
 
     statusEl.style.display = "none";
@@ -358,7 +395,62 @@ function showStatus(text, type) {
 }
 
 // -------------------------------------------------------------
-// 2. UNIVERZALNI CANVAS CRTAČ (SA KOTIRANjEM I OSAMA Y/Z)
+// TABELA SELEKCIJE / DIMENZIONISANjA
+// -------------------------------------------------------------
+function renderSelectionTable(data, container) {
+  let html = `
+    <div class="selection-banner">
+      <strong>Inženjersko Dimenzionisanje Eurocode 3:</strong> ${data.selection_criteria || 'Analiza opterećenja'}
+    </div>
+    <div class="card" style="margin-bottom: 16px;">
+      <h3 style="margin-top:0; color:var(--accent); font-size:0.95rem;">Rang-lista Odgovarajućih Profila (Poredana po ekonomičnosti/masi)</h3>
+      <table class="suitable-table">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Oznaka Profila</th>
+            <th>Masa (kg/m)</th>
+            <th>Iskorištenost (%)</th>
+            <th>N<sub>pl,Rd</sub> (kN)</th>
+            <th>M<sub>pl,Rd,y</sub> (kNm)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  data.suitable_profiles.forEach((p, idx) => {
+    const isOptimal = idx === 0 || p.status === 'OPTIMALNO';
+    html += `
+      <tr onclick="searchSpecificProfile('${p.oznaka}')">
+        <td><strong>#${idx + 1}</strong></td>
+        <td style="color:var(--accent); font-weight:bold;">${p.oznaka}</td>
+        <td>${p.m}</td>
+        <td><strong style="color: ${p.utilization > 90 ? '#f87171' : '#34d399'}">${p.utilization}%</strong></td>
+        <td>${p.N_pl_Rd || '-'}</td>
+        <td>${p.M_pl_Rd || '-'}</td>
+        <td><span class="badge ${isOptimal ? 'optimal' : 'ok'}">${p.status || 'ZADOVOLJAVA'}</span></td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+      <div style="font-size:0.78rem; color:var(--muted);">* Kliknite na bilo koji profil u tabeli da učitate njegov puni proračun i poprečni presjek na platnu.</div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function searchSpecificProfile(profileName) {
+  document.getElementById('aiPromptInput').value = profileName;
+  fetchProfileFromVercel();
+}
+
+// -------------------------------------------------------------
+// 2. UNIVERZALNI CANVAS CRTAČ (SA POPRAVLjENOM Y-OSOM I KOTIRANjEM)
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -371,23 +463,14 @@ function drawCanvasProfile(inputData) {
 
   if (!inputData) return;
 
-  let commands = [];
-  let dimensions = [];
-  let major_y = [];
-  let minor_z = [];
-
-  if (Array.isArray(inputData)) {
-    commands = inputData;
-  } else if (typeof inputData === 'object') {
-    commands = inputData.draw_commands || [];
-    dimensions = inputData.dimensions || [];
-    major_y = inputData.major_y || [];
-    minor_z = inputData.minor_z || [];
-  }
+  let commands = inputData.draw_commands || [];
+  let dimensions = inputData.dimensions || [];
+  let major_y = inputData.major_y || [];
+  let minor_z = inputData.minor_z || [];
 
   if (!commands.length) return;
 
-  // 1. Izračunavanje Bounding Box-a
+  // 1. Bounding Box
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 
   commands.forEach(cmd => {
@@ -414,24 +497,19 @@ function drawCanvasProfile(inputData) {
   const cy = height / 2 - ((yMin + yMax) / 2) * scale;
 
   const tx = (x) => cx + x * scale;
-  const ty = (y) => cy + y * scale;
+  // KLJUČNO: Invertujemo Y osu da matematički +Y ide GORE na ekranu!
+  const ty = (y) => cy - y * scale;
 
-  // 2. Crtanje neutralnih osa (y-y horizontalno, z-z vertikalno)
+  // 2. Neutralne ose y-y i z-z
   ctx.save();
-  ctx.strokeStyle = '#ec4899'; // Pink boja
+  ctx.strokeStyle = '#ec4899';
   ctx.lineWidth = 1;
   ctx.setLineDash([5, 4]);
 
-  // Horizontalna osa y-y
-  ctx.beginPath();
-  ctx.moveTo(15, cy); ctx.lineTo(width - 15, cy); ctx.stroke();
-  
-  // Vertikalna osa z-z
-  ctx.beginPath();
-  ctx.moveTo(cx, 15); ctx.lineTo(cx, height - 15); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(15, cy); ctx.lineTo(width - 15, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, 15); ctx.lineTo(cx, height - 15); ctx.stroke();
   ctx.restore();
 
-  // Nazivi osa
   ctx.font = 'bold 11px Segoe UI, sans-serif';
   ctx.fillStyle = '#ec4899';
   ctx.fillText('y', width - 12, cy + 4);
@@ -439,9 +517,7 @@ function drawCanvasProfile(inputData) {
 
   // Težište (0,0) - Crvena tačka
   ctx.fillStyle = '#ef4444';
-  ctx.beginPath();
-  ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, 2 * Math.PI); ctx.fill();
 
   // 3. Crtanje geometrije presjeka
   ctx.beginPath();
@@ -458,7 +534,7 @@ function drawCanvasProfile(inputData) {
     else if (type === 'closePath') ctx.closePath();
   });
 
-  ctx.fill('evenodd'); // Ključno za unutrašnje rupe cijevi
+  ctx.fill('evenodd');
   ctx.stroke();
 
   // 4. Radijusi inercije (iy, iz) na osama
@@ -467,7 +543,7 @@ function drawCanvasProfile(inputData) {
 
   if (iyItem || izItem) {
     ctx.save();
-    ctx.fillStyle = '#fbbf24'; // Žuta boja
+    ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
     if (iyItem && iyItem.val) {
@@ -483,18 +559,17 @@ function drawCanvasProfile(inputData) {
     ctx.restore();
   }
 
-  // 5. Inženjersko kotiranje
+  // 5. Kotiranje
   drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty);
 }
 
-// Funkcija za kotne linije i tekstualne oznake
 function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) {
   if (!dimensions || !dimensions.length) return;
 
   const hItem = dimensions.find(d => d.symbol === 'h' || d.label.toLowerCase().includes('depth'));
-  const bItem = dimensions.find(d => d.symbol === 'b' || d.label.toLowerCase().includes('width'));
+  const bItem = dimensions.find(d => d.symbol === 'b' || d.symbol === 'b_1' || d.label.toLowerCase().includes('width'));
   const twItem = dimensions.find(d => d.symbol === 't_w' || d.symbol === 'tw' || d.symbol === 't');
-  const tfItem = dimensions.find(d => d.symbol === 't_f' || d.symbol === 'tf');
+  const tfItem = dimensions.find(d => d.symbol === 't_f' || d.symbol === 'tf' || d.symbol === 't_f1_center');
   const r1Item = dimensions.find(d => d.symbol === 'r_1' || d.symbol === 'r' || d.symbol === 'r_o');
   const r2Item = dimensions.find(d => d.symbol === 'r_2' || d.symbol === 'r_i');
 
@@ -512,9 +587,7 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
       ctx.moveTo(x1, y1); ctx.lineTo(x1, py1 + (offset > 0 ? 4 : -4));
       ctx.moveTo(x2, y2); ctx.lineTo(x2, py2 + (offset > 0 ? 4 : -4));
       ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px1, py1); ctx.lineTo(px2, py2); ctx.stroke();
       drawTick(px1, py1); drawTick(px2, py2);
       ctx.textAlign = 'center';
       ctx.fillText(text, (px1 + px2) / 2, py1 + (offset > 0 ? 12 : -5));
@@ -522,11 +595,9 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
       px1 += offset; px2 += offset;
       ctx.beginPath();
       ctx.moveTo(x1, y1); ctx.lineTo(px1 + (offset > 0 ? 4 : -4), y1);
-      ctx.moveTo(x2, y2); ctx.lineTo(px2 + (offset > 0 ? 4 : -4), y2);
+      ctx.moveTo(x2, y2); ctx.lineTo(px1 + (offset > 0 ? 4 : -4), y2);
       ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px1, py1); ctx.lineTo(px2, py2); ctx.stroke();
       drawTick(px1, py1); drawTick(px2, py2);
       ctx.textAlign = 'right';
       ctx.fillText(text, px1 + (offset > 0 ? -5 : -5), (py1 + py2) / 2 + 3);
@@ -534,26 +605,16 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   }
 
   function drawTick(x, y) {
-    ctx.beginPath();
-    ctx.moveTo(x - 3, y + 3);
-    ctx.lineTo(x + 3, y - 3);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 3, y + 3); ctx.lineTo(x + 3, y - 3); ctx.stroke();
   }
 
-  // Kota h
-  if (hItem) {
-    drawDimLine(tx(xMin), ty(yMin), tx(xMin), ty(yMax), `h=${hItem.val}`, -22, false);
-  }
+  // Kota h i b
+  if (hItem) drawDimLine(tx(xMin), ty(yMax), tx(xMin), ty(yMin), `h=${hItem.val}`, -22, false);
+  if (bItem) drawDimLine(tx(xMin), ty(yMax), tx(xMax), ty(yMax), `b=${bItem.val}`, -20, true);
 
-  // Kota b
-  if (bItem) {
-    drawDimLine(tx(xMin), ty(yMin), tx(xMax), ty(yMin), `b=${bItem.val}`, -20, true);
-  }
-
-  // Tekstualne oznake debljina i radijusa
+  // Oznake debljina i radijusa
   const annX = tx(xMax) + 12;
-  let annY = ty(yMin) + 10;
-
+  let annY = ty(yMax) + 10;
   ctx.fillStyle = '#38bdf8';
   ctx.font = '10px Segoe UI, sans-serif';
   ctx.textAlign = 'left';
@@ -564,15 +625,12 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   if (r1Item) notes.push(`${r1Item.symbol.replace('_', '') || 'r1'}=${r1Item.val}`);
   if (r2Item) notes.push(`${r2Item.symbol.replace('_', '') || 'r2'}=${r2Item.val}`);
 
-  notes.forEach((note, idx) => {
-    ctx.fillText(note, annX, annY + idx * 13);
-  });
-
+  notes.forEach((note, idx) => { ctx.fillText(note, annX, annY + idx * 13); });
   ctx.restore();
 }
 
 // -------------------------------------------------------------
-// 3. RENDANJE PARALELNIH TABELA (y-y i z-z u istom redu)
+// RENDANJE TABELA SPECIFIKACIJA
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
@@ -630,7 +688,7 @@ function renderAiTables(data, containerId) {
 }
 
 // -------------------------------------------------------------
-// 4. CSV I PDF IZVOZ
+// CSV I PDF IZVOZ
 // -------------------------------------------------------------
 function exportToCSV() {
   if (!currentAiData || !currentAiData.found) return alert("Nema podataka za izvoz!");
