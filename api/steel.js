@@ -14,7 +14,9 @@ export default async function handler(req, res) {
     if (!prompt) return res.status(400).json({ error: 'Prompt je obavezan' });
 
     const apiKey = process.env.GEMINI_API_KEY_STEEL;
-    if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY_STEEL nije podešen u Vercel okruženju.' });
+    if (!apiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY_STEEL nije podešen u Vercel Environment Variables.' });
+    }
 
     const systemPrompt = `
     Ti si stručni inženjerski AI kalkulator i optimizator za sve svjetske standarde čeličnih profila (EN, AISC, IS 808, BS, DIN, JIS) po Eurocode 3 (S235 čelik, gammaM0 = 1.00).
@@ -30,19 +32,12 @@ export default async function handler(req, res) {
        - Ako krakovi imaju promjenjivu debljinu (npr. sa t u korijenu na t_end na kraju), draw_commands MORAJU tačno prikazati kosinu krakova od korijena do kraja!
        - Sve komande u draw_commands MORAJU biti pomjerene tako da je težište presjeka u tački (0,0).
 
-    3. STROGA KaTeX LaTeX SINTAKSA ZA POLJE "formula":
-       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu.
-       ZABRANJENO:
-       - Nemoj koristiti kosu crtu '/' za razlomke! Koristi \\frac{brojnik}{imenik}.
-       - Nemoj koristiti zvjezdicu '*' za množenje! Koristi \\cdot.
-       - Nemoj pisati 'gammaM0' tekstom! Koristi \\gamma_{M0}.
-       - Nemoj pisati 'sqrt(...)'! Koristi \\sqrt{...}.
+    3. STROGA LaTeX SINTAKSA ZA POLJE "formula":
+       Za SVAKI objekat u nizovima OBAVEZNO generiši polje "formula" u ČISTOM LaTeX formatu sa duplim kosim crtama (\\\\frac, \\\\gamma, \\\\cdot, \\\\sqrt, \\\\alpha, \\\\sum).
        Pravilni primjeri:
-       - "formula": "M_{el,Rd,y} = \\frac{W_{el,y} \\cdot f_y}{\\gamma_{M0}}"
-       - "formula": "N_{pl,Rd} = \\frac{A \\cdot f_y}{\\gamma_{M0}}"
-       - "formula": "i_y = \\sqrt{\\frac{I_y}{A}}"
-       - "formula": "V_{pl,Rd,z} = \\frac{A_{v,z} \\cdot \\frac{f_y}{\\sqrt{3}}}{\\gamma_{M0}}"
-       - "formula": "\\tan(2\\alpha) = \\frac{2 \\cdot I_{yz}}{I_z - I_y}"
+       - "formula": "M_{el,Rd,y} = \\\\frac{W_{el,y} \\\\cdot f_y}{\\\\gamma_{M0}}"
+       - "formula": "N_{pl,Rd} = \\\\frac{A \\\\cdot f_y}{\\\\gamma_{M0}}"
+       - "formula": "i_y = \\\\sqrt{\\\\frac{I_y}{A}}"
 
     4. FORMATIRANJE JSON ARRAYS OBJEKATA (INLINE):
        Obavezno piši objekte unutar nizova u JEDNOM REDU (inline format).
@@ -68,40 +63,40 @@ export default async function handler(req, res) {
         {"label": "Unutrašnji radijus", "symbol": "r_1", "val": 5, "unit": "mm", "formula": "r_1"}
       ],
       "area_properties": [
-        {"label": "Masa po metru", "symbol": "m", "val": 1.84, "unit": "kg/m", "formula": "m = A \\cdot \\rho_{steel}"},
-        {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 235, "unit": "mm²", "formula": "A = \\int dA"},
-        {"label": "Položaj težišta y_G", "symbol": "y_G", "val": 4.5, "unit": "mm", "formula": "y_G = \\frac{\\sum A_i \\cdot y_i}{A}"},
-        {"label": "Položaj težišta z_G", "symbol": "z_G", "val": 19.5, "unit": "mm", "formula": "z_G = \\frac{\\sum A_i \\cdot z_i}{A}"}
+        {"label": "Masa po metru", "symbol": "m", "val": 1.84, "unit": "kg/m", "formula": "m = A \\\\cdot \\\\rho_{steel}"},
+        {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 235, "unit": "mm²", "formula": "A = \\\\int dA"},
+        {"label": "Položaj težišta y_G", "symbol": "y_G", "val": 4.5, "unit": "mm", "formula": "y_G = \\\\frac{\\\\sum A_i \\\\cdot y_i}{A}"},
+        {"label": "Položaj težišta z_G", "symbol": "z_G", "val": 19.5, "unit": "mm", "formula": "z_G = \\\\frac{\\\\sum A_i \\\\cdot z_i}{A}"}
       ],
       "major_y": [
-        {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 0.060, "unit": "×10⁶ mm⁴", "formula": "I_y = \\sum (I_{y,i} + A_i \\cdot z_i^2)"},
-        {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 16.0, "unit": "mm", "formula": "i_y = \\sqrt{\\frac{I_y}{A}}"},
-        {"label": "Elastični otporni moment", "symbol": "W_el,y", "val": 1.96, "unit": "×10³ mm³", "formula": "W_{el,y} = \\frac{I_y}{z_{max}}"},
-        {"label": "Plastični otporni moment", "symbol": "W_pl,y", "val": 2.94, "unit": "×10³ mm³", "formula": "W_{pl,y} = \\sum A_i \\cdot |z_{G,i}|"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 0.060, "unit": "×10⁶ mm⁴", "formula": "I_y = \\\\sum (I_{y,i} + A_i \\\\cdot z_i^2)"},
+        {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 16.0, "unit": "mm", "formula": "i_y = \\\\sqrt{\\\\frac{I_y}{A}}"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,y", "val": 1.96, "unit": "×10³ mm³", "formula": "W_{el,y} = \\\\frac{I_y}{z_{max}}"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,y", "val": 2.94, "unit": "×10³ mm³", "formula": "W_{pl,y} = \\\\sum A_i \\\\cdot |z_{G,i}|"}
       ],
       "minor_z": [
-        {"label": "Aksijalni moment inercije", "symbol": "I_z", "val": 0.006, "unit": "×10⁶ mm⁴", "formula": "I_z = \\sum (I_{z,i} + A_i \\cdot y_i^2)"},
-        {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 5.0, "unit": "mm", "formula": "i_z = \\sqrt{\\frac{I_z}{A}}"},
-        {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 0.38, "unit": "×10³ mm³", "formula": "W_{el,z} = \\frac{I_z}{y_{max}}"},
-        {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 0.57, "unit": "×10³ mm³", "formula": "W_{pl,z} = \\sum A_i \\cdot |y_{G,i}|"}
+        {"label": "Aksijalni moment inercije", "symbol": "I_z", "val": 0.006, "unit": "×10⁶ mm⁴", "formula": "I_z = \\\\sum (I_{z,i} + A_i \\\\cdot y_i^2)"},
+        {"label": "Poluprečnik inercije", "symbol": "i_z", "val": 5.0, "unit": "mm", "formula": "i_z = \\\\sqrt{\\\\frac{I_z}{A}}"},
+        {"label": "Elastični otporni moment", "symbol": "W_el,z", "val": 0.38, "unit": "×10³ mm³", "formula": "W_{el,z} = \\\\frac{I_z}{y_{max}}"},
+        {"label": "Plastični otporni moment", "symbol": "W_pl,z", "val": 0.57, "unit": "×10³ mm³", "formula": "W_{pl,z} = \\\\sum A_i \\\\cdot |y_{G,i}|"}
       ],
       "torsion_warping": [
-        {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 0.95, "unit": "×10³ mm⁴", "formula": "I_T = \\frac{1}{3} \\sum b_i \\cdot t_i^3"},
-        {"label": "Otporni moment pri uvijanju", "symbol": "W_T", "val": 0.19, "unit": "×10³ mm³", "formula": "W_T = \\frac{I_T}{t_{max}}"},
-        {"label": "Centrifugalni moment inercije", "symbol": "I_yz", "val": -0.015, "unit": "×10⁶ mm⁴", "formula": "I_{yz} = \\sum A_i \\cdot y_i \\cdot z_i"},
-        {"label": "Ugao rotacije glavnih osa", "symbol": "alpha", "val": -24.2, "unit": "°", "formula": "\\tan(2\\alpha) = \\frac{2 \\cdot I_{yz}}{I_z - I_y}"}
+        {"label": "Moment inercije pri uvijanju", "symbol": "I_T", "val": 0.95, "unit": "×10³ mm⁴", "formula": "I_T = \\\\frac{1}{3} \\\\sum b_i \\\\cdot t_i^3"},
+        {"label": "Otporni moment pri uvijanju", "symbol": "W_T", "val": 0.19, "unit": "×10³ mm³", "formula": "W_T = \\\\frac{I_T}{t_{max}}"},
+        {"label": "Centrifugalni moment inercije", "symbol": "I_yz", "val": -0.015, "unit": "×10⁶ mm⁴", "formula": "I_{yz} = \\\\sum A_i \\\\cdot y_i \\\\cdot z_i"},
+        {"label": "Ugao rotacije glavnih osa", "symbol": "alpha", "val": -24.2, "unit": "°", "formula": "\\\\tan(2\\\\alpha) = \\\\frac{2 \\\\cdot I_{yz}}{I_z - I_y}"}
       ],
       "resistances_s235": [
-        {"label": "Aksijalna nosivost", "symbol": "N_pl,Rd", "val": 55.22, "unit": "kN", "formula": "N_{pl,Rd} = \\frac{A \\cdot f_y}{\\gamma_{M0}}"},
-        {"label": "Nosivost na smicanje z-z", "symbol": "V_pl,Rd,z", "val": 23.7, "unit": "kN", "formula": "V_{pl,Rd,z} = \\frac{A_{v,z} \\cdot \\frac{f_y}{\\sqrt{3}}}{\\gamma_{M0}}"},
-        {"label": "Nosivost na smicanje y-y", "symbol": "V_pl,Rd,y", "val": 9.5, "unit": "kN", "formula": "V_{pl,Rd,y} = \\frac{A_{v,y} \\cdot \\frac{f_y}{\\sqrt{3}}}{\\gamma_{M0}}"},
-        {"label": "Elastični moment savijanja y-y", "symbol": "M_el,Rd,y", "val": 0.46, "unit": "kNm", "formula": "M_{el,Rd,y} = \\frac{W_{el,y} \\cdot f_y}{\\gamma_{M0}}"},
-        {"label": "Plastični moment savijanja y-y", "symbol": "M_pl,Rd,y", "val": 0.69, "unit": "kNm", "formula": "M_{pl,Rd,y} = \\frac{W_{pl,y} \\cdot f_y}{\\gamma_{M0}}"}
+        {"label": "Aksijalna nosivost", "symbol": "N_pl,Rd", "val": 55.22, "unit": "kN", "formula": "N_{pl,Rd} = \\\\frac{A \\\\cdot f_y}{\\\\gamma_{M0}}"},
+        {"label": "Nosivost na smicanje z-z", "symbol": "V_pl,Rd,z", "val": 23.7, "unit": "kN", "formula": "V_{pl,Rd,z} = \\\\frac{A_{v,z} \\\\cdot \\\\frac{f_y}{\\\\sqrt{3}}}{\\\\gamma_{M0}}"},
+        {"label": "Nosivost na smicanje y-y", "symbol": "V_pl,Rd,y", "val": 9.5, "unit": "kN", "formula": "V_{pl,Rd,y} = \\\\frac{A_{v,y} \\\\cdot \\\\frac{f_y}{\\\\sqrt{3}}}{\\\\gamma_{M0}}"},
+        {"label": "Elastični moment savijanja y-y", "symbol": "M_el,Rd,y", "val": 0.46, "unit": "kNm", "formula": "M_{el,Rd,y} = \\\\frac{W_{el,y} \\\\cdot f_y}{\\\\gamma_{M0}}"},
+        {"label": "Plastični moment savijanja y-y", "symbol": "M_pl,Rd,y", "val": 0.69, "unit": "kNm", "formula": "M_{pl,Rd,y} = \\\\frac{W_{pl,y} \\\\cdot f_y}{\\\\gamma_{M0}}"}
       ],
       "buckling_classification": [
-        {"label": "Kriva izvijanja y-y", "symbol": "-", "val": "b", "unit": "", "formula": "\\text{EN 1993-1-1 Tabela 6.2}"},
-        {"label": "Kriva izvijanja z-z", "symbol": "-", "val": "c", "unit": "", "formula": "\\text{EN 1993-1-1 Tabela 6.2}"},
-        {"label": "Klasa kraka (pritisak)", "symbol": "-", "val": "Klasa 1", "unit": "", "formula": "\\frac{h}{t} \\le 15\\varepsilon"}
+        {"label": "Kriva izvijanja y-y", "symbol": "-", "val": "b", "unit": "", "formula": "\\\\text{EN 1993-1-1 Tabela 6.2}"},
+        {"label": "Kriva izvijanja z-z", "symbol": "-", "val": "c", "unit": "", "formula": "\\\\text{EN 1993-1-1 Tabela 6.2}"},
+        {"label": "Klasa kraka (pritisak)", "symbol": "-", "val": "Klasa 1", "unit": "", "formula": "\\\\frac{h}{t} \\\\le 15\\\\varepsilon"}
       ],
       "draw_commands": [
         ["moveTo", -4.5, 30.5],
@@ -131,16 +126,24 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-        if (!response.ok) return res.status(response.status).json(data);
+
+        if (!response.ok) {
+            console.error("Gemini API Greška:", data);
+            return res.status(response.status).json({ error: data.error?.message || "Greška pri komunikaciji sa Gemini API." });
+        }
 
         let jsonString = data.candidates[0].content.parts[0].text;
         jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        // DEKODIRANJE & SANITIZACIJA UNESENIH LaTeX KOSIH CRTA
+        // Automatski popravlja ne-escapeovane LaTeX komande u JSON stringu
+        jsonString = jsonString.replace(/(?<!\\)\\([a-zA-Z0-9_{}]+)/g, '\\\\$1');
 
         const profileData = JSON.parse(jsonString);
         return res.status(200).json(profileData);
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Greška pri komunikaciji sa Gemini API ili parsiranju JSON-a." });
+        console.error("Server Error:", error);
+        return res.status(500).json({ error: `Proračun neuspješan: ${error.message}` });
     }
 }
