@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baza & AI Čelični Profili — Eurocode 3</title>
+  <link rel="shortcut icon" href="#">
   
   <!-- KaTeX CSS i JS za renderovanje LaTeX formula u tooltip-u -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -300,7 +301,7 @@
       <div class="controls">
         <div class="form-group" style="flex: 3;">
           <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'L profil 100x65x7...', ili 'I profili M=500 N=1000')</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 240">
+          <input type="text" id="aiPromptInput" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 340">
         </div>
         <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
       </div>
@@ -549,7 +550,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// CANVAS CRTAČ — SA SAŠVIM CENTRIRANIM PROFILOM I DLUBAL OSA ROTACIONALOM
+// CANVAS CRTAČ — SA TEORIJSKI TAČNOM ELIPSOM INERCIJE (i_u na v-osi, i_v na u-osi)
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -593,9 +594,8 @@ function drawCanvasProfile(inputData) {
   const margin = 45;
   const scale = (width - 2 * margin) / maxDim;
 
-  // CENTRIRANJE PROFILA TAČNO U SREDINU CANVAS OKVIRA
   const cx = width / 2 - ((xMin + xMax) / 2) * scale;
-  const cy = height / 2 + ((yMin + yMax) / 2) * scale; // Popravljen predznak za Y osu
+  const cy = height / 2 + ((yMin + yMax) / 2) * scale;
 
   const tx = (x) => cx + x * scale;
   const ty = (y) => cy - y * scale;
@@ -646,7 +646,7 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-  // 5. TAČNO PODEŠEN DLUBAL SMJER ROTACIJE OSA u-v I ELIPSE
+  // 5. TEORIJSKI TAČNA ELIPSA INERCIJE I GLAVNE OSE u-v
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
@@ -660,6 +660,11 @@ function drawCanvasProfile(inputData) {
     const iuPx = iuVal * scale;
     const ivPx = ivVal * scale;
 
+    // Po kanonskoj jednačini elipse inercije (u^2 / iv^2 + v^2 / iu^2 = 1):
+    // Poluprečnik NA u-osi iznosi i_v, a poluprečnik NA v-osi iznosi i_u!
+    const radiusOnU = ivPx; 
+    const radiusOnV = iuPx; 
+
     if (Math.abs(alphaDeg) > 0.1) {
       ctx.save();
       ctx.strokeStyle = '#fbbf24';
@@ -668,7 +673,7 @@ function drawCanvasProfile(inputData) {
 
       const axisLen = maxDim * scale * 0.55;
 
-      // Osa u-u (Gore-desno za negativan alpha po DLUBAL/EC3 konvenciji)
+      // Osa u-u
       const ux = axisLen * Math.cos(alphaRad);
       const uy = axisLen * Math.sin(alphaRad);
 
@@ -677,7 +682,7 @@ function drawCanvasProfile(inputData) {
       ctx.lineTo(cx + ux, cy + uy);
       ctx.stroke();
 
-      // Osa v-v (Dole-desno, okomito na u-u)
+      // Osa v-v (okomita na u-u)
       const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
       const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
 
@@ -694,31 +699,33 @@ function drawCanvasProfile(inputData) {
       ctx.restore();
     }
 
-    // ROTIRANA ELIPSA INERCIJE
+    // CRTANJE ELIPSE INERCIJE (radiusOnU duž u, radiusOnV duž v)
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
 
     ctx.beginPath();
-    ctx.ellipse(cx, cy, iuPx, ivPx, alphaRad, 0, 2 * Math.PI);
+    ctx.ellipse(cx, cy, radiusOnU, radiusOnV, alphaRad, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.restore();
 
-    // RADIALNE TAČKE NA OSAMA
+    // OZNAČAVANJE TAČAKA NA OSAMA
     ctx.save();
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    const ptUx = cx + iuPx * Math.cos(alphaRad);
-    const ptUy = cy + iuPx * Math.sin(alphaRad);
+    // Tačka na u-osi (na udaljenosti radiusOnU = i_v)
+    const ptUx = cx + radiusOnU * Math.cos(alphaRad);
+    const ptUy = cy + radiusOnU * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
+    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptUx + 4, ptUy - 4);
 
-    const ptVx = cx + ivPx * Math.cos(alphaRad + Math.PI / 2);
-    const ptVy = cy + ivPx * Math.sin(alphaRad + Math.PI / 2);
+    // Tačka na v-osi (na udaljenosti radiusOnV = i_u)
+    const ptVx = cx + radiusOnV * Math.cos(alphaRad + Math.PI / 2);
+    const ptVy = cy + radiusOnV * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptVx + 5, ptVy - 2);
+    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptVx + 5, ptVy - 2);
     ctx.restore();
   }
 
