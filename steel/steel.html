@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baza & AI Čelični Profili — Eurocode 3</title>
+  
+  <!-- KaTeX CSS i JS za renderovanje LaTeX formula u tooltip-u -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
   <style>
     :root {
       --bg: #0b0f19;
@@ -202,7 +207,7 @@
       box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
     }
 
-    /* TOOLTIP POPUP */
+    /* TOOLTIP POPUP ELEMENAT */
     #formulaTooltip {
       position: absolute;
       background: #0f172a;
@@ -214,23 +219,25 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
       z-index: 9999;
       display: none;
-      max-width: 320px;
+      min-width: 220px;
+      max-width: 340px;
       backdrop-filter: blur(8px);
     }
 
     #formulaTooltip strong {
       color: var(--accent);
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-size: 0.75rem;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    #formulaTooltip code {
-      color: #34d399;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-weight: bold;
-      word-break: break-word;
+    .katex-formula-box {
+      font-size: 1.05rem;
+      padding: 4px 0;
+      color: #38bdf8;
+      overflow-x: auto;
     }
 
     /* Tabela Selekcije */
@@ -285,7 +292,7 @@
 <div class="container">
   <header>
     <h1>Baza & AI Proračun Profila — Eurocode 3</h1>
-    <div class="subtitle">Google Gemini 2.5 Flash API & HTML5 Canvas Crtat (S235 čelik)</div>
+    <div class="subtitle">Google Gemini 2.5 Flash API & HTML5 Canvas Crtač (S235 čelik)</div>
   </header>
 
   <!-- Navigacijski Tabovi -->
@@ -301,8 +308,8 @@
       <h2 class="card-title">Pretraga Profila Ili Dimenzionisanje Na Osnovu Opterećenja</h2>
       <div class="controls">
         <div class="form-group" style="flex: 3;">
-          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'gornja flansa 5 pri osi a 3 na kraju...' ILI 'I profili M=500 N=1000')</label>
-          <input type="text" id="aiPromptInput" placeholder="Npr. gornja flansa 5 pri osi a 3 na kraju..., I profili M=500 N=1000, ili IPE 240">
+          <label for="aiPromptInput">Unesite profil, opis ili inženjerske sile (Npr. 'WB 300', 'L profil 50x20x5...', ili 'I profili M=500 N=1000')</label>
+          <input type="text" id="aiPromptInput" placeholder="Npr. L profil 50x20x5 debljina krajeva 2..., I profili M=500 N=1000, ili IPE 240">
         </div>
         <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
       </div>
@@ -368,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Automatsko zatvaranje tooltipe-a na klik van dugmeta
+  // Zatvaranje tooltipa pri kliku van njega
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('formulaTooltip');
     if (tooltip && !e.target.classList.contains('info-btn')) {
@@ -383,27 +390,42 @@ function formatSymbol(sym) {
   return clean.replace(/_([a-zA-Z0-9,]+)/g, '<sub>$1</sub>');
 }
 
-// Funkcija za prikaz tooltipe-a sa formulom
+// -------------------------------------------------------------
+// PREDIVNI KATEX TOOLTIP PREDSTAVLJAČ FORMULA
+// -------------------------------------------------------------
 function handleInfoClick(e) {
   e.stopPropagation();
   const btn = e.currentTarget;
-  const formula = btn.getAttribute('data-formula') || 'Nema dostupne formule';
+  const formula = btn.getAttribute('data-formula') || 'N/A';
   const label = btn.getAttribute('data-label') || 'Proračun';
   const tooltip = document.getElementById('formulaTooltip');
 
   if (!tooltip) return;
 
   tooltip.innerHTML = `
-    <strong>Korištena Formula (${label}):</strong>
-    <code>${escapeHtml(formula)}</code>
+    <strong>${escapeHtml(label)}</strong>
+    <div id="katexFormulaContainer" class="katex-formula-box"></div>
   `;
   tooltip.style.display = 'block';
 
-  // Pozicioniranje tooltipe-a tik uz dugme
+  const container = document.getElementById('katexFormulaContainer');
+  if (window.katex && container) {
+    try {
+      katex.render(formula, container, {
+        throwOnError: false,
+        displayMode: true
+      });
+    } catch (err) {
+      container.textContent = formula;
+    }
+  } else if (container) {
+    container.textContent = formula;
+  }
+
   const rect = btn.getBoundingClientRect();
-  const tooltipWidth = 260;
+  const tooltipWidth = 280;
   
-  let leftPos = rect.left + window.scrollX - tooltipWidth + 20;
+  let leftPos = rect.left + window.scrollX - tooltipWidth + 30;
   if (leftPos < 10) leftPos = 10;
 
   tooltip.style.left = `${leftPos}px`;
@@ -549,7 +571,7 @@ function searchSpecificProfile(profileName) {
 }
 
 // -------------------------------------------------------------
-// 2. CANVAS CRTAČ SA TEŽIŠTEM G(0,0), ELIPSOM INERCIJE I KOTAMA
+// 2. CANVAS CRTAČ — SA POTPUNO USKLAĐENOM ROTACIJOM ELIPSE I OSA
 // -------------------------------------------------------------
 function drawCanvasProfile(inputData) {
   const canvas = document.getElementById('profileCanvas');
@@ -644,17 +666,14 @@ function drawCanvasProfile(inputData) {
   ctx.fill('evenodd');
   ctx.stroke();
 
-// -------------------------------------------------------------
-  // 5. ROTIRANA ELIPSA INERCIJE I GLAVNE OSE u-u / v-v
-  // -------------------------------------------------------------
+  // 5. POTPUNO USKLAĐENA ROTACIJA ELIPSE I GLAVNIH OSA u-u / v-v
   const iyItem = major_y.find(i => i.symbol && i.symbol.includes('i_y'));
   const izItem = minor_z.find(i => i.symbol && i.symbol.includes('i_z'));
 
   const alphaDeg = inputData.alpha_deg || 0;
-  // Pretvaranje ugla u radijane sa korekcijom smera rotacije za Canvas
-  const alphaRad = -(alphaDeg * Math.PI) / 180;
+  // Čisti matematički ugao u radijanima
+  const alphaRad = (alphaDeg * Math.PI) / 180;
 
-  // Određivanje poluprečnika inercije (glavne ose i_u, i_v ili geodetske i_y, i_z)
   const iuVal = inputData.i_u || (iyItem ? iyItem.val : 0);
   const ivVal = inputData.i_v || (izItem ? izItem.val : 0);
 
@@ -662,45 +681,50 @@ function drawCanvasProfile(inputData) {
     const iuPx = iuVal * scale;
     const ivPx = ivVal * scale;
 
-    // A) ROTIRANE GLAVNE OSE INERCIJE u-u I v-v (Žute isprekidane linije pri rotaciji)
+    // A) ROTIRANE GLAVNE OSE INERCIJE u-u I v-v (Žute isprekidane linije)
     if (Math.abs(alphaDeg) > 0.1) {
       ctx.save();
       ctx.strokeStyle = '#fbbf24';
       ctx.lineWidth = 0.8;
       ctx.setLineDash([4, 4]);
 
-      const axisLen = maxDim * scale * 0.6;
+      const axisLen = maxDim * scale * 0.55;
 
-      // Osa u-u (pod uglom alphaRad)
+      // Osa u-u (pod uglom alphaRad u matematičkom sistemu)
+      const ux = axisLen * Math.cos(alphaRad);
+      const uy = axisLen * Math.sin(alphaRad);
+
       ctx.beginPath();
-      ctx.moveTo(cx - axisLen * Math.cos(alphaRad), cy + axisLen * Math.sin(alphaRad));
-      ctx.lineTo(cx + axisLen * Math.cos(alphaRad), cy - axisLen * Math.sin(alphaRad));
+      ctx.moveTo(cx - ux, cy + uy);
+      ctx.lineTo(cx + ux, cy - uy);
       ctx.stroke();
 
-      // Osa v-v (upravna na u-u)
+      // Osa v-v (upravna na u-u, ugao alphaRad + PI/2)
+      const vx = axisLen * Math.cos(alphaRad + Math.PI / 2);
+      const vy = axisLen * Math.sin(alphaRad + Math.PI / 2);
+
       ctx.beginPath();
-      ctx.moveTo(cx - axisLen * Math.sin(alphaRad), cy - axisLen * Math.cos(alphaRad));
-      ctx.lineTo(cx + axisLen * Math.sin(alphaRad), cy + axisLen * Math.cos(alphaRad));
+      ctx.moveTo(cx - vx, cy + vy);
+      ctx.lineTo(cx + vx, cy - vy);
       ctx.stroke();
 
       // Oznake osa u i v
       ctx.font = 'bold 10px Segoe UI, sans-serif';
       ctx.fillStyle = '#fbbf24';
-      ctx.fillText('u', cx + axisLen * Math.cos(alphaRad) + 4, cy - axisLen * Math.sin(alphaRad) + 4);
-      ctx.fillText('v', cx - axisLen * Math.sin(alphaRad) - 4, cy - axisLen * Math.cos(alphaRad) - 4);
+      ctx.fillText('u', cx + ux + (ux >= 0 ? 4 : -10), cy - uy + (uy >= 0 ? -4 : 10));
+      ctx.fillText('v', cx + vx + (vx >= 0 ? 4 : -10), cy - vy + (vy >= 0 ? -4 : 10));
 
       ctx.restore();
     }
 
-    // B) ROTIRANA ELIPSA INERCIJE
+    // B) ROTIRANA ELIPSA INERCIJE (-alphaRad zbog obrnute Y-ose platna)
     ctx.save();
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
 
     ctx.beginPath();
-    // HTML5 Canvas ellipse prihvata ugao rotacije u radijanima
-    ctx.ellipse(cx, cy, iuPx, ivPx, alphaRad, 0, 2 * Math.PI);
+    ctx.ellipse(cx, cy, iuPx, ivPx, -alphaRad, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.restore();
 
@@ -709,17 +733,17 @@ function drawCanvasProfile(inputData) {
     ctx.fillStyle = '#fbbf24';
     ctx.font = '10px Segoe UI, sans-serif';
 
-    // Tačka duž ose u (ili y ako nema rotacije)
+    // Tačka i_u duž ose u (ugao alphaRad)
     const ptUx = cx + iuPx * Math.cos(alphaRad);
     const ptUy = cy - iuPx * Math.sin(alphaRad);
     ctx.beginPath(); ctx.arc(ptUx, ptUy, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(alphaDeg !== 0 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
+    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_u=${iuVal}` : `i_y=${iuVal}`, ptUx + 4, ptUy - 4);
 
-    // Tačka duž ose v (ili z ako nema rotacije)
-    const ptVx = cx - ivPx * Math.sin(alphaRad);
-    const ptVy = cy - ivPx * Math.cos(alphaRad);
+    // Tačka i_v duž ose v (ugao alphaRad + PI/2)
+    const ptVx = cx + ivPx * Math.cos(alphaRad + Math.PI / 2);
+    const ptVy = cy - ivPx * Math.sin(alphaRad + Math.PI / 2);
     ctx.beginPath(); ctx.arc(ptVx, ptVy, 2.5, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillText(alphaDeg !== 0 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptVx + 5, ptVy - 2);
+    ctx.fillText(Math.abs(alphaDeg) > 0.1 ? `i_v=${ivVal}` : `i_z=${ivVal}`, ptVx + 5, ptVy - 2);
     ctx.restore();
   }
 
@@ -791,7 +815,7 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
 }
 
 // -------------------------------------------------------------
-// RENDANJE TABELA SA DUGMETOM 'i' U SVAKOM REDU
+// RENDANJE PARALELNIH TABELA SPECIFIKACIJA
 // -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
