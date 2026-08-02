@@ -79,7 +79,9 @@ export default async function handler(req, res) {
       "area_properties": [
         {"label": "Masa po metru", "symbol": "m", "val": 10.8, "unit": "kg/m"},
         {"label": "Površina poprečnog presjeka", "symbol": "A", "val": 1376, "unit": "mm²"}
-      ],
+        {"label": "Položaj težišta y_G", "symbol": "y_G", "val": 0, "unit": "mm"},
+        {"label": "Položaj težišta z_G", "symbol": "z_G", "val": 0, "unit": "mm"}
+        ],
       "major_y": [
         {"label": "Aksijalni moment inercije", "symbol": "I_y", "val": 7.87, "unit": "×10⁶ mm⁴"},
         {"label": "Poluprečnik inercije", "symbol": "i_y", "val": 75.6, "unit": "mm"},
