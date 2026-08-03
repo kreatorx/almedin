@@ -212,6 +212,26 @@
     td.unit { color: var(--muted); font-size: 0.75rem; width: 55px; text-align: right; }
     td.info-col { width: 24px; text-align: center; }
 
+    .db-table-wrapper {
+      overflow-x: auto;
+      max-height: 580px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .db-table th {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      z-index: 10;
+    }
+
+    .db-table tr:hover {
+      background: rgba(56, 189, 248, 0.08);
+      cursor: pointer;
+    }
+
     .info-btn {
       display: inline-flex;
       align-items: center;
@@ -360,9 +380,10 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="ai-profile">1. AI Pretraga & Dimenzionisanje</button>
-    <button class="tab-btn" data-tab="browser">2. Preglednik Baze</button>
+    <button class="tab-btn" data-tab="browser">2. Preglednik Baze (profiles.json)</button>
   </div>
 
+  <!-- TAB 1: AI PRETRAGA & DIMENZIONISANJE -->
   <div id="tab-ai-profile" class="tab-content active">
     <div class="card">
       <h2 class="card-title">Pretraga Profila ili Dimenzionisanje Na Osnovu Opterećenja</h2>
@@ -370,7 +391,7 @@
         <div class="controls-row">
           <div class="form-group">
             <label for="aiPromptInput">Unesite profil, opis ili sile opterećenja (strelice ▲/▼ za historiju upita)</label>
-            <input type="text" id="aiPromptInput" list="promptHistoryDatalist" autocomplete="off" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., I profili M=500 N=1000, ili IPE 340">
+            <input type="text" id="aiPromptInput" list="promptHistoryDatalist" autocomplete="off" placeholder="Npr. L profil 100x65x7 unutrašnji radijus 10..., dupli L u + formaciji unutar CHS 50x3, ili IPE 340">
             <datalist id="promptHistoryDatalist"></datalist>
           </div>
           <button class="btn-action" id="btnAiSearch">Izvrši AI Analizu</button>
@@ -415,8 +436,60 @@
     </div>
   </div>
 
-  <div id="tab-browser" class="tab-content"><div class="card"><h2>2. Preglednik Baze</h2></div></div>
-  <div id="tab-custom-calc" class="tab-content"><div class="card"><h2>3. Custom Profil</h2></div></div>
+  <!-- TAB 2: PREGLEDNIK BAZE PROFILA -->
+  <div id="tab-browser" class="tab-content">
+    <div class="card">
+      <h2 class="card-title">Preglednik Baze Standardnih Čeličnih Profila (profiles.json)</h2>
+      
+      <div class="controls" style="margin-bottom: 16px;">
+        <div class="controls-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="dbSearchInput">Pretraga po nazivu ili oznaci profila</label>
+            <input type="text" id="dbSearchInput" placeholder="Brza pretraga npr. IPE 180, HEA 200, L 100x100x10, UPN...">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="dbFamilySelect">Filtriraj po Tipu / Porodici</label>
+            <select id="dbFamilySelect">
+              <option value="ALL">Sve Porodice / Tipovi</option>
+              <option value="IPE">IPE Profili</option>
+              <option value="HEA">HEA Profili</option>
+              <option value="HEB">HEB Profili</option>
+              <option value="HEM">HEM Profili</option>
+              <option value="UNP">UNP / UPE Profili</option>
+              <option value="L">L Ugaonici (Angles)</option>
+              <option value="RHS">RHS / SHS Cijevi</option>
+              <option value="CHS">CHS Okrugle Cijevi</option>
+            </select>
+          </div>
+        </div>
+        <div id="dbLoadingStatus" style="font-size: 0.8rem; color: var(--muted); margin-top: 4px;">Učitavanje baze profiles.json...</div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+        <span id="dbCountText" style="font-size: 0.82rem; color: var(--accent); font-weight: bold;">Prikazano: 0 profila</span>
+        <span style="font-size: 0.78rem; color: var(--muted);">* Kliknite na bilo koji profil u tabeli da učitate njegov puni AI proračun i poprečni presjek.</span>
+      </div>
+
+      <div class="db-table-wrapper">
+        <table class="db-table">
+          <thead>
+            <tr>
+              <th>Oznaka / Profil</th>
+              <th>Visina h / Širina b (mm)</th>
+              <th>Debljine t<sub>w</sub> / t<sub>f</sub> (mm)</th>
+              <th style="text-align:right;">Površina A (cm²)</th>
+              <th style="text-align:right;">Masa m (kg/m)</th>
+              <th style="text-align:center;">Akcija</th>
+            </tr>
+          </thead>
+          <tbody id="dbProfilesTbody">
+            <tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--muted);">Učitavanje baze podataka...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 
 </div>
 
@@ -430,6 +503,7 @@
 
 <script>
 let currentAiData = null;
+let dbProfiles = []; 
 
 let promptHistory = [];
 let historyIndex = -1;
@@ -438,6 +512,8 @@ let tempPromptValue = '';
 document.addEventListener('DOMContentLoaded', () => {
   const btnAi = document.getElementById('btnAiSearch');
   const promptInput = document.getElementById('aiPromptInput');
+  const dbSearchInput = document.getElementById('dbSearchInput');
+  const dbFamilySelect = document.getElementById('dbFamilySelect');
 
   if (btnAi) btnAi.addEventListener('click', fetchProfileFromVercel);
 
@@ -470,6 +546,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (dbSearchInput) dbSearchInput.addEventListener('input', () => renderDbTable(dbProfiles));
+  if (dbFamilySelect) dbFamilySelect.addEventListener('change', () => renderDbTable(dbProfiles));
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -487,7 +566,130 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   updateStatus('ready', 'Spremno', 'Unesite opis profila ili opterećenje.');
+  loadProfilesJson();
 });
+
+// -------------------------------------------------------------
+// UČITAVANJE I COMPACT DISPLAY ZA profiles.json (TAB 2)
+// -------------------------------------------------------------
+async function loadProfilesJson() {
+  const statusEl = document.getElementById('dbLoadingStatus');
+  try {
+    const response = await fetch('profiles.json');
+    if (!response.ok) throw new Error(`HTTP greška ${response.status}`);
+    dbProfiles = await response.json();
+    
+    if (statusEl) statusEl.textContent = `Baza uspješno učitana (${dbProfiles.length} profila).`;
+    renderDbTable(dbProfiles);
+  } catch (err) {
+    console.warn("Lokalni profiles.json nije pronađen. Koristim ugrađenu bazu:", err);
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--warning);">Datoteka profiles.json nije pronađena. Učitana je ugrađena baza.</span>`;
+    }
+    dbProfiles = getSampleProfiles();
+    renderDbTable(dbProfiles);
+  }
+}
+
+function renderDbTable(list) {
+  const tbody = document.getElementById('dbProfilesTbody');
+  const countEl = document.getElementById('dbCountText');
+  if (!tbody) return;
+
+  const searchVal = (document.getElementById('dbSearchInput')?.value || '').toLowerCase().trim();
+  const familyVal = document.getElementById('dbFamilySelect')?.value || 'ALL';
+
+  const filtered = list.filter(p => {
+    const name = (p.oznaka || p.name || p.designation || '').toString().toLowerCase();
+    const family = (p.family || p.tip || p.shape || getFamilyFromName(name)).toUpperCase();
+
+    const matchesSearch = !searchVal || name.includes(searchVal);
+    const matchesFamily = familyVal === 'ALL' || family === familyVal || name.startsWith(familyVal.toLowerCase());
+
+    return matchesSearch && matchesFamily;
+  });
+
+  if (countEl) countEl.textContent = `Prikazano: ${filtered.length} od ${list.length} profila`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted);">Nema profila koji odgovaraju pretrazi.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.slice(0, 150).map((p) => {
+    const name = p.oznaka || p.name || p.designation || 'N/A';
+    const h = p.h ?? p.height ?? '-';
+    const b = p.b ?? p.width ?? '-';
+    const tw = p.tw ?? p.t_w ?? p.t ?? '-';
+    const tf = p.tf ?? p.t_f ?? '-';
+    const A = p.A ?? p.area ?? '-';
+    const m = p.m ?? p.mass ?? p.weight ?? '-';
+
+    const dimStr = `${h} / ${b}`;
+    const tStr = `${tw} / ${tf}`;
+
+    return `
+      <tr onclick="selectProfileFromDb('${escapeHtml(name)}')">
+        <td style="color:var(--accent); font-weight:bold;">${escapeHtml(name)}</td>
+        <td>${dimStr}</td>
+        <td>${tStr}</td>
+        <td class="val">${A}</td>
+        <td class="val">${m}</td>
+        <td style="text-align:center;">
+          <button class="btn-export" style="margin:0;" onclick="event.stopPropagation(); selectProfileFromDb('${escapeHtml(name)}')">Učitaj & PRORAČUN</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function getFamilyFromName(name) {
+  const n = name.toUpperCase();
+  if (n.startsWith('IPE')) return 'IPE';
+  if (n.startsWith('HEA')) return 'HEA';
+  if (n.startsWith('HEB')) return 'HEB';
+  if (n.startsWith('HEM')) return 'HEM';
+  if (n.startsWith('UNP') || n.startsWith('UPE')) return 'UNP';
+  if (n.startsWith('L')) return 'L';
+  if (n.startsWith('RHS') || n.startsWith('SHS')) return 'RHS';
+  if (n.startsWith('CHS')) return 'CHS';
+  return 'OSTALO';
+}
+
+function selectProfileFromDb(profileName) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  const tab1Btn = document.querySelector('.tab-btn[data-tab="ai-profile"]');
+  const tab1Content = document.getElementById('tab-ai-profile');
+  if (tab1Btn) tab1Btn.classList.add('active');
+  if (tab1Content) tab1Content.classList.add('active');
+
+  const input = document.getElementById('aiPromptInput');
+  if (input) input.value = profileName;
+
+  fetchProfileFromVercel();
+}
+
+function getSampleProfiles() {
+  return [
+    { oznaka: "IPE 80", h: 80, b: 46, tw: 3.8, tf: 5.2, A: 7.58, m: 6.0 },
+    { oznaka: "IPE 100", h: 100, b: 55, tw: 4.1, tf: 5.7, A: 10.3, m: 8.1 },
+    { oznaka: "IPE 140", h: 140, b: 73, tw: 4.7, tf: 6.9, A: 16.4, m: 12.9 },
+    { oznaka: "IPE 180", h: 180, b: 91, tw: 5.3, tf: 8.0, A: 23.9, m: 18.8 },
+    { oznaka: "IPE 200", h: 200, b: 100, tw: 5.6, tf: 8.5, A: 28.5, m: 22.4 },
+    { oznaka: "IPE 300", h: 300, b: 150, tw: 7.1, tf: 10.7, A: 53.8, m: 42.2 },
+    { oznaka: "HEA 100", h: 96, b: 100, tw: 5.0, tf: 8.0, A: 21.2, m: 16.7 },
+    { oznaka: "HEA 200", h: 190, b: 200, tw: 6.5, tf: 10.0, A: 53.8, m: 42.3 },
+    { oznaka: "HEA 300", h: 290, b: 300, tw: 8.5, tf: 14.0, A: 112.5, m: 88.3 },
+    { oznaka: "HEB 200", h: 200, b: 200, tw: 9.0, tf: 15.0, A: 78.1, m: 61.3 },
+    { oznaka: "HEB 300", h: 300, b: 300, tw: 11.0, tf: 19.0, A: 149.0, m: 117.0 },
+    { oznaka: "L 50x50x5", h: 50, b: 50, tw: 5.0, tf: 5.0, A: 4.80, m: 3.77 },
+    { oznaka: "L 100x100x10", h: 100, b: 100, tw: 10.0, tf: 10.0, A: 19.2, m: 15.1 },
+    { oznaka: "L 180x180x16", h: 180, b: 180, tw: 16.0, tf: 16.0, A: 55.4, m: 43.5 },
+    { oznaka: "UNP 200", h: 200, b: 75, tw: 8.5, tf: 11.5, A: 32.2, m: 25.3 }
+  ];
+}
 
 function updateStatus(state, mainText, subText = '') {
   const dot = document.getElementById('statusDotIndicator');
@@ -609,7 +811,7 @@ async function fetchProfileFromVercel() {
     }
 
     if (data.found === false) {
-      updateStatus('error', 'Profil ne postoji', data.error_message || 'Zadani profil nije pronađen u standardima. Prethodni profil je zadržan.');
+      updateStatus('error', 'Greška', data.error_message || 'Zadani opis profila nije mogao biti proračunat.');
       btn.disabled = false;
       return;
     }
@@ -627,7 +829,7 @@ async function fetchProfileFromVercel() {
       selectionContainer.style.display = "none";
     }
 
-    document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Optimizovano'})`;
+    document.getElementById('aiProfileTitle').textContent = `${data.oznaka} (${data.standard || 'AI Presjek'})`;
     
     renderAiTables(data, 'aiSpecsContainer');
     drawCanvasProfile(data);
@@ -639,7 +841,7 @@ async function fetchProfileFromVercel() {
 
   } catch (err) {
     console.error(err);
-    updateStatus('error', 'Greška pri proračunu', `${err.message} (Prethodni profil zadržan)`);
+    updateStatus('error', 'Greška pri proračunu', `${err.message}`);
   } finally {
     btn.disabled = false;
   }
@@ -807,9 +1009,6 @@ function drawCanvasProfile(inputData) {
     const iuPx = iuVal * scale;
     const ivPx = ivVal * scale;
 
-    // PO FIZICI I TEORIJI ELIPSE INERCIJE:
-    // Na u-osi nanosi se i_v (udaljenost od v-ose)
-    // Na v-osi nanosi se i_u (udaljenost od u-ose)
     const radiusOnU = ivPx; 
     const radiusOnV = iuPx; 
 
@@ -938,9 +1137,6 @@ function drawProfileDimensions(ctx, dimensions, xMin, xMax, yMin, yMax, tx, ty) 
   ctx.restore();
 }
 
-// -------------------------------------------------------------
-// RENDER TABELA: DINAMIČKI RENDERA I PROŠIRENE TABELE AKO POSTOJE
-// -------------------------------------------------------------
 function renderAiTables(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -986,7 +1182,6 @@ function renderAiTables(data, containerId) {
     `;
   }
 
-  // BLOK ZA GLAVNE OSE INERCIJE (u-v KOORDINATNI SISTEM & UGAO alpha)
   let principalUvHtml = '';
   if (data.principal_uv && data.principal_uv.length) {
     principalUvHtml = `
@@ -1064,10 +1259,10 @@ function exportToCSV() {
   
   let rows = [["Kategorija", "Naziv", "Simbol", "Vrijednost", "Jedinica", "Formula"]];
   const groups = [
-  'dimensions', 'area_properties', 'major_y', 'minor_z', 'principal_uv',
-  'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification',
-  'shear_properties', 'torsion_warping_extended', 'stability_asymmetry', 'plasticity_extended', 'other_properties'
-];
+    'dimensions', 'area_properties', 'major_y', 'minor_z', 'principal_uv',
+    'torsion_warping', 'resistances_s235', 'buckling_analysis', 'buckling_classification',
+    'shear_properties', 'torsion_warping_extended', 'stability_asymmetry', 'plasticity_extended', 'other_properties'
+  ];
 
   groups.forEach(g => {
     if (currentAiData[g]) {
@@ -1110,7 +1305,7 @@ function exportToPDF() {
 
         <h3>Osa y-y i z-z</h3>
         <table>
-          <tr><th>Svojstva Oko Glavne Ose y-y</th><th>Svojstva Oko Sporedne Ose z-z</th></tr>
+          <tr><th>Svojstva Oko Ose y-y</th><th>Svojstva Oko Ose z-z</th></tr>
           <tr>
             <td><table>${currentAiData.major_y.map(i => `<tr><td>${i.label}</td><td class="val">${i.val} ${i.unit}</td></tr>`).join('')}</table></td>
             <td><table>${currentAiData.minor_z.map(i => `<tr><td>${i.label}</td><td class="val">${i.val} ${i.unit}</td></tr>`).join('')}</table></td>
