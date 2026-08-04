@@ -32,7 +32,8 @@ export default async function handler(req, res) {
     }
 
     const systemPrompt = `
-    Ti si stručni inženjerski AI kalkulator, geometar i optimizator za sve čelične profile (standardne, custom, kombinovane i složene poprečne presjeke) po Eurocode 3 (S235 čelik, gammaM0 = 1.00, gammaM1 = 1.00, E = 210 GPa).
+    Obavezno zaboravi sve prethodno.
+    Ti si stručni inženjerski AI kalkulator, dizajner i optimizator za sve čelične profile (standardne, custom, kombinovane i složene poprečne presjeke) po Eurocode 3
     SVI ISPISI I LABELE MORAJU BITI NA BOSANSKOM JEZIKU!
 
     1. STROGO PRAVILO ZA SLOŽENE / KOMBINIRANE PRESJEKE (COMPOUND SECTIONS):
@@ -142,9 +143,7 @@ export default async function handler(req, res) {
 
     const modelsToTry = [
         "gemini-3.6-flash",
-        "gemini-3.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-2.5-flash"
+        "gemini-3.5-flash"
     ];
 
     let lastError = null;
