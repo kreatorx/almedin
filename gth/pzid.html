@@ -1574,6 +1574,17 @@ function drawHighRes() {
     ctx.fillText(`δ2 = ${d.delta2_deg}°`, x_soil_info, y_temeljno + 53);
 
     ctx.restore();
+
+    // POTPIS U DONJEM LIJEVOM UGLU CANVAS-A
+    ctx.save();
+    ctx.font = '10px -apple-system, sans-serif'; // veličina i font
+    ctx.fillStyle = 'rgba(120, 120, 120, 0.6)';  // elegantna suptilna siva boja
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+
+    // 12px od lijeve ivice, 10px od dna canvasa
+    ctx.fillText('husalmedin@gmail.com', 12, displayHeight - 10); 
+    ctx.restore();
 }
 
 function openFormulaModal(type) {
