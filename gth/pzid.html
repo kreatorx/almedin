@@ -467,6 +467,7 @@
                     <option value="50.0">MA 500/560 (σvi = 500 MPa)</option>
                 </select>
             </div>
+            <div class="coef-item"><label>c_nom (Sigurnosni razmak):</label><input type="number" id="c_nom" step="0.01" value="0.02"></div>
         </div>
 
         <div class="group-title">Faktori Opterećenja & Sigurnosti:</div>
@@ -571,6 +572,7 @@ function applyPreset(preset) {
         document.getElementById('cfg_fs_kliz').value = 1.50;
         document.getElementById('cfg_mb').value = "2.05";
         document.getElementById('cfg_arm').value = "40.0";
+        document.getElementById('c_nom').value = "0.02";
     } else if (preset === 'Asph') {
         document.getElementById('cfg_g_unfav').value = 1.00;
         document.getElementById('cfg_g_fav').value = 1.00;
@@ -584,6 +586,7 @@ function applyPreset(preset) {
         document.getElementById('cfg_fs_kliz').value = 1.50;
         document.getElementById('cfg_mb').value = "2.05";
         document.getElementById('cfg_arm').value = "40.0";
+        document.getElementById('c_nom').value = "0.02";
     }
     calculate();
 }
@@ -690,6 +693,7 @@ function calculate() {
     // SVOJSTVA BETONA I ARMATURE
     const fb_pbab = parseFloat(document.getElementById('cfg_mb').value) || 2.05; // kN/cm²
     const sig_vi = parseFloat(document.getElementById('cfg_arm').value) || 40.0;  // kN/cm²
+    const c_nom = parseFloat(document.getElementById('c_nom').value) || 0.02;  // m
 
     document.getElementById('lbl_fsp_req').innerText = fs_prev_req.toFixed(1);
     document.getElementById('lbl_fsk_req').innerText = fs_kliz_req.toFixed(1);
@@ -795,19 +799,20 @@ function calculate() {
     const Ea_stem_V = Ea_stem * Math.sin(delta1);
     const y_ea_stem = Ea_stem_H > 0 ? (Ea_gamma_stem_H * y_gamma_stem + Ea_q_stem_H * y_q_stem) / Ea_stem_H : h_stem / 3;
 
-    // TEŽINE ELEMENATA W1 - W4
+    // ===================================================================
+    // TEŽINE ELEMENATA W1 - W4 I DIMENZIONISANJE ARMATURE (ČISTI KOD)
+    // ===================================================================
     const gamma_c = 25.0;
-    
-    // W1: Stablo zida (TAČAN PRORAČUN KAD JE b_dno > b_vrh)
-    const W_s1 = b_vrh * H * gamma_c; // Pravougaoni dio (desna strana)
-    const W_s2 = 0.5 * (b_dno - b_vrh) * H * gamma_c; // Trougaoni dio (čelna kosa strana)
-    const W_1 = W_s1 + W_s2;
 
-    // Krakovi za težište W1 u odnosu na tačku A
-    const x_s1_A = L_p + (b_dno - b_vrh) + b_vrh / 2;
-    const x_s2_A = L_p + (2 / 3) * (b_dno - b_vrh);
-    const x_1_A = W_1 > 0 ? (W_s1 * x_s1_A + W_s2 * x_s2_A) / W_1 : L_p + b_dno / 2;
+    // 1. W1: Stablo zida (Trapez sa vertikalnom zaleđnom i kosom čelnom stranom)
+    const W_1 = 0.5 * (b_dno + b_vrh) * H * gamma_c;
+    
+    // Egzaktno težište trapeza u odnosu na tačku A (lijeva ivica temelja)
+    const x_1_A = (b_dno + b_vrh) > 0 
+        ? (L_p + b_dno) - (b_dno * b_dno + b_dno * b_vrh + b_vrh * b_vrh) / (3 * (b_dno + b_vrh))
+        : L_p + b_dno / 2;
     const x_1_C = x_1_A - B / 2;
+    const y_1_local = (b_dno + b_vrh) > 0 ? (H / 3) * ((b_dno + 2 * b_vrh) / (b_dno + b_vrh)) : H / 2;
 
     // MOMENT U DNU STABLA ZIDA (Mu Oko Težišta presjeka dna stabla)
     const M_g_stem = Ea_gamma_stem_H * y_gamma_stem;
@@ -816,38 +821,65 @@ function calculate() {
     // Moment mase zida oko centra dna stabla (x_stem_center = L_p + b_dno / 2)
     const x_stem_center = L_p + b_dno / 2;
     const e_stem_w = x_stem_center - x_1_A; 
-    const M_N_stem = W_1 * e_stem_w; 
+    const x_D = (b_dno * b_dno + b_dno * b_vrh + b_vrh * b_vrh) / (3 * (b_dno + b_vrh));
+    const M_g_stem_pov = W_1 * (b_dno /2 - x_D); // Pozitivni moment oko centra dna stabla zbog excentriciteta djelujuce težine W1
+    const M_N_stem = W_1 * (b_dno/2 - c_nom);
 
-    // Savijajući moment u dnu stabla (povoljan uticaj mase smanjuje M_ed)
-    const Med = Math.max(0, (g_g_conc * M_g_stem) + (g_q_conc * M_q_stem) - (g_g_conc * M_N_stem));
-
+    // Savijajući moment po PBAB 87 za ekscentrično pritisnuti presjek (sa dodatkom + W1 * b_dno/2)
+    const Med = Math.max(0, (g_g_conc * (M_g_stem-M_g_stem_pov) + (g_q_conc * M_q_stem) + Math.abs(M_N_stem)));
+    
     // DIMENZIONISANJE ARMATURE PBAB 87
     const d_eff = Math.max(0.05, b_dno - 0.05); // Korisna visina
     const mu_val = (Med * 100) / (100 * Math.pow(d_eff * 100, 2) * fb_pbab);
     const kz_val = Math.max(0.85, 1 - 0.5 * mu_val);
     const As_req = (Med * 100) / (kz_val * (d_eff * 100) * sig_vi);
 
-    // W2: Temeljna stopa
+    // 2. W2: Temeljna stopa
     const W_2 = B * d_t * gamma_c;
     const x_2_A = B / 2;
     const x_2_C = 0;
 
-    // W3: Nasip iznad zaleđne pete
+    // 3. W3: Nasip iznad zaleđne pete
     const h_sol_above_ft = Math.max(0, h1 - d_t);
     const W_3 = b_heel * h_sol_above_ft * gamma1;
     const x_3_A = B - b_heel / 2;
     const x_3_C = x_3_A - B / 2;
 
-    // W4: Tlo iznad čelne pete
-    const h_toe = Math.max(0, Df - d_t);
-    const W_4 = L_p * h_toe * gamma2;
-    const x_4_A = L_p / 2;
+    // 4. W4: Tlo iznad čelne pete (Uzima u obzir trapezoidnu kosinu prednjeg lica zida)
+    const h_toe = Math.min(H, Math.max(0, Df - d_t));
+    let W_4 = 0;
+    let x_4_A = L_p / 2;
+    let y_4_local = h_toe / 2;
+
+    if (h_toe > 0) {
+        const b_toe_bot = L_p;
+        const b_toe_top = L_p + h_toe * (b_dno - b_vrh) / H;
+
+        W_4 = 0.5 * (b_toe_bot + b_toe_top) * h_toe * gamma2;
+        x_4_A = (b_toe_bot * b_toe_bot + b_toe_bot * b_toe_top + b_toe_top * b_toe_top) / (3 * (b_toe_bot + b_toe_top));
+        y_4_local = (h_toe / 3) * ((b_toe_bot + 2 * b_toe_top) / (b_toe_bot + b_toe_top));
+
+        // Ako je Df veći od visine trupa H
+        if (Df - d_t > H) {
+            const h_extra = (Df - d_t) - H;
+            const w_extra = L_p + (b_dno - b_vrh);
+            const W_extra = w_extra * h_extra * gamma2;
+            const x_extra_A = w_extra / 2;
+
+            x_4_A = (W_4 * x_4_A + W_extra * x_extra_A) / (W_4 + W_extra);
+            W_4 += W_extra;
+        }
+    }
     const x_4_C = x_4_A - B / 2;
 
     // Vertikalna sila od opterećenja q
     const W_q = b_heel * q_vert;
     const x_q_A = B - b_heel / 2;
     const x_q_C = x_q_A - B / 2;
+
+    // Spremanje visinskih težišta za tačan prikaz na Canvasu
+    calcData.y_1_abs = d_t + y_1_local;
+    calcData.y_4_abs = d_t + y_4_local;
 
     // RAVNOTEŽA I MOMENTI
     const M_A_R = g_g_fav * ((W_1 * x_1_A) + (W_2 * x_2_A) + (W_3 * x_3_A) + (W_4 * x_4_A) + (Ea_V * B) + (Ep_H * y_Ep)) + (g_q_fav * W_q * x_q_A);
@@ -921,7 +953,7 @@ function calculate() {
     updateBadge('pdop_badge', FS_nosivost >= 1.0);
     
     document.getElementById('eastem_val').innerText = `${Ea_stem_H.toFixed(1)} / ${Ea_stem_V.toFixed(1)} kN`;
-    document.getElementById('med_val').innerText = Med.toFixed(1) + ' kNm/m';
+    document.getElementById('med_val').innerText = Med.toFixed(2) + ' kNm/m';
     document.getElementById('as_val').innerText = As_req.toFixed(2) + ' cm²/m';
 
     renderTable();
@@ -1144,15 +1176,17 @@ function drawHighRes() {
     const pt7 = toPx(0, d.d_t);
 
     if (d.Df > 0) {
+        const h_toe_px = Math.min(d.H, Math.max(0, d.Df - d.d_t));
+        const x_top_soil = d.L_p + h_toe_px * (d.b_dno - d.b_vrh) / d.H;
         const pt_df_top = toPx(0, d.Df);
-        const pt_lp_df = toPx(d.L_p, d.Df);
+        const pt_df_wall = toPx(x_top_soil, d.Df);
 
         ctx.fillStyle = '#cbd5e1';
         ctx.beginPath();
         ctx.moveTo(0, originY);
         ctx.lineTo(0, pt_df_top.y);
-        ctx.lineTo(pt_lp_df.x, pt_df_top.y);
-        ctx.lineTo(pt_lp_df.x, pt6.y);
+        ctx.lineTo(pt_df_wall.x, pt_df_wall.y);
+        ctx.lineTo(pt6.x, pt6.y);
         ctx.lineTo(pt7.x, pt7.y);
         ctx.lineTo(originX, originY);
         ctx.closePath();
@@ -1395,10 +1429,10 @@ function drawHighRes() {
     }
 
     // TEŽIŠTA ELEMENATA
-    const pt_G1 = toPx(d.x_1_A, d.d_t + d.H / 2);
+    const pt_G1 = toPx(d.x_1_A, d.y_1_abs || (d.d_t + d.H / 2));
     const pt_G2 = toPx(d.x_2_A, d.d_t / 2);
     const pt_G3 = toPx(d.x_3_A, d.d_t + (d.h1 - d.d_t) / 2);
-    const pt_G4 = toPx(d.x_4_A, d.d_t + Math.max(0, d.Df - d.d_t) / 2);
+    const pt_G4 = toPx(d.x_4_A, d.y_4_abs || (d.d_t + Math.max(0, d.Df - d.d_t) / 2));
 
     if (showCentroids) {
         ctx.fillStyle = '#1e293b';
