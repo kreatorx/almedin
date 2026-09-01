@@ -69,8 +69,83 @@
         <input type="text" id="dynamic-input" placeholder="Vrednost ili X,Y" autocomplete="off">
     </div>
 
+    <!-- Meni svojstava linije na desni klik -->
+    <div id="line-props-menu">
+        <div class="props-header">
+            <span>Svojstva Linije</span>
+            <button onclick="hidePropsMenu()" style="background:none; border:none; color:#aaa; cursor:pointer;">✕</button>
+        </div>
+        
+        <!-- Red 1: Preseti debljine -->
+        <div class="props-row">
+            <label>Preset debljine:</label>
+            <div class="btn-group">
+                <button onclick="setLineThickness(0.1)">0.1 (V. tanka)</button>
+                <button onclick="setLineThickness(0.2)">0.2 (Tanka)</button>
+                <button onclick="setLineThickness(0.3)">0.3 (Debela)</button>
+            </div>
+        </div>
+
+        <!-- Red 2: Slider debljine -->
+        <div class="props-row">
+            <label>Debljina: <span id="thick-val">0.20</span></label>
+            <input type="range" id="prop-thickness" min="0.05" max="2.0" step="0.05" value="0.2" oninput="updateLineFromMenu()">
+        </div>
+
+        <!-- Red 3: Preseti vrste linije -->
+        <div class="props-row">
+            <label>Vrsta linije:</label>
+            <div class="btn-group">
+                <button id="btn-lt-solid" onclick="setLineType('solid')">Puna</button>
+                <button id="btn-lt-dashed" onclick="setLineType('dashed')">Isprekidana</button>
+                <button id="btn-lt-dashdot" onclick="setLineType('dashdot')">Crta-tačka</button>
+            </div>
+        </div>
+
+        <!-- Red 4: Dužina crte i razmak -->
+        <div class="props-row dual-inputs">
+            <div>
+                <label>Dužina crte:</label>
+                <input type="number" id="prop-dash-len" value="10" min="1" step="1" onchange="updateLineFromMenu()">
+            </div>
+            <div>
+                <label>Razmak:</label>
+                <input type="number" id="prop-dash-gap" value="5" min="1" step="1" onchange="updateLineFromMenu()">
+            </div>
+        </div>
+
+        <!-- Red 5 i 6: Paleta boja -->
+        <div class="props-row">
+            <label>Paleta boja:</label>
+            <div class="color-palette">
+                <!-- Red 5: Grayscale -->
+                <div class="color-row">
+                    <div class="color-swatch" style="background:#ffffff;" onclick="setLineColor('#ffffff')"></div>
+                    <div class="color-swatch" style="background:#cccccc;" onclick="setLineColor('#cccccc')"></div>
+                    <div class="color-swatch" style="background:#888888;" onclick="setLineColor('#888888')"></div>
+                    <div class="color-swatch" style="background:#444444;" onclick="setLineColor('#444444')"></div>
+                    <div class="color-swatch" style="background:#000000; border:1px solid #666;" onclick="setLineColor('#000000')"></div>
+                </div>
+                <!-- Red 6: Ostale boje -->
+                <div class="color-row">
+                    <div class="color-swatch" style="background:#ff0000;" onclick="setLineColor('#ff0000')"></div>
+                    <div class="color-swatch" style="background:#ffff00;" onclick="setLineColor('#ffff00')"></div>
+                    <div class="color-swatch" style="background:#00ff00;" onclick="setLineColor('#00ff00')"></div>
+                    <div class="color-swatch" style="background:#00ffff;" onclick="setLineColor('#00ffff')"></div>
+                    <div class="color-swatch" style="background:#ff00ff;" onclick="setLineColor('#ff00ff')"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Red 7: HEX unos boje -->
+        <div class="props-row">
+            <label>HEX Boja:</label>
+            <input type="text" id="prop-hex-color" value="#ffffff" placeholder="#ffffff" onchange="setLineColor(this.value)">
+        </div>
+    </div>
+
     <canvas id="cadCanvas"></canvas>
- <script src="ked.js"></script>
-  </body>
- 
+
+    <script src="ked.js"></script>
+</body>
 </html>

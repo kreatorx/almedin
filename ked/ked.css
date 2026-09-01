@@ -1,15 +1,37 @@
 body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #1e1e1e; color: #fff; overflow: hidden; }
-        #toolbar { position: absolute; top: 10px; left: 10px; background: rgba(40, 40, 40, 0.9); padding: 10px; border-radius: 5px; z-index: 10; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; max-width: 95vw; }
-        button, select { background: #444; color: white; border: 1px solid #666; padding: 6px 10px; cursor: pointer; border-radius: 3px; font-size: 13px; }
-        button.active { background: #007acc; border-color: #0098ff; }
-        select { background: #2d2d2d; outline: none; }
-        canvas { display: block; cursor: none; background-color: #1e1e1e; }
-        #info-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; font-size: 12px; pointer-events: none; z-index: 10; font-family: monospace; }
-        #dynamic-input-container { position: absolute; display: none; z-index: 100; pointer-events: auto; }
-        #dynamic-input { background: rgba(30, 30, 30, 0.9); color: #00ff00; border: 1px solid #00ff00; font-family: 'Courier New', monospace; font-size: 13px; padding: 3px 5px; width: 120px; outline: none; }
+#toolbar { position: absolute; top: 10px; left: 10px; background: rgba(40, 40, 40, 0.9); padding: 10px; border-radius: 5px; z-index: 10; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; max-width: 95vw; }
+button, select { background: #444; color: white; border: 1px solid #666; padding: 6px 10px; cursor: pointer; border-radius: 3px; font-size: 13px; }
+button.active { background: #007acc; border-color: #0098ff; }
+select { background: #2d2d2d; outline: none; }
+canvas { display: block; cursor: none; background-color: #1e1e1e; }
+#info-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; font-size: 12px; pointer-events: none; z-index: 10; font-family: monospace; }
+#dynamic-input-container { position: absolute; display: none; z-index: 100; pointer-events: auto; }
+#dynamic-input { background: rgba(30, 30, 30, 0.9); color: #00ff00; border: 1px solid #00ff00; font-family: 'Courier New', monospace; font-size: 13px; padding: 3px 5px; width: 120px; outline: none; }
 
-        @media print {
-            body, html { background: #ffffff !important; color: #000000 !important; margin: 0 !important; padding: 0 !important; overflow: visible; }
-            #toolbar, #info-panel, #dynamic-input-container { display: none !important; }
-            canvas { background: #ffffff !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; box-sizing: border-box; }
-        }
+/* Kontekstualni meni svojstava linije */
+#line-props-menu {
+    position: absolute; display: none; z-index: 200;
+    background: rgba(30, 30, 30, 0.95); border: 1px solid #555;
+    border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    width: 240px; font-size: 12px; color: #eee;
+}
+.props-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 4px; color: #00e5ff; }
+.props-row { margin-bottom: 8px; display: flex; flex-direction: column; gap: 3px; }
+.props-row label { font-size: 11px; color: #bbb; }
+.btn-group { display: flex; gap: 4px; }
+.btn-group button { flex: 1; padding: 4px 2px; font-size: 11px; background: #383838; border: 1px solid #555; border-radius: 3px; color: #fff; cursor: pointer; }
+.btn-group button.active { background: #007acc; border-color: #0098ff; }
+.btn-group button:hover { background: #4a4a4a; }
+.dual-inputs { flex-direction: row; gap: 8px; }
+.dual-inputs > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.dual-inputs input[type="number"], #prop-hex-color { background: #222; border: 1px solid #555; color: #fff; padding: 3px 6px; border-radius: 3px; font-size: 11px; width: 100%; box-sizing: border-box; }
+.color-palette { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.color-row { display: flex; gap: 6px; justify-content: space-between; }
+.color-swatch { width: 38px; height: 18px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); box-sizing: border-box; }
+.color-swatch:hover { transform: scale(1.08); border-color: #fff; }
+
+@media print {
+    body, html { background: #ffffff !important; color: #000000 !important; margin: 0 !important; padding: 0 !important; overflow: visible; }
+    #toolbar, #info-panel, #dynamic-input-container, #line-props-menu, #btn-dim-ortho { display: none !important; }
+    canvas { background: #ffffff !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; box-sizing: border-box; }
+}
