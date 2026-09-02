@@ -8,11 +8,9 @@
 </head>
 <body>
 
+    <!-- Gornji Toolbar -->
     <div id="toolbar">
-        <button id="btn-select" class="active" onclick="setMode('select')">Selekcija (S)</button>
-        <button id="btn-line" onclick="setMode('line')">Linija (L)</button>
-        <button id="btn-dimension" onclick="setMode('dimension')">Kota (D)</button>
-        
+        <span style="font-size:12px;">Jedinica:</span>
         <select id="unit-select" onchange="drawEverything()">
             <option value="mm">mm</option>
             <option value="cm" selected>cm</option>
@@ -42,7 +40,7 @@
             <option value="A0_L">A0 Položeno</option>
         </select>
 
-        <span style="font-size:12px;">G-SNAP:</span>
+        <span style="font-size:12px;">GSNAP:</span>
         <select id="grid-snap-select" onchange="updateGridSnap()">
             <option value="0.1">0.1</option>
             <option value="1">1</option>
@@ -53,7 +51,7 @@
             <option value="100">100</option>
         </select>
 
-        <button id="btn-snap" onclick="toggleSnap()">SNAP (F2)</button>
+        <button id="btn-snap" onclick="toggleSnap()">GSNAP (F2)</button>
         <button id="btn-osnap" class="active" onclick="toggleOsnap()">OSNAP (F3)</button>
         <button id="btn-ortho" class="active" onclick="toggleOrtho()">ORTHO (F4)</button>
         
@@ -61,6 +59,66 @@
         <button onclick="printCanvas()" style="background: #006400; font-weight: bold;">Print Okvir</button>
         <button onclick="deleteSelected()" style="background: #900;">Obriši</button>
         <button onclick="clearAll()" style="background: #cc5500;">Obriši Sve</button>
+
+        <a href="https://almedin.vercel.app" target="_blank" class="by-almedin-btn">by Almedin</a>
+
+    </div>
+
+    <!-- Lijevi Sidebar sa Alatima -->
+    <div id="sidebar">
+        <!-- Selekcija i Transformacije -->
+        <button id="btn-select" class="sidebar-btn active" onclick="setMode('select')" title="Selekcija (S)">
+            <svg viewBox="0 0 24 24"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+        </button>
+        <button id="btn-move" class="sidebar-btn" onclick="setMode('move')" title="Pomjeri (M)">
+            <svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3"/></svg>
+        </button>
+        <!-- NOVO: Rotate / Rotacija -->
+        <button id="btn-rotate" class="sidebar-btn" onclick="setMode('rotate')" title="Rotacija (R)">
+            <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <!-- NOVO: Scale / Skaliranje -->
+        <button id="btn-scale" class="sidebar-btn" onclick="setMode('scale')" title="Skaliranje (SC)">
+            <svg viewBox="0 0 24 24"><rect x="2" y="10" width="12" height="12" rx="1"/><rect x="8" y="2" width="14" height="14" rx="1" stroke-dasharray="3 3"/></svg>
+        </button>
+
+        <div class="sidebar-separator"></div>
+
+        <!-- Crtanje -->
+        <button id="btn-line" class="sidebar-btn" onclick="setMode('line')" title="Linija (L)">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="4" r="2"/></svg>
+        </button>
+        <button id="btn-rect" class="sidebar-btn" onclick="setMode('rect')" title="Pravougaonik">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+        </button>
+        <button id="btn-circle" class="sidebar-btn" onclick="setMode('circle')" title="Kružnica">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1" fill="#fff"/></svg>
+        </button>
+        <button id="btn-bezier" class="sidebar-btn" onclick="setMode('bezier')" title="Bezier Kriva">
+            <svg viewBox="0 0 24 24"><path d="M3 19 C 8 5, 16 5, 21 19"/><circle cx="3" cy="19" r="1.5"/><circle cx="21" cy="19" r="1.5"/></svg>
+        </button>
+        <button id="btn-dimension" class="sidebar-btn" onclick="setMode('dimension')" title="Kota (D)">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="4" y2="18"/><line x1="20" y1="6" x2="20" y2="18"/><path d="M8 9l-4 3 4 3M16 9l4 3-4 3"/></svg>
+        </button>
+
+        <div class="sidebar-separator"></div>
+
+        <!-- Manipulacije -->
+        <button id="btn-offset" class="sidebar-btn" onclick="setMode('offset')" title="Offset (Paralela)">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16" stroke-dasharray="3 3"/></svg>
+        </button>
+        <button id="btn-fillet" class="sidebar-btn" onclick="setMode('fillet')" title="Fillet (Zaobljenje/Round)">
+            <svg viewBox="0 0 24 24"><path d="M4 20v-8a8 8 0 0 1 8-8h8"/></svg>
+        </button>
+        <button id="btn-trim" class="sidebar-btn" onclick="setMode('trim')" title="Trim (Odsijecanje)">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20" stroke-dasharray="4 4"/></svg>
+        </button>
+        <button id="btn-extend" class="sidebar-btn" onclick="setMode('extend')" title="Extend (Produženje)">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="4" x2="18" y2="20"/><line x1="4" y1="12" x2="14" y2="12"/><path d="M11 9l3 3-3 3"/></svg>
+        </button>
+        <button id="btn-hatch" class="sidebar-btn" onclick="setMode('hatch')" title="Hatch (Šrafura)">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><line x1="4" y1="12" x2="12" y2="4"/><line x1="4" y1="20" x2="20" y2="4"/><line x1="12" y1="20" x2="20" y2="12"/></svg>
+        </button>
     </div>
 
     <div id="info-panel">X: 0, Y: 0</div>
@@ -69,14 +127,13 @@
         <input type="text" id="dynamic-input" placeholder="Vrednost ili X,Y" autocomplete="off">
     </div>
 
-    <!-- Meni svojstava linije na desni klik -->
+    <!-- Meni Svojstava -->
     <div id="line-props-menu">
         <div class="props-header">
-            <span>Svojstva Linije</span>
+            <span>Svojstva Elementa</span>
             <button onclick="hidePropsMenu()" style="background:none; border:none; color:#aaa; cursor:pointer;">✕</button>
         </div>
         
-        <!-- Red 1: Preseti debljine -->
         <div class="props-row">
             <label>Preset debljine:</label>
             <div class="btn-group">
@@ -86,13 +143,20 @@
             </div>
         </div>
 
-        <!-- Red 2: Slider debljine -->
         <div class="props-row">
             <label>Debljina: <span id="thick-val">0.20</span></label>
             <input type="range" id="prop-thickness" min="0.05" max="2.0" step="0.05" value="0.2" oninput="updateLineFromMenu()">
         </div>
 
-        <!-- Red 3: Preseti vrste linije -->
+        <div class="props-row" id="bezier-handle-props" style="display:none;">
+            <label>Tip rukohvata (Bezijer):</label>
+            <div class="btn-group">
+                <button id="btn-hz-sharp" onclick="setBezierHandleType('corner')">Oštar</button>
+                <button id="btn-hz-sym" onclick="setBezierHandleType('symmetric')">Simetričan</button>
+                <button id="btn-hz-indep" onclick="setBezierHandleType('smooth')">Zaseban</button>
+            </div>
+        </div>
+
         <div class="props-row">
             <label>Vrsta linije:</label>
             <div class="btn-group">
@@ -102,7 +166,6 @@
             </div>
         </div>
 
-        <!-- Red 4: Dužina crte i razmak -->
         <div class="props-row dual-inputs">
             <div>
                 <label>Dužina crte:</label>
@@ -114,11 +177,9 @@
             </div>
         </div>
 
-        <!-- Red 5 i 6: Paleta boja -->
         <div class="props-row">
             <label>Paleta boja:</label>
             <div class="color-palette">
-                <!-- Red 5: Grayscale -->
                 <div class="color-row">
                     <div class="color-swatch" style="background:#ffffff;" onclick="setLineColor('#ffffff')"></div>
                     <div class="color-swatch" style="background:#cccccc;" onclick="setLineColor('#cccccc')"></div>
@@ -126,7 +187,6 @@
                     <div class="color-swatch" style="background:#444444;" onclick="setLineColor('#444444')"></div>
                     <div class="color-swatch" style="background:#000000; border:1px solid #666;" onclick="setLineColor('#000000')"></div>
                 </div>
-                <!-- Red 6: Ostale boje -->
                 <div class="color-row">
                     <div class="color-swatch" style="background:#ff0000;" onclick="setLineColor('#ff0000')"></div>
                     <div class="color-swatch" style="background:#ffff00;" onclick="setLineColor('#ffff00')"></div>
@@ -137,7 +197,6 @@
             </div>
         </div>
 
-        <!-- Red 7: HEX unos boje -->
         <div class="props-row">
             <label>HEX Boja:</label>
             <input type="text" id="prop-hex-color" value="#ffffff" placeholder="#ffffff" onchange="setLineColor(this.value)">
@@ -146,6 +205,7 @@
 
     <canvas id="cadCanvas"></canvas>
 
+    <script src="tools.js"></script>
     <script src="ked.js"></script>
 </body>
 </html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pen Tool - Dinamički Bézier Editor</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: #1e1e24;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      background: #2b2b36;
+      padding: 12px 20px;
+      margin: 15px 0;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      background: #3b3b4f;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    button:hover { background: #4c4c66; }
+    button.active {
+      background: #007acc;
+      border-color: #0098ff;
+    }
+    .separator { width: 1px; height: 24px; background: #555; margin: 0 5px; }
+    canvas {
+      background: #121216;
+      border: 1px solid #333;
+      border-radius: 8px;
+      cursor: crosshair;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .instructions {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+      max-width: 800px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <span style="font-size: 14px; font-weight: bold; margin-right: 5px;">Režim tačke:</span>
+    <button id="btnSymmetric" class="active">Simetrično</button>
+    <button id="btnSmooth">Glatko / Nezavisne dužine</button>
+    <button id="btnCorner">Oštri ugao (Ugaona tačka)</button>
+    <div class="separator"></div>
+    <button id="btnClear" style="background: #a22;">Očisti sve</button>
+  </div>
+
+  <canvas id="canvas" width="850" height="550"></canvas>
+
+  <div class="instructions">
+    <strong>Uputstvo:</strong> Klikni na platno za dodavanje tačke. <strong>Drži i prevlači miš</strong> prilikom dodavanja ili izmjene da podesiš zakrivljenost. Klikni na postojeću tačku da je označiš i promijeniš joj režim na vrhu.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Dugmad
+    const btnSymmetric = document.getElementById('btnSymmetric');
+    const btnSmooth = document.getElementById('btnSmooth');
+    const btnCorner = document.getElementById('btnCorner');
+    const btnClear = document.getElementById('btnClear');
+
+    let points = [];
+    let selectedPointIndex = -1;
+    let activeDrag = null; // { pointIndex, type: 'anchor' | 'hIn' | 'hOut' }
+    let isCreatingNewPoint = false;
+
+    // Struktura tačke: { x, y, hIn: {x,y}, hOut: {x,y}, type: 'symmetric'|'smooth'|'corner' }
+
+    function setPointType(type) {
+      if (selectedPointIndex !== -1) {
+        points[selectedPointIndex].type = type;
+        updateToolbarUI();
+        draw();
+      }
+    }
+
+    btnSymmetric.onclick = () => setPointType('symmetric');
+    btnSmooth.onclick = () => setPointType('smooth');
+    btnCorner.onclick = () => setPointType('corner');
+
+    btnClear.onclick = () => {
+      points = [];
+      selectedPointIndex = -1;
+      draw();
+    };
+
+    function updateToolbarUI() {
+      btnSymmetric.classList.remove('active');
+      btnSmooth.classList.remove('active');
+      btnCorner.classList.remove('active');
+
+      if (selectedPointIndex !== -1) {
+        const type = points[selectedPointIndex].type;
+        if (type === 'symmetric') btnSymmetric.classList.add('active');
+        if (type === 'smooth') btnSmooth.classList.add('active');
+        if (type === 'corner') btnCorner.classList.add('active');
+      }
+    }
+
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    // Provera klika na tačke/handlere
+    function hitTest(pos) {
+      const radius = 8;
+      for (let i = points.length - 1; i >= 0; i--) {
+        const p = points[i];
+        
+        // Pomoćni handler OUT
+        if (Math.hypot(p.hOut.x - pos.x, p.hOut.y - pos.x) < radius || Math.hypot(p.hOut.x - pos.x, p.hOut.y - pos.y) < radius) {
+          return { pointIndex: i, type: 'hOut' };
+        }
+        // Pomoćni handler IN
+        if (Math.hypot(p.hIn.x - pos.x, p.hIn.y - pos.y) < radius) {
+          return { pointIndex: i, type: 'hIn' };
+        }
+        // Glavna tačka (Anchor)
+        if (Math.hypot(p.x - pos.x, p.y - pos.y) < radius) {
+          return { pointIndex: i, type: 'anchor' };
+        }
+      }
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const pos = getMousePos(e);
+      const hit = hitTest(pos);
+
+      if (hit) {
+        // Klik na postojeću tačku ili handler
+        selectedPointIndex = hit.pointIndex;
+        activeDrag = hit;
+        updateToolbarUI();
+      } else {
+        // Kreiranje nove tačke sa pretpostavljenim simetričnim rukohvatima tokom prevlačenja
+        const newPoint = {
+          x: pos.x,
+          y: pos.y,
+          hIn: { x: pos.x, y: pos.y },
+          hOut: { x: pos.x, y: pos.y },
+          type: 'symmetric'
+        };
+        points.push(newPoint);
+        selectedPointIndex = points.length - 1;
+        activeDrag = { pointIndex: selectedPointIndex, type: 'hOut' };
+        isCreatingNewPoint = true;
+        updateToolbarUI();
+      }
+      draw();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!activeDrag) return;
+
+      const pos = getMousePos(e);
+      const p = points[activeDrag.pointIndex];
+
+      if (activeDrag.type === 'anchor') {
+        // Pomjeranje sidrene tačke pomjera i njene ručke
+        const dx = pos.x - p.x;
+        const dy = pos.y - p.y;
+        p.x = pos.x;
+        p.y = pos.y;
+        p.hIn.x += dx;
+        p.hIn.y += dy;
+        p.hOut.x += dx;
+        p.hOut.y += dy;
+      } else {
+        // Pomjeranje kontrolnih rukohvata (hOut ili hIn)
+        const isOut = activeDrag.type === 'hOut';
+        const targetHandle = isOut ? p.hOut : p.hIn;
+        const oppositeHandle = isOut ? p.hIn : p.hOut;
+
+        targetHandle.x = pos.x;
+        targetHandle.y = pos.y;
+
+        // Prilagođavanje suprotnog handlera u zavisnosti od režima tačke
+        if (p.type === 'symmetric') {
+          // Potpuna simetrija (ugao i dužina)
+          oppositeHandle.x = p.x - (targetHandle.x - p.x);
+          oppositeHandle.y = p.y - (targetHandle.y - p.y);
+        } else if (p.type === 'smooth') {
+          // Glatka kriva (ugao je poravnat 180°, ali dužine mogu biti različite)
+          const angle = Math.atan2(targetHandle.y - p.y, targetHandle.x - p.x);
+          const oppLen = Math.hypot(oppositeHandle.x - p.x, oppositeHandle.y - p.y) || 1;
+          
+          oppositeHandle.x = p.x - Math.cos(angle) * oppLen;
+          oppositeHandle.y = p.y - Math.sin(angle) * oppLen;
+        }
+        // Ako je 'corner', suprotni handler se uopšte ne pomjera (potpuno nezavisno)
+      }
+
+      draw();
+    });
+
+    window.addEventListener('mouseup', () => {
+      activeDrag = null;
+      isCreatingNewPoint = false;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Crtanje Bézier krive
+      if (points.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#00aaff';
+        ctx.lineWidth = 3;
+        ctx.moveTo(points[0].x, points[0].y);
+
+        for (let i = 0; i < points.length - 1; i++) {
+          const p1 = points[i];
+          const p2 = points[i + 1];
+          ctx.bezierCurveTo(p1.hOut.x, p1.hOut.y, p2.hIn.x, p2.hIn.y, p2.x, p2.y);
+        }
+        ctx.stroke();
+      }
+
+      // 2. Crtanje kontrolnih linija i tačaka
+      points.forEach((p, index) => {
+        const isSelected = index === selectedPointIndex;
+
+        // Linije od sidra do kontrolnih ručki
+        ctx.beginPath();
+        ctx.strokeStyle = isSelected ? '#888' : '#444';
+        ctx.lineWidth = 1;
+        ctx.moveTo(p.hIn.x, p.hIn.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.lineTo(p.hOut.x, p.hOut.y);
+        ctx.stroke();
+
+        // Kontrolne ručke (Krugovi)
+        [p.hIn, p.hOut].forEach(h => {
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = isSelected ? '#ff9900' : '#888';
+          ctx.fill();
+        });
+
+        // Sidrena (Glavna) tačka (Kvadrat za bolju vidljivost)
+        ctx.beginPath();
+        ctx.rect(p.x - 5, p.y - 5, 10, 10);
+        ctx.fillStyle = isSelected ? '#00ffcc' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+
+    draw();
+  </script>
+</body>
+</html>
