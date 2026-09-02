@@ -212,12 +212,12 @@ function drawEverything() {
 
         if (isPrinting) {
             ctx.save();
-            ctx.translate(paperDim.leftMargin - 0.004, paperDim.margin);
+            ctx.translate(paperDim.leftMargin - 0.02, paperDim.margin);
             ctx.rotate(-Math.PI / 2);
             ctx.scale(1, -1);
             ctx.fillStyle = '#000000';
             ctx.font = `${12 / scale}px Arial`;
-            ctx.textAlign = 'center';
+            ctx.textAlign = 'left';
             ctx.fillText("almedin.vercel.app    husalmedin@gmail.com", 0, 0);
             ctx.restore();
         }
