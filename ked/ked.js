@@ -212,7 +212,7 @@ function drawEverything() {
 
         if (isPrinting) {
             ctx.save();
-            ctx.translate(paperDim.leftMargin - 16, paperDim.margin);
+            ctx.translate(paperDim.leftMargin - 0.004, paperDim.margin);
             ctx.rotate(-Math.PI / 2);
             ctx.scale(1, -1);
             ctx.fillStyle = '#000000';
