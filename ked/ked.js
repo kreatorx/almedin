@@ -216,7 +216,7 @@ function drawEverything() {
             ctx.rotate(Math.PI / 2);
             ctx.scale(1, -1);
             ctx.fillStyle = '#000000';
-            ctx.font = `${12 / scale}px Arial`;
+            ctx.font = `${18 / scale}px Arial`;
             ctx.textAlign = 'left';
             ctx.fillText("almedin.vercel.app    husalmedin@gmail.com", 0, 0);
             ctx.restore();
