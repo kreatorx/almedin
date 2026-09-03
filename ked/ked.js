@@ -28,17 +28,20 @@ let snapEnabled = false;
 let osnapEnabled = true;   
 let orthoEnabled = true;   
 let isPrinting = false; 
+let isPrintingBestFit = false;
 
-let dimForceOrtho = false; 
+// MOD KOTIRANJA: 0 = Dijagonalno (Aligned), 1 = Ortogonalno (H/V), 2 = Radijalno (R)
+let dimMode = 0; 
 
 let startPoint = { x: 0, y: 0 }; 
 let currentPoint = { x: 0, y: 0 }; 
 let orthoCorrectedWorldPos = { x: 0, y: 0 }; 
+let bezierDragStartPos = null; 
 
-let dimStep = 0, dimP1 = null, dimP2 = null;
+let dimStep = 0, dimP1 = null, dimP2 = null, dimRadius = 0;
 
 let selectedElements = []; 
-let selectedBezierNodeIndex = null; // Praćenje pojedinačno selektovanog tjemena Beziera
+let selectedBezierNodeIndex = null; 
 let activeGrip = null; 
 let gripRadius = 6;
 let originalGripState = null; 
@@ -61,15 +64,28 @@ mobileDimBtn.style.cssText = 'position: absolute; bottom: 20px; right: 20px; z-i
 document.body.appendChild(mobileDimBtn);
 
 mobileDimBtn.onclick = () => {
-    dimForceOrtho = !dimForceOrtho;
+    dimMode = (dimMode + 1) % 3;
     updateDimBtnUI();
     drawEverything();
 };
 
 function updateDimBtnUI() {
-    mobileDimBtn.style.background = dimForceOrtho ? '#00e5ff' : '#333';
-    mobileDimBtn.style.color = dimForceOrtho ? '#000' : '#fff';
-    mobileDimBtn.innerText = dimForceOrtho ? 'Kotiranje: Ortogonalno' : 'Kotiranje: Dijagonalno';
+    const labels = ['Kotiranje: Dijagonalno', 'Kotiranje: Ortogonalno', 'Kotiranje: Radijalno'];
+    mobileDimBtn.style.background = dimMode !== 0 ? '#00e5ff' : '#333';
+    mobileDimBtn.style.color = dimMode !== 0 ? '#000' : '#fff';
+    mobileDimBtn.innerText = labels[dimMode];
+}
+
+function ensureTextSidebarButton() {
+    let dimBtn = document.getElementById('btn-dimension');
+    if (dimBtn && !document.getElementById('btn-text')) {
+        let textBtn = document.createElement('button');
+        textBtn.id = 'btn-text';
+        textBtn.className = 'sidebar-btn';
+        textBtn.innerText = 'Tekst';
+        textBtn.onclick = () => setMode('text');
+        dimBtn.parentNode.insertBefore(textBtn, dimBtn.nextSibling);
+    }
 }
 
 window.addEventListener('contextmenu', e => e.preventDefault());
@@ -77,7 +93,12 @@ window.addEventListener('contextmenu', e => e.preventDefault());
 function updatePaperStyle() {
     let paperKey = document.getElementById('paper-select').value;
     if (PAPERS[paperKey]) {
-        styleTag.innerHTML = `@media print { @page { size: ${PAPERS[paperKey].css}; margin: 5mm 5mm 5mm 20mm; } }`;
+        styleTag.innerHTML = `@media print { 
+            @page { size: ${PAPERS[paperKey].css}; margin: 0mm; } 
+            html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; width: 100% !important; height: 100% !important; }
+            #cadCanvas { width: 100vw !important; height: 100vh !important; display: block !important; object-fit: fill !important; }
+            #toolbar, #sidebar, #info-panel, #dynamic-input-container, #line-props-menu, #btn-dim-ortho, #btn-bezier-type { display: none !important; }
+        }`;
         zoomToPaper();
     }
     drawEverything();
@@ -98,6 +119,8 @@ function setMode(newMode) {
     
     if (!['select', 'move', 'rotate', 'scale'].includes(newMode)) selectedElements = [];
     hidePropsMenu();
+
+    ensureTextSidebarButton();
 
     document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active'));
     let activeBtn = document.getElementById(`btn-${newMode}`);
@@ -134,10 +157,246 @@ function undo() {
 }
 
 function clearAll() { if(confirm("Obrisati kompletan crtež?")) { elements = []; selectedElements = []; resetDrawingState(); hidePropsMenu(); drawEverything(); } }
-function resetDrawingState() { isDrawing = false; dimStep = 0; dimP1 = null; dimP2 = null; selectedBezierNodeIndex = null; isBoxSelecting = false; if(activeGrip) cancelGripMove(); hideDynamicInput(); hidePropsMenu(); if (typeof resetToolState === 'function') resetToolState(); }
+function resetDrawingState() { isDrawing = false; dimStep = 0; dimP1 = null; dimP2 = null; dimRadius = 0; selectedBezierNodeIndex = null; bezierDragStartPos = null; isBoxSelecting = false; if(activeGrip) cancelGripMove(); hideDynamicInput(); hidePropsMenu(); if (typeof resetToolState === 'function') resetToolState(); }
 
 function screenToWorld(screenX, screenY) { return { x: (screenX - panX) / scale, y: -(screenY - panY) / scale }; }
 function worldToScreen(worldX, worldY) { return { x: worldX * scale + panX, y: -(worldY * scale) + panY }; }
+
+function distToSegment(p, v, w) {
+    let l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2); if (l2 == 0) return Math.hypot(p.x - v.x, p.y - v.y);
+    let t = Math.max(0, Math.min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+    return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+}
+
+function getClosestPointOnSegment(p, v, w) {
+    let l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2);
+    if (l2 === 0) return { pt: { ...v }, dist: Math.hypot(p.x - v.x, p.y - v.y) };
+    let t = Math.max(0, Math.min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+    let proj = { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+    return { pt: proj, dist: Math.hypot(p.x - proj.x, p.y - proj.y) };
+}
+
+function distToBezierSegment(pos, p0, p1, p2, p3, samples = 20) {
+    let minDist = Infinity;
+    let prevPt = p0;
+    for (let step = 1; step <= samples; step++) {
+        let t = step / samples;
+        let invT = 1 - t;
+        let x = invT*invT*invT * p0.x + 3*invT*invT*t * p1.x + 3*invT*t*t * p2.x + t*t*t * p3.x;
+        let y = invT*invT*invT * p0.y + 3*invT*invT*t * p1.y + 3*invT*t*t * p2.y + t*t*t * p3.y;
+        let currPt = { x, y };
+        minDist = Math.min(minDist, distToSegment(pos, prevPt, currPt));
+        prevPt = currPt;
+    }
+    return minDist;
+}
+
+function drawSnapDot(pt, options = {}) {
+    if (isPrinting || !pt) return;
+    let r = (options.radius || 2.5) / scale;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = options.fillColor || '#ffffff';
+    ctx.strokeStyle = options.strokeColor || '#000000';
+    ctx.lineWidth = 0.8 / scale;
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+}
+
+function getDimEndpoints(el) {
+    let p1 = el.p1, p2 = el.p2, offset = el.offset || 0, dimType = el.dimType || 'aligned';
+    if (!p1 || !p2) return null;
+    if (dimType === 'horizontal') {
+        let dimLineY = p1.y + offset;
+        return { p1: { x: p1.x, y: dimLineY }, p2: { x: p2.x, y: dimLineY } };
+    } else if (dimType === 'vertical') {
+        let dimLineX = p1.x + offset;
+        return { p1: { x: dimLineX, y: p1.y }, p2: { x: dimLineX, y: p2.y } };
+    } else if (dimType === 'radial') {
+        let r = el.radius || Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        let startOff = (el.startOffset !== undefined) ? el.startOffset : Math.min(r * 0.2, 15 / scale);
+        let startPt = { x: p1.x + Math.cos(angle) * startOff, y: p1.y + Math.sin(angle) * startOff };
+        let endPt = { x: p1.x + Math.cos(angle) * r, y: p1.y + Math.sin(angle) * r };
+        return { p1: startPt, p2: endPt };
+    } else {
+        let dx = p2.x - p1.x, dy = p2.y - p1.y;
+        let len = Math.hypot(dx, dy);
+        if (len === 0) return { p1: { ...p1 }, p2: { ...p2 } };
+        let nx = -dy / len, ny = dx / len;
+        return {
+            p1: { x: p1.x + nx * offset, y: p1.y + ny * offset },
+            p2: { x: p2.x + nx * offset, y: p2.y + ny * offset }
+        };
+    }
+}
+
+function renderExtendedElement(ctx, el, isSel, isPrinting, currentScale) {
+    ctx.save();
+    let color = isPrinting ? '#000000' : (isSel ? '#ff3333' : (el.color || '#ffffff'));
+    let baseThick = (el.thickness !== undefined) ? el.thickness * 10 : 2;
+    let thickness = isPrinting ? (baseThick * 1.25 / currentScale) : ((isSel ? baseThick * 1.5 : baseThick) / currentScale);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = thickness;
+
+    let dashLen = el.dashLength || 10;
+    let dashGap = el.dashGap || 5;
+    if (el.lineType === 'dashed') {
+        ctx.setLineDash([dashLen / currentScale, dashGap / currentScale]);
+    } else if (el.lineType === 'dashdot') {
+        ctx.setLineDash([dashLen / currentScale, dashGap / currentScale, (dashLen / 4) / currentScale, dashGap / currentScale]);
+    } else {
+        ctx.setLineDash([]);
+    }
+
+    if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+        ctx.beginPath();
+        ctx.moveTo(el.pts[0].x, el.pts[0].y);
+        ctx.lineTo(el.pts[1].x, el.pts[1].y);
+        ctx.lineTo(el.pts[2].x, el.pts[2].y);
+        ctx.lineTo(el.pts[3].x, el.pts[3].y);
+        ctx.closePath();
+        ctx.stroke();
+    } else if (el.type === 'circle' && el.p1) {
+        let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+        ctx.beginPath();
+        ctx.arc(el.p1.x, el.p1.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+    } else if (el.type === 'bezier' && el.nodes && el.nodes.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(el.nodes[0].anchor.x, el.nodes[0].anchor.y);
+        for (let i = 0; i < el.nodes.length - 1; i++) {
+            let n1 = el.nodes[i], n2 = el.nodes[i + 1];
+            ctx.bezierCurveTo(n1.handleOut.x, n1.handleOut.y, n2.handleIn.x, n2.handleIn.y, n2.anchor.x, n2.anchor.y);
+        }
+        ctx.stroke();
+    } else if (el.type === 'polygon' && el.pts && el.pts.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(el.pts[0].x, el.pts[0].y);
+        for (let i = 1; i < el.pts.length; i++) ctx.lineTo(el.pts[i].x, el.pts[i].y);
+        ctx.closePath();
+        ctx.stroke();
+    } else if (el.type === 'polyline' && el.pts && el.pts.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(el.pts[0].x, el.pts[0].y);
+        for (let i = 1; i < el.pts.length; i++) ctx.lineTo(el.pts[i].x, el.pts[i].y);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function getElementDistance(pos, el) {
+    if (el.type === 'line') {
+        return distToSegment(pos, el.p1, el.p2);
+    }
+    if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+        let minDist = Infinity;
+        for (let j = 0; j < 4; j++) {
+            minDist = Math.min(minDist, distToSegment(pos, el.pts[j], el.pts[(j + 1) % 4]));
+        }
+        return minDist;
+    }
+    if (el.type === 'polygon' && el.pts && el.pts.length > 0) {
+        let minDist = Infinity;
+        let n = el.pts.length;
+        for (let j = 0; j < n; j++) {
+            minDist = Math.min(minDist, distToSegment(pos, el.pts[j], el.pts[(j + 1) % n]));
+        }
+        return minDist;
+    }
+    if (el.type === 'polyline' && el.pts && el.pts.length > 0) {
+        let minDist = Infinity;
+        for (let j = 0; j < el.pts.length - 1; j++) {
+            minDist = Math.min(minDist, distToSegment(pos, el.pts[j], el.pts[j + 1]));
+        }
+        return minDist;
+    }
+    if (el.type === 'circle' && el.p1 && (el.p2 || el.radius !== undefined)) {
+        let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+        let distFromCenter = Math.hypot(pos.x - el.p1.x, pos.y - el.p1.y);
+        return Math.abs(distFromCenter - r);
+    }
+    if (el.type === 'bezier') {
+        if (el.nodes && el.nodes.length > 0) {
+            let minDist = Infinity;
+            for (let i = 0; i < el.nodes.length - 1; i++) {
+                let n1 = el.nodes[i], n2 = el.nodes[i + 1];
+                let d = distToBezierSegment(pos, n1.anchor, n1.handleOut, n2.handleIn, n2.anchor, 20);
+                minDist = Math.min(minDist, d);
+            }
+            return minDist;
+        }
+    }
+    if (el.type === 'dimension') {
+        let pts = getDimEndpoints(el);
+        if (!pts) return Infinity;
+        let dMain = distToSegment(pos, pts.p1, pts.p2);
+        let dExt1 = distToSegment(pos, el.p1, pts.p1);
+        let dExt2 = distToSegment(pos, el.p2, pts.p2);
+        return Math.min(dMain, dExt1, dExt2);
+    }
+    if (el.type === 'text') {
+        let len = (el.text || '').length * (el.fontSize || 16) * 0.6;
+        let p2 = { x: el.p1.x + len, y: el.p1.y };
+        return distToSegment(pos, el.p1, p2);
+    }
+    return Infinity;
+}
+
+function findBestHitElement(pos, elementsList, currentScale) {
+    let threshold = 3 / currentScale; 
+    let bestEl = null;
+    let bestDist = threshold;
+
+    for (let i = elementsList.length - 1; i >= 0; i--) {
+        let el = elementsList[i];
+        let d = getElementDistance(pos, el);
+        if (d < bestDist) {
+            bestDist = d;
+            bestEl = el;
+        }
+    }
+    return bestEl;
+}
+
+function isElementInBox(el, xMin, xMax, yMin, yMax) {
+    if (el.type === 'line') {
+        return (el.p1.x >= xMin && el.p1.x <= xMax && el.p1.y >= yMin && el.p1.y <= yMax) ||
+               (el.p2.x >= xMin && el.p2.x <= xMax && el.p2.y >= yMin && el.p2.y <= yMax);
+    }
+    if (el.type === 'rect' && el.pts) {
+        let rxMin = Math.min(...el.pts.map(p => p.x)), rxMax = Math.max(...el.pts.map(p => p.x));
+        let ryMin = Math.min(...el.pts.map(p => p.y)), ryMax = Math.max(...el.pts.map(p => p.y));
+        return (rxMin <= xMax && rxMax >= xMin && ryMin <= yMax && ryMax >= yMin);
+    }
+    if (el.type === 'bezier' && el.nodes) {
+        let bxMin = Math.min(...el.nodes.map(n => n.anchor.x)), bxMax = Math.max(...el.nodes.map(n => n.anchor.x));
+        let byMin = Math.min(...el.nodes.map(n => n.anchor.y)), byMax = Math.max(...el.nodes.map(n => n.anchor.y));
+        return (bxMin <= xMax && bxMax >= xMin && byMin <= yMax && byMax >= yMin);
+    }
+    if (el.type === 'circle' && el.p1 && (el.p2 || el.radius !== undefined)) {
+        let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+        let cxMin = el.p1.x - r, cxMax = el.p1.x + r;
+        let cyMin = el.p1.y - r, cyMax = el.p1.y + r;
+        return (cxMin <= xMax && cxMax >= xMin && cyMin <= yMax && cyMax >= yMin);
+    }
+    if (el.type === 'dimension') {
+        let pts = getDimEndpoints(el);
+        if (!pts) return false;
+        let dxMin = Math.min(el.p1.x, el.p2.x, pts.p1.x, pts.p2.x);
+        let dxMax = Math.max(el.p1.x, el.p2.x, pts.p1.x, pts.p2.x);
+        let dyMin = Math.min(el.p1.y, el.p2.y, pts.p1.y, pts.p2.y);
+        let dyMax = Math.max(el.p1.y, el.p2.y, pts.p1.y, pts.p2.y);
+        return (dxMin <= xMax && dxMax >= xMin && dyMin <= yMax && dyMax >= yMin);
+    }
+    if (el.type === 'text') {
+        return (el.p1.x >= xMin && el.p1.x <= xMax && el.p1.y >= yMin && el.p1.y <= yMax);
+    }
+    return false;
+}
 
 function findLineIntersection(l1p1, l1p2, l2p1, l2p2) {
     let det = (l1p2.x - l1p1.x) * (l2p2.y - l2p1.y) - (l2p2.x - l2p1.x) * (l1p2.y - l1p1.y);
@@ -162,6 +421,49 @@ function getPaperWorldDimensions() {
     return { w: rawPaper.w * unitFactor * currentScale, h: rawPaper.h * unitFactor * currentScale, margin: 5 * unitFactor * currentScale, leftMargin: 20 * unitFactor * currentScale };
 }
 
+function getAllElementSnapPoints(el) {
+    let pts = [];
+    if (el.type === 'line') {
+        pts.push(el.p1, el.p2, { x: (el.p1.x + el.p2.x) / 2, y: (el.p1.y + el.p2.y) / 2 });
+    } else if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+        pts.push(...el.pts);
+        for (let k = 0; k < 4; k++) {
+            let pA = el.pts[k], pB = el.pts[(k + 1) % 4];
+            pts.push({ x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 });
+        }
+        pts.push({ x: (el.pts[0].x + el.pts[2].x) / 2, y: (el.pts[0].y + el.pts[2].y) / 2 });
+    } else if (el.type === 'circle' && el.p1 && (el.p2 || el.radius !== undefined)) {
+        let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+        pts.push(
+            el.p1,
+            { x: el.p1.x + r, y: el.p1.y },
+            { x: el.p1.x - r, y: el.p1.y },
+            { x: el.p1.x, y: el.p1.y + r },
+            { x: el.p1.x, y: el.p1.y - r }
+        );
+    } else if (el.type === 'bezier' && el.nodes) {
+        el.nodes.forEach(n => pts.push(n.anchor));
+    } else if (el.type === 'dimension') {
+        let dimPts = getDimEndpoints(el);
+        if (dimPts) {
+            pts.push(el.p1, el.p2, dimPts.p1, dimPts.p2, { x: (dimPts.p1.x + dimPts.p2.x) / 2, y: (dimPts.p1.y + dimPts.p2.y) / 2 });
+        }
+    } else if (el.type === 'text') {
+        pts.push(el.p1);
+    }
+    return pts;
+}
+
+function drawAllCandidateSnapPoints() {
+    if (isPrinting || !osnapEnabled) return;
+    elements.forEach(el => {
+        let pts = getAllElementSnapPoints(el);
+        pts.forEach(pt => {
+            drawSnapDot(pt, { fillColor: 'rgba(0, 229, 255, 0.45)', strokeColor: 'rgba(0, 0, 0, 0.6)', radius: 2 });
+        });
+    });
+}
+
 function getWorldMousePos(e) {
     let scrX = e.clientX, scrY = e.clientY;
     mouseScreenPos = { x: scrX, y: scrY };
@@ -170,7 +472,7 @@ function getWorldMousePos(e) {
     osnapTarget = null;
 
     if (osnapEnabled && !isPanning) {
-        let bestDist = 15 / scale;
+        let strongDist = 18 / scale;
         
         for (let i = 0; i < elements.length; i++) {
             for (let j = i + 1; j < elements.length; j++) {
@@ -178,7 +480,7 @@ function getWorldMousePos(e) {
                     let intersect = findLineIntersection(elements[i].p1, elements[i].p2, elements[j].p1, elements[j].p2);
                     if (intersect) {
                         let d = Math.hypot(world.x - intersect.x, world.y - intersect.y);
-                        if (d < bestDist) { bestDist = d; osnapTarget = { ...intersect }; }
+                        if (d < strongDist) { strongDist = d; osnapTarget = { ...intersect }; }
                     }
                 }
             }
@@ -186,17 +488,54 @@ function getWorldMousePos(e) {
 
         if (!osnapTarget) {
             elements.forEach(el => {
-                let pointsToCheck = [];
-                if (el.type === 'line') {
-                    pointsToCheck.push(el.p1, el.p2, { x: (el.p1.x + el.p2.x) / 2, y: (el.p1.y + el.p2.y) / 2 });
-                } else if (typeof getExtendedSnapPoints === 'function') {
-                    pointsToCheck = getExtendedSnapPoints(el);
-                }
-
+                let pointsToCheck = getAllElementSnapPoints(el);
                 pointsToCheck.forEach(pt => {
                     let d = Math.hypot(world.x - pt.x, world.y - pt.y);
-                    if (d < bestDist) { bestDist = d; osnapTarget = { ...pt }; }
+                    if (d < strongDist) { strongDist = d; osnapTarget = { ...pt }; }
                 });
+            });
+        }
+
+        if (!osnapTarget) {
+            let nearestDist = 10 / scale;
+            elements.forEach(el => {
+                if (el.type === 'line') {
+                    let res = getClosestPointOnSegment(world, el.p1, el.p2);
+                    if (res.dist < nearestDist) { nearestDist = res.dist; osnapTarget = res.pt; }
+                } else if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+                    for (let j = 0; j < 4; j++) {
+                        let res = getClosestPointOnSegment(world, el.pts[j], el.pts[(j + 1) % 4]);
+                        if (res.dist < nearestDist) { nearestDist = res.dist; osnapTarget = res.pt; }
+                    }
+                } else if (el.type === 'circle' && el.p1 && (el.p2 || el.radius !== undefined)) {
+                    let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+                    let angle = Math.atan2(world.y - el.p1.y, world.x - el.p1.x);
+                    let circleEdgePt = { x: el.p1.x + Math.cos(angle) * r, y: el.p1.y + Math.sin(angle) * r };
+                    let d = Math.hypot(world.x - circleEdgePt.x, world.y - circleEdgePt.y);
+                    if (d < nearestDist) { nearestDist = d; osnapTarget = circleEdgePt; }
+                } else if (el.type === 'bezier' && el.nodes && el.nodes.length > 1) {
+                    let samples = 25;
+                    for (let i = 0; i < el.nodes.length - 1; i++) {
+                        let n1 = el.nodes[i], n2 = el.nodes[i + 1];
+                        let prevPt = n1.anchor;
+                        for (let step = 1; step <= samples; step++) {
+                            let t = step / samples;
+                            let invT = 1 - t;
+                            let x = invT*invT*invT * n1.anchor.x + 3*invT*invT*t * n1.handleOut.x + 3*invT*t*t * n2.handleIn.x + t*t*t * n2.anchor.x;
+                            let y = invT*invT*invT * n1.anchor.y + 3*invT*invT*t * n1.handleOut.y + 3*invT*t*t * n2.handleIn.y + t*t*t * n2.anchor.y;
+                            let currPt = { x, y };
+                            let res = getClosestPointOnSegment(world, prevPt, currPt);
+                            if (res.dist < nearestDist) { nearestDist = res.dist; osnapTarget = res.pt; }
+                            prevPt = currPt;
+                        }
+                    }
+                } else if (el.type === 'dimension') {
+                    let pts = getDimEndpoints(el);
+                    if (pts) {
+                        let res = getClosestPointOnSegment(world, pts.p1, pts.p2);
+                        if (res.dist < nearestDist) { nearestDist = res.dist; osnapTarget = res.pt; }
+                    }
+                }
             });
         }
 
@@ -238,28 +577,35 @@ function drawEverything() {
     if (!isPrinting) { drawGrid(); drawUCS(); }
 
     let paperDim = getPaperWorldDimensions();
-    if (paperDim) {
-        ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 80, 80, 0.5)';
-        ctx.lineWidth = isPrinting ? 2.5 / scale : 1.5 / scale; 
-        ctx.strokeRect(0, 0, paperDim.w, paperDim.h);
+    if (paperDim && !isPrintingBestFit) {
+        // VANJSKI DIO OKVIRA SE NE CRTA KADA SE PRINTA
+        if (!isPrinting) {
+            ctx.strokeStyle = 'rgba(255, 80, 80, 0.5)';
+            ctx.lineWidth = 1.5 / scale; 
+            ctx.strokeRect(0, 0, paperDim.w, paperDim.h);
+        }
+
         ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 80, 80, 0.3)';
         ctx.lineWidth = isPrinting ? 1.5 / scale : 1 / scale;
         ctx.strokeRect(paperDim.leftMargin, paperDim.margin, paperDim.w - paperDim.leftMargin - paperDim.margin, paperDim.h - paperDim.margin * 2);
 
-        // POTPIS: Van okvira dole lijevo, uspravno prema gore, visina fonta 18px
         if (isPrinting) {
             ctx.save();
-            let posX = paperDim.leftMargin - 0.2; // Između ivice papira i okvira sa lijeve strane
-            let posY = paperDim.margin + 0.05;         // Počinje od dno okvira dole lijevo
+            let posX = paperDim.leftMargin - 0.1;
+            let posY = paperDim.margin + 0.1;
             ctx.translate(posX, posY);
             ctx.scale(1, -1);
-            ctx.rotate(-Math.PI / 2);           // Uspravna rotacija odozdo prema gore
+            ctx.rotate(-Math.PI / 2);
             ctx.fillStyle = '#000000';
-            ctx.font = `${18 / scale}px Arial`;
+            ctx.font = `${32 / scale}px Arial`;
             ctx.textAlign = 'left';
             ctx.fillText("almedin.vercel.app    husalmedin@gmail.com", 0, 0);
             ctx.restore();
         }
+    }
+
+    if (!isPrinting && (isDrawing || activeGrip || mode !== 'select')) {
+        drawAllCandidateSnapPoints();
     }
 
     elements.forEach(el => {
@@ -272,8 +618,18 @@ function drawEverything() {
             drawLine(el.p1, el.p2, color, thickness, el.lineType || 'solid', el.dashLength || 10, el.dashGap || 5);
         } else if (el.type === 'dimension') {
             let thickness = isPrinting ? (2.5 / scale) : ((isSel ? 3 : 2) / scale);
-            drawAutoCADDimension(el.p1, el.p2, el.offset, false, isSel, el.dimType || 'aligned');
-        } else if (typeof renderExtendedElement === 'function') {
+            drawAutoCADDimension(el.p1, el.p2, el.offset, false, isSel, el.dimType || 'aligned', el.radius, el.startOffset);
+        } else if (el.type === 'text') {
+            ctx.save();
+            ctx.fillStyle = isPrinting ? '#000000' : (isSel ? '#ff3333' : (el.color || '#ffffff'));
+            let baseSize = el.fontSize || 16;
+            let fSize = (isPrinting ? baseSize * 4 : baseSize) / scale;
+            ctx.font = `${fSize}px ${el.font || 'Arial'}`;
+            ctx.translate(el.p1.x, el.p1.y);
+            ctx.scale(1, -1);
+            ctx.fillText(el.text || '', 0, 0);
+            ctx.restore();
+        } else {
             renderExtendedElement(ctx, el, isSel, isPrinting, scale);
         }
     });
@@ -281,29 +637,34 @@ function drawEverything() {
     if (!isPrinting) {
         if (mode === 'line' && isDrawing) drawLine(startPoint, currentPoint, '#007acc', 2 / scale);
         else if (mode === 'dimension') {
-            if (dimStep === 1) drawLine(dimP1, mouseWorldPos, 'rgba(0, 229, 255, 0.4)', 1 / scale);
-            else if (dimStep === 2) {
+            if (dimMode === 2 && dimStep === 1) {
+                let angle = Math.atan2(mouseWorldPos.y - dimP1.y, mouseWorldPos.x - dimP1.x);
+                let p2Radial = { x: dimP1.x + Math.cos(angle) * dimRadius, y: dimP1.y + Math.sin(angle) * dimRadius };
+                drawAutoCADDimension(dimP1, p2Radial, 0, true, false, 'radial', dimRadius);
+            } else if (dimStep === 1) {
+                drawLine(dimP1, mouseWorldPos, 'rgba(0, 229, 255, 0.4)', 1 / scale);
+            } else if (dimStep === 2) {
                 let params = getDimParams(dimP1, dimP2, mouseWorldPos);
                 drawAutoCADDimension(dimP1, dimP2, params.offset, true, false, params.type);
             }
         } else if (typeof drawToolPreview === 'function') {
             drawToolPreview(ctx, mode, mouseWorldPos, scale);
         }
+
+        if (mode === 'select' && selectedElements.length === 1) drawGrips(selectedElements[0]);
+        if (osnapTarget) {
+            drawSnapDot(osnapTarget, { fillColor: '#00ff00', strokeColor: '#000000', radius: 3 });
+        }
     }
 
     ctx.restore();
 
     if (!isPrinting) {
-        if (mode === 'select' && selectedElements.length === 1) drawGrips(selectedElements[0]);
         if (mode === 'select' && isBoxSelecting) {
             let p1Scr = worldToScreen(boxStartWorld.x, boxStartWorld.y);
             ctx.fillStyle = 'rgba(0, 122, 204, 0.15)'; ctx.strokeStyle = '#007acc'; ctx.lineWidth = 1;
             ctx.fillRect(p1Scr.x, p1Scr.y, mouseScreenPos.x - p1Scr.x, mouseScreenPos.y - p1Scr.y);
             ctx.strokeRect(p1Scr.x, p1Scr.y, mouseScreenPos.x - p1Scr.x, mouseScreenPos.y - p1Scr.y);
-        }
-        if (osnapTarget) {
-            let scrOsnap = worldToScreen(osnapTarget.x, osnapTarget.y);
-            ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; ctx.strokeRect(scrOsnap.x - 6, scrOsnap.y - 6, 12, 12);
         }
         let snappedScreenPos = worldToScreen(mouseWorldPos.x, mouseWorldPos.y);
         drawCadCursor(snappedScreenPos.x, snappedScreenPos.y);
@@ -358,44 +719,59 @@ function drawLine(p1, p2, color, width, lineType = 'solid', dashLen = 10, dashGa
 }
 
 function drawGrips(el) {
-    if (!el) return;
-    ctx.fillStyle = activeGrip ? '#ff3333' : '#0055ff'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-    if (el.type === 'rect' && el.pts) {
-        el.pts.forEach(pt => {
-            let scr = worldToScreen(pt.x, pt.y);
-            ctx.fillRect(scr.x - gripRadius, scr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-            ctx.strokeRect(scr.x - gripRadius, scr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-        });
+    if (!el || isPrinting) return;
+    
+    if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+        el.pts.forEach(pt => drawSnapDot(pt, { fillColor: '#0055ff', radius: 3 }));
+        for (let k = 0; k < 4; k++) {
+            let pA = el.pts[k], pB = el.pts[(k + 1) % 4];
+            drawSnapDot({ x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 }, { fillColor: '#00e5ff', radius: 2.5 });
+        }
+        drawSnapDot({ x: (el.pts[0].x + el.pts[2].x) / 2, y: (el.pts[0].y + el.pts[2].y) / 2 }, { fillColor: '#ffaa00', radius: 3 });
     } else if (el.type === 'bezier') {
-        if (el.bezierKind === 'quadratic' && el.p1 && el.p2 && el.cp) {
-            [el.p1, el.p2, el.cp].forEach(pt => {
-                let scr = worldToScreen(pt.x, pt.y);
-                ctx.fillRect(scr.x - gripRadius, scr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-                ctx.strokeRect(scr.x - gripRadius, scr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-            });
-        } else if (el.nodes) {
+        if (el.nodes) {
             el.nodes.forEach((n, i) => {
                 let isNodeSel = (selectedBezierNodeIndex === i);
-                let aScr = worldToScreen(n.anchor.x, n.anchor.y);
-                let inScr = worldToScreen(n.handleIn.x, n.handleIn.y);
-                let outScr = worldToScreen(n.handleOut.x, n.handleOut.y);
-
-                ctx.fillStyle = isNodeSel ? '#ffaa00' : (activeGrip ? '#ff3333' : '#0055ff');
-                ctx.fillRect(aScr.x - gripRadius, aScr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-                ctx.strokeRect(aScr.x - gripRadius, aScr.y - gripRadius, gripRadius * 2, gripRadius * 2);
-
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.setLineDash([3 / scale, 3 / scale]);
+                ctx.lineWidth = 1 / scale;
                 if (Math.hypot(n.handleIn.x - n.anchor.x, n.handleIn.y - n.anchor.y) > 0.001) {
-                    ctx.beginPath(); ctx.arc(inScr.x, inScr.y, gripRadius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(n.anchor.x, n.anchor.y); ctx.lineTo(n.handleIn.x, n.handleIn.y); ctx.stroke();
                 }
                 if (Math.hypot(n.handleOut.x - n.anchor.x, n.handleOut.y - n.anchor.y) > 0.001) {
-                    ctx.beginPath(); ctx.arc(outScr.x, outScr.y, gripRadius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(n.anchor.x, n.anchor.y); ctx.lineTo(n.handleOut.x, n.handleOut.y); ctx.stroke();
+                }
+                ctx.restore();
+
+                drawSnapDot(n.anchor, { fillColor: isNodeSel ? '#ffaa00' : '#00e5ff', radius: 3 });
+                if (Math.hypot(n.handleIn.x - n.anchor.x, n.handleIn.y - n.anchor.y) > 0.001) {
+                    drawSnapDot(n.handleIn, { fillColor: '#ffffff', strokeColor: '#000000', radius: 2 });
+                }
+                if (Math.hypot(n.handleOut.x - n.anchor.x, n.handleOut.y - n.anchor.y) > 0.001) {
+                    drawSnapDot(n.handleOut, { fillColor: '#ffffff', strokeColor: '#000000', radius: 2 });
                 }
             });
         }
+    } else if (el.type === 'dimension') {
+        let pts = getDimEndpoints(el);
+        if (pts) {
+            drawSnapDot(el.p1, { fillColor: '#0055ff', radius: 2.5 });
+            drawSnapDot(el.p2, { fillColor: '#0055ff', radius: 2.5 });
+            drawSnapDot(pts.p1, { fillColor: '#00e5ff', radius: 3 });
+            drawSnapDot(pts.p2, { fillColor: '#00e5ff', radius: 3 });
+            if (el.dimType !== 'radial') {
+                drawSnapDot({ x: (pts.p1.x + pts.p2.x) / 2, y: (pts.p1.y + pts.p2.y) / 2 }, { fillColor: '#ffaa00', radius: 3 });
+            }
+        }
+    } else if (el.type === 'text') {
+        drawSnapDot(el.p1, { fillColor: '#0055ff', radius: 3 });
     } else if (el.p1 && el.p2) {
-        let pts = [worldToScreen(el.p1.x, el.p1.y), worldToScreen(el.p2.x, el.p2.y)];
-        if(el.type === 'line') pts.push(worldToScreen((el.p1.x + el.p2.x) / 2, (el.p1.y + el.p2.y) / 2));
-        pts.forEach(pt => { ctx.fillRect(pt.x - gripRadius, pt.y - gripRadius, gripRadius * 2, gripRadius * 2); ctx.strokeRect(pt.x - gripRadius, pt.y - gripRadius, gripRadius * 2, gripRadius * 2); });
+        drawSnapDot(el.p1, { fillColor: '#0055ff', radius: 3 });
+        drawSnapDot(el.p2, { fillColor: '#0055ff', radius: 3 });
+        if(el.type === 'line') {
+            drawSnapDot({ x: (el.p1.x + el.p2.x) / 2, y: (el.p1.y + el.p2.y) / 2 }, { fillColor: '#00e5ff', radius: 2.5 });
+        }
     }
 }
 
@@ -423,6 +799,56 @@ function openPropsMenu(x, y) {
     document.getElementById('prop-dash-len').value = el.dashLength || 10;
     document.getElementById('prop-dash-gap').value = el.dashGap || 5;
     document.getElementById('prop-hex-color').value = el.color || '#ffffff';
+
+    let textContainer = document.getElementById('text-props-container');
+    if (!textContainer) {
+        textContainer = document.createElement('div');
+        textContainer.id = 'text-props-container';
+        textContainer.style.cssText = 'margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; display: none;';
+        textContainer.innerHTML = `
+            <label style="color:#ccc; font-size:12px; display:block; margin-bottom:3px;">Tekst Sadržaj:</label>
+            <input type="text" id="prop-text-val" style="width:100%; background:#222; color:#fff; border:1px solid #555; padding:5px; margin-bottom:8px; border-radius:3px; box-sizing:border-box;">
+            <label style="color:#ccc; font-size:12px; display:block; margin-bottom:3px;">Font Familija:</label>
+            <select id="prop-text-font" style="width:100%; background:#222; color:#fff; border:1px solid #555; padding:5px; margin-bottom:8px; border-radius:3px; box-sizing:border-box;">
+                <option value="Arial">Arial</option>
+                <option value="Segoe UI">Segoe UI</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+            <label style="color:#ccc; font-size:12px; display:block; margin-bottom:3px;">Veličina (px):</label>
+            <input type="number" id="prop-text-size" min="6" max="200" value="16" style="width:100%; background:#222; color:#fff; border:1px solid #555; padding:5px; margin-bottom:8px; border-radius:3px; box-sizing:border-box;">
+        `;
+        propsMenu.appendChild(textContainer);
+
+        document.getElementById('prop-text-val').addEventListener('input', (e) => {
+            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
+                selectedElements[0].text = e.target.value;
+                drawEverything();
+            }
+        });
+        document.getElementById('prop-text-font').addEventListener('change', (e) => {
+            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
+                selectedElements[0].font = e.target.value;
+                drawEverything();
+            }
+        });
+        document.getElementById('prop-text-size').addEventListener('input', (e) => {
+            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
+                selectedElements[0].fontSize = parseFloat(e.target.value) || 16;
+                drawEverything();
+            }
+        });
+    }
+
+    if (el.type === 'text') {
+        textContainer.style.display = 'block';
+        document.getElementById('prop-text-val').value = el.text || '';
+        document.getElementById('prop-text-font').value = el.font || 'Arial';
+        document.getElementById('prop-text-size').value = el.fontSize || 16;
+    } else {
+        textContainer.style.display = 'none';
+    }
     
     let bezProp = document.getElementById('bezier-handle-props');
     if (bezProp) {
@@ -443,7 +869,7 @@ function openPropsMenu(x, y) {
 
     updateLineTypeButtons(el.lineType || 'solid');
     
-    let menuW = 250, menuH = 360;
+    let menuW = 250, menuH = 380;
     let posX = Math.min(x, window.innerWidth - menuW - 10);
     let posY = Math.min(y, window.innerHeight - menuH - 10);
     
@@ -470,7 +896,6 @@ function updateLineFromMenu() {
     drawEverything();
 }
 
-// AŽURIRANO: Promjena vrste zaobljenja se primjenjuje ISKLJUČIVO na izabrano tjeme
 function setBezierHandleType(type) {
     if (selectedElements.length !== 1 || selectedElements[0].type !== 'bezier') return;
     let el = selectedElements[0];
@@ -481,7 +906,7 @@ function setBezierHandleType(type) {
         : 0;
 
     let node = el.nodes[targetIdx];
-    node.type = type; // 'corner', 'symmetric', ili 'smooth'
+    node.type = type;
 
     if (type !== 'corner') {
         let inDist = Math.hypot(node.handleIn.x - node.anchor.x, node.handleIn.y - node.anchor.y);
@@ -550,7 +975,11 @@ function calculateLiveOffset(p1, p2, mousePos) {
 }
 
 function getDimParams(p1, p2, mousePos) {
-    if (!dimForceOrtho) return { type: 'aligned', offset: calculateLiveOffset(p1, p2, mousePos) };
+    if (dimMode === 2) {
+        return { type: 'radial', offset: 0 };
+    }
+    if (dimMode === 0) return { type: 'aligned', offset: calculateLiveOffset(p1, p2, mousePos) };
+    
     let midX = (p1.x + p2.x) / 2; let midY = (p1.y + p2.y) / 2;
     if (Math.abs(mousePos.y - midY) > Math.abs(mousePos.x - midX)) {
         return { type: 'horizontal', offset: mousePos.y - p1.y };
@@ -559,7 +988,7 @@ function getDimParams(p1, p2, mousePos) {
     }
 }
 
-function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = false, dimType = 'aligned') {
+function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = false, dimType = 'aligned', storedRadius = 0, startOffCustom = undefined) {
     let distance, dimLineP1, dimLineP2;
     let mainColor = isPrinting ? '#000000' : (isSelected ? '#ff3333' : (isPreview ? '#ffaa00' : '#00e5ff'));
     let thickness = 1.5 / scale;
@@ -567,46 +996,68 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     ctx.strokeStyle = isPrinting ? 'rgba(0,0,0,0.3)' : 'rgba(255, 255, 255, 0.3)'; 
     ctx.lineWidth = 0.5 / scale;
 
-    if (dimType === 'horizontal') {
-        distance = Math.abs(p2.x - p1.x); if (distance < 1) return;
+    let txtPrefix = "";
+
+    if (dimType === 'radial') {
+        distance = storedRadius || Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (distance < 0.1) return;
+        txtPrefix = "R ";
+        
+        let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        let startOffset = (startOffCustom !== undefined) ? startOffCustom : Math.min(distance * 0.2, 15 / scale);
+        
+        dimLineP1 = { x: p1.x + Math.cos(angle) * startOffset, y: p1.y + Math.sin(angle) * startOffset };
+        dimLineP2 = { x: p1.x + Math.cos(angle) * distance, y: p1.y + Math.sin(angle) * distance };
+
+        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawCadTick(dimLineP2, angle, mainColor);
+    } 
+    else if (dimType === 'horizontal') {
+        distance = Math.abs(p2.x - p1.x); if (distance < 0.1) return;
         let dimLineY = p1.y + offset;
         dimLineP1 = { x: p1.x, y: dimLineY };
         dimLineP2 = { x: p2.x, y: dimLineY };
         
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineP1.x, dimLineP1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineP2.x, dimLineP2.y); ctx.stroke();
+        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawCadTick(dimLineP1, 0, mainColor);
+        drawCadTick(dimLineP2, 0, mainColor);
     } 
     else if (dimType === 'vertical') {
-        distance = Math.abs(p2.y - p1.y); if (distance < 1) return;
+        distance = Math.abs(p2.y - p1.y); if (distance < 0.1) return;
         let dimLineX = p1.x + offset;
-        dimLineP1 = { x: dimLineX, y: p1.y };
-        dimLineP2 = { x: dimLineX, y: p2.y };
+        dimLineP1 = { x: dimLineX, y: Math.min(p1.y, p2.y) };
+        dimLineP2 = { x: dimLineX, y: Math.max(p1.y, p2.y) };
         
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineX, p1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineX, p2.y); ctx.stroke();
+        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawCadTick(dimLineP1, Math.PI / 2, mainColor);
+        drawCadTick(dimLineP2, Math.PI / 2, mainColor);
     } 
     else {
         let dx = p2.x - p1.x; let dy = p2.y - p1.y;
-        distance = Math.sqrt(dx * dx + dy * dy); if (distance < 1) return;
+        distance = Math.sqrt(dx * dx + dy * dy); if (distance < 0.1) return;
         let nx = -dy / distance; let ny = dx / distance;
         dimLineP1 = { x: p1.x + nx * offset, y: p1.y + ny * offset };
         dimLineP2 = { x: p2.x + nx * offset, y: p2.y + ny * offset };
         
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineP1.x, dimLineP1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineP2.x, dimLineP2.y); ctx.stroke();
+        let angle = Math.atan2(dy, dx);
+        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawCadTick(dimLineP1, angle, mainColor);
+        drawCadTick(dimLineP2, angle, mainColor);
     }
 
     let dx = dimLineP2.x - dimLineP1.x;
     let dy = dimLineP2.y - dimLineP1.y;
     let angle = Math.atan2(dy, dx);
 
-    drawLine(dimLineP1, dimLineP2, mainColor, thickness);
-    drawCadTick(dimLineP1, angle, mainColor);
-    drawCadTick(dimLineP2, angle, mainColor);
-    
     let mx = (dimLineP1.x + dimLineP2.x) / 2; 
     let my = (dimLineP1.y + dimLineP2.y) / 2;
-    let fontSize = isPrinting ? (14 / scale) : (12 / scale);
+    let fontSize = isPrinting ? (48 / scale) : (12 / scale);
     
     ctx.fillStyle = mainColor; 
     ctx.font = `bold ${fontSize}px Arial`; 
@@ -617,8 +1068,9 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     ctx.scale(1, -1); 
     
     let txtAngle = -angle; 
-    while (txtAngle > Math.PI / 2) txtAngle -= Math.PI;
-    while (txtAngle <= -Math.PI / 2) txtAngle += Math.PI;
+    if (txtAngle > Math.PI / 2 || txtAngle <= -Math.PI / 2) {
+        txtAngle += Math.PI;
+    }
     
     ctx.rotate(txtAngle);
     
@@ -626,7 +1078,7 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     let unitSelect = document.getElementById('unit-select');
     let selectedScale = scaleSelect ? parseFloat(scaleSelect.value) : 1;
     let unit = unitSelect ? unitSelect.value : 'cm';
-    let txt = (distance / selectedScale).toFixed(1) + " " + unit;
+    let txt = txtPrefix + (distance / selectedScale).toFixed(1) + " " + unit;
     
     let cleanPadding = 8 / scale;
     ctx.fillText(txt, 0, -cleanPadding);
@@ -639,25 +1091,40 @@ function drawCadTick(pt, lineAngle, color) {
     ctx.beginPath(); ctx.moveTo(pt.x - Math.cos(tickAngle) * tickLength, pt.y - Math.sin(tickAngle) * tickLength); ctx.lineTo(pt.x + Math.cos(tickAngle) * tickLength, pt.y + Math.sin(tickAngle) * tickLength); ctx.stroke();
 }
 
-function distToSegment(p, v, w) {
-    let l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2); if (l2 == 0) return Math.hypot(p.x - v.x, p.y - v.y);
-    let t = Math.max(0, Math.min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
-    return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
-}
-
 function checkGripClick(scrX, scrY) {
     if (selectedElements.length !== 1) return null;
     let el = selectedElements[0];
 
-    if (el.type === 'bezier') {
-        if (el.bezierKind === 'quadratic' && el.p1 && el.p2 && el.cp) {
+    if (el.type === 'text') {
+        let p1Scr = worldToScreen(el.p1.x, el.p1.y);
+        if (Math.hypot(scrX - p1Scr.x, scrY - p1Scr.y) < gripRadius + 6) return 'p1';
+    }
+
+    if (el.type === 'dimension') {
+        let pts = getDimEndpoints(el);
+        if (pts) {
             let p1Scr = worldToScreen(el.p1.x, el.p1.y);
             let p2Scr = worldToScreen(el.p2.x, el.p2.y);
-            let cpScr = worldToScreen(el.cp.x, el.cp.y);
-            if (Math.hypot(scrX - p1Scr.x, scrY - p1Scr.y) < gripRadius + 6) return { type: 'bz_quad', target: 'p1' };
-            if (Math.hypot(scrX - p2Scr.x, scrY - p2Scr.y) < gripRadius + 6) return { type: 'bz_quad', target: 'p2' };
-            if (Math.hypot(scrX - cpScr.x, scrY - cpScr.y) < gripRadius + 6) return { type: 'bz_quad', target: 'cp' };
-        } else if (el.nodes) {
+            let dimP1Scr = worldToScreen(pts.p1.x, pts.p1.y);
+            let dimP2Scr = worldToScreen(pts.p2.x, pts.p2.y);
+            let dimMidScr = worldToScreen((pts.p1.x + pts.p2.x) / 2, (pts.p1.y + pts.p2.y) / 2);
+
+            if (Math.hypot(scrX - p1Scr.x, scrY - p1Scr.y) < gripRadius + 6) return 'p1';
+            if (Math.hypot(scrX - p2Scr.x, scrY - p2Scr.y) < gripRadius + 6) return 'p2';
+
+            if (el.dimType === 'radial') {
+                if (Math.hypot(scrX - dimP1Scr.x, scrY - dimP1Scr.y) < gripRadius + 6) return 'dim_rad_inner';
+                if (Math.hypot(scrX - dimP2Scr.x, scrY - dimP2Scr.y) < gripRadius + 6) return 'dim_rad_outer';
+            } else {
+                if (Math.hypot(scrX - dimP1Scr.x, scrY - dimP1Scr.y) < gripRadius + 6) return 'dim_line_move';
+                if (Math.hypot(scrX - dimP2Scr.x, scrY - dimP2Scr.y) < gripRadius + 6) return 'dim_line_move';
+                if (Math.hypot(scrX - dimMidScr.x, scrY - dimMidScr.y) < gripRadius + 6) return 'dim_line_move';
+            }
+        }
+    }
+
+    if (el.type === 'bezier') {
+        if (el.nodes) {
             for (let i = 0; i < el.nodes.length; i++) {
                 let n = el.nodes[i];
                 let aScr = worldToScreen(n.anchor.x, n.anchor.y);
@@ -697,6 +1164,7 @@ canvas.addEventListener('mousedown', (e) => {
 
     if (mode === 'bezier' && typeof ToolState !== 'undefined' && ToolState.bezierType === 'cubic' && e.button === 0) {
         let pos = getWorldMousePos(e);
+        bezierDragStartPos = { ...pos };
         if (typeof handleToolMouseDown === 'function') handleToolMouseDown('bezier', pos);
         showDynamicInput(e.clientX, e.clientY, "Povuci za zakrivljenost ili Enter za kraj");
         setTimeout(() => dynInput.focus(), 10);
@@ -762,7 +1230,7 @@ canvas.addEventListener('mousedown', (e) => {
 
     let pos = getWorldMousePos(e);
 
-    if (typeof handleToolClick === 'function') {
+    if (mode !== 'select' && typeof handleToolClick === 'function') {
         let res = handleToolClick(mode, pos, elements);
         if (res) {
             if (res.inputPrompt) {
@@ -792,39 +1260,21 @@ canvas.addEventListener('mousedown', (e) => {
                 showDynamicInput(e.clientX, e.clientY); 
                 setTimeout(() => dynInput.focus(), 10);
             } else {
-                let clickedEl = typeof findHitElement === 'function' ? findHitElement(pos, elements, scale) : null;
-                if (!clickedEl) {
-                    let threshold = 10 / scale;
-                    for (let el of elements) {
-                        let hit = false;
-                        if (el.type === 'line') hit = distToSegment(pos, el.p1, el.p2) < threshold;
-                        else if (el.type === 'rect') {
-                            if (el.pts && el.pts.length === 4) {
-                                for (let j = 0; j < 4; j++) {
-                                    if (distToSegment(pos, el.pts[j], el.pts[(j + 1) % 4]) < threshold) { hit = true; break; }
-                                }
-                            } else if (el.p1 && el.p2) {
-                                let xMin = Math.min(el.p1.x, el.p2.x), xMax = Math.max(el.p1.x, el.p2.x);
-                                let yMin = Math.min(el.p1.y, el.p2.y), yMax = Math.max(el.p1.y, el.p2.y);
-                                hit = (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax);
-                            }
-                        }
-                        else if (el.type === 'circle') {
-                            let r = Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
-                            hit = Math.abs(Math.hypot(pos.x - el.p1.x, pos.y - el.p1.y) - r) < threshold;
-                        }
-                        if (hit) { clickedEl = el; break; }
-                    }
-                }
+                let clickedEl = findBestHitElement(pos, elements, scale);
                 if (clickedEl) { 
                     selectedElements = [clickedEl]; 
-                    selectedBezierNodeIndex = 0; // Defaultno prvi čvor selektovanog objekta
+                    selectedBezierNodeIndex = 0;
                 } else { 
                     isBoxSelecting = true; 
                     boxStartWorld = { ...rawMouseWorldPos }; 
                 }
             }
         }
+    }
+    else if (mode === 'text') {
+        startPoint = { ...pos };
+        showDynamicInput(e.clientX, e.clientY, "Unesite tekst i pritisnite Enter");
+        setTimeout(() => dynInput.focus(), 10);
     }
     else if (mode === 'line') {
         let clickPos = (orthoEnabled && isDrawing) ? orthoCorrectedWorldPos : pos;
@@ -847,12 +1297,31 @@ canvas.addEventListener('mousedown', (e) => {
         }
     } 
     else if (mode === 'dimension') {
-        if (dimStep === 0) { dimP1 = { ...pos }; dimStep = 1; }
-        else if (dimStep === 1) { dimP2 = { ...pos }; if (dimP1.x !== dimP2.x || dimP1.y !== dimP2.y) { dimStep = 2; showDynamicInput(e.clientX, e.clientY); setTimeout(() => dynInput.focus(), 10); } }
-        else if (dimStep === 2) {
-            let params = getDimParams(dimP1, dimP2, pos);
-            elements.push({ type: 'dimension', p1: { ...dimP1 }, p2: { ...dimP2 }, offset: params.offset, dimType: params.type });
-            dimStep = 0; dimP1 = null; dimP2 = null; hideDynamicInput();
+        if (dimMode === 2) {
+            if (dimStep === 0) {
+                let hitEl = findBestHitElement(pos, elements, scale);
+                if (hitEl && hitEl.type === 'circle') {
+                    dimP1 = { ...hitEl.p1 };
+                    dimRadius = (hitEl.radius !== undefined) ? hitEl.radius : Math.hypot(hitEl.p2.x - hitEl.p1.x, hitEl.p2.y - hitEl.p1.y);
+                    dimStep = 1;
+                } else {
+                    dimP1 = { ...pos };
+                    dimStep = 1;
+                }
+            } else if (dimStep === 1) {
+                let angle = Math.atan2(pos.y - dimP1.y, pos.x - dimP1.x);
+                let p2Radial = { x: dimP1.x + Math.cos(angle) * dimRadius, y: dimP1.y + Math.sin(angle) * dimRadius };
+                elements.push({ type: 'dimension', p1: { ...dimP1 }, p2: p2Radial, offset: 0, dimType: 'radial', radius: dimRadius });
+                dimStep = 0; dimP1 = null; dimP2 = null; dimRadius = 0;
+            }
+        } else {
+            if (dimStep === 0) { dimP1 = { ...pos }; dimStep = 1; }
+            else if (dimStep === 1) { dimP2 = { ...pos }; if (dimP1.x !== dimP2.x || dimP1.y !== dimP2.y) { dimStep = 2; showDynamicInput(e.clientX, e.clientY); setTimeout(() => dynInput.focus(), 10); } }
+            else if (dimStep === 2) {
+                let params = getDimParams(dimP1, dimP2, pos);
+                elements.push({ type: 'dimension', p1: { ...dimP1 }, p2: { ...dimP2 }, offset: params.offset, dimType: params.type });
+                dimStep = 0; dimP1 = null; dimP2 = null; hideDynamicInput();
+            }
         }
     }
     drawEverything();
@@ -895,6 +1364,25 @@ canvas.addEventListener('mousemove', (e) => {
                 let dx = targetPos.x - startPoint.x; let dy = targetPos.y - startPoint.y;
                 el.p1.x += dx; el.p1.y += dy; el.p2.x += dx; el.p2.y += dy; startPoint = { ...targetPos };
             }
+            if (activeGrip === 'dim_line_move' && el.type === 'dimension') {
+                if (el.dimType === 'horizontal') {
+                    el.offset = targetPos.y - el.p1.y;
+                } else if (el.dimType === 'vertical') {
+                    el.offset = targetPos.x - el.p1.x;
+                } else {
+                    el.offset = calculateLiveOffset(el.p1, el.p2, targetPos);
+                }
+            }
+            if (activeGrip === 'dim_rad_inner' && el.type === 'dimension') {
+                let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+                let dist = Math.hypot(targetPos.x - el.p1.x, targetPos.y - el.p1.y);
+                el.startOffset = Math.min(Math.max(0, dist), r * 0.95);
+            }
+            if (activeGrip === 'dim_rad_outer' && el.type === 'dimension') {
+                let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+                let angle = Math.atan2(targetPos.y - el.p1.y, targetPos.x - el.p1.x);
+                el.p2 = { x: el.p1.x + Math.cos(angle) * r, y: el.p1.y + Math.sin(angle) * r };
+            }
         }
         showDynamicInput(e.clientX, e.clientY);
     }
@@ -913,7 +1401,7 @@ canvas.addEventListener('mouseup', (e) => {
         isPanning = false;
         let distMoved = Math.hypot(e.clientX - startPanMouseX, e.clientY - startPanMouseY);
         if (distMoved < 5) {
-            dimForceOrtho = !dimForceOrtho;
+            dimMode = (dimMode + 1) % 3;
             updateDimBtnUI();
             if(mode === 'dimension') drawEverything();
         }
@@ -925,7 +1413,7 @@ canvas.addEventListener('mouseup', (e) => {
         let yMin = Math.min(boxStartWorld.y, rawMouseWorldPos.y), yMax = Math.max(boxStartWorld.y, rawMouseWorldPos.y);
         selectedElements = [];
         elements.forEach(el => { 
-            if (el.p1 && el.p2 && el.p1.x >= xMin && el.p1.x <= xMax && el.p1.y >= yMin && el.p1.y <= yMax && el.p2.x >= xMin && el.p2.x <= xMax && el.p2.y >= yMin && el.p2.y <= yMax) {
+            if (isElementInBox(el, xMin, xMax, yMin, yMax)) {
                 selectedElements.push(el);
             }
         });
@@ -934,13 +1422,27 @@ canvas.addEventListener('mouseup', (e) => {
 
     if (mode === 'bezier' && typeof ToolState !== 'undefined' && ToolState.bezierType === 'cubic') {
         if (typeof handleToolMouseUp === 'function') handleToolMouseUp('bezier');
+
+        if (bezierDragStartPos && ToolState.points && ToolState.points.length > 0) {
+            let lastNode = ToolState.points[ToolState.points.length - 1];
+            let dragDist = Math.hypot(mouseWorldPos.x - bezierDragStartPos.x, mouseWorldPos.y - bezierDragStartPos.y);
+            let handleLen = Math.hypot(lastNode.handleOut.x - lastNode.anchor.x, lastNode.handleOut.y - lastNode.anchor.y);
+
+            if (dragDist < 5 / scale || handleLen < 2 / scale) {
+                lastNode.type = 'corner';
+                lastNode.handleIn = { ...lastNode.anchor };
+                lastNode.handleOut = { ...lastNode.anchor };
+            }
+            bezierDragStartPos = null;
+        }
+
         drawEverything();
     }
 });
 
 window.addEventListener('keyup', (e) => {
     if (e.key === 'Shift') {
-        dimForceOrtho = !dimForceOrtho;
+        dimMode = (dimMode + 1) % 3;
         updateDimBtnUI();
         if (mode === 'dimension') drawEverything();
     }
@@ -949,6 +1451,22 @@ window.addEventListener('keyup', (e) => {
 dynInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         let val = dynInput.value.trim();
+
+        if (mode === 'text') {
+            if (val) {
+                elements.push({
+                    type: 'text',
+                    p1: { ...startPoint },
+                    text: val,
+                    font: 'Arial',
+                    fontSize: 16,
+                    color: '#ffffff'
+                });
+            }
+            hideDynamicInput();
+            drawEverything();
+            return;
+        }
 
         if (['move', 'rotate', 'scale'].includes(mode) && typeof ToolState !== 'undefined' && ToolState.step === 0) {
             if (selectedElements.length > 0) {
@@ -1155,16 +1673,111 @@ canvas.addEventListener('wheel', (e) => {
 
 function deleteSelected() { if (selectedElements.length > 0) { elements = elements.filter(el => !selectedElements.includes(el)); selectedElements = []; resetDrawingState(); hidePropsMenu(); drawEverything(); } }
 
-function printCanvas() {
+function getElementsBoundingBox(targetElements) {
+    if (!targetElements || targetElements.length === 0) return null;
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+
+    function includePoint(pt) {
+        if (!pt) return;
+        if (pt.x < xMin) xMin = pt.x;
+        if (pt.x > xMax) xMax = pt.x;
+        if (pt.y < yMin) yMin = pt.y;
+        if (pt.y > yMax) yMax = pt.y;
+    }
+
+    targetElements.forEach(el => {
+        if (el.type === 'line') { includePoint(el.p1); includePoint(el.p2); }
+        else if (el.type === 'rect' && el.pts) { el.pts.forEach(includePoint); }
+        else if (el.type === 'circle' && el.p1) {
+            let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+            includePoint({ x: el.p1.x - r, y: el.p1.y - r });
+            includePoint({ x: el.p1.x + r, y: el.p1.y + r });
+        }
+        else if (el.type === 'bezier' && el.nodes) {
+            el.nodes.forEach(n => { includePoint(n.anchor); });
+        }
+        else if ((el.type === 'polygon' || el.type === 'polyline') && el.pts) {
+            el.pts.forEach(includePoint);
+        }
+        else if (el.type === 'dimension') {
+            let pts = getDimEndpoints(el);
+            includePoint(el.p1); includePoint(el.p2);
+            if (pts) { includePoint(pts.p1); includePoint(pts.p2); }
+        }
+        else if (el.type === 'text') { includePoint(el.p1); }
+    });
+
+    if (xMin === Infinity) return null;
+    return { xMin, xMax, yMin, yMax, w: xMax - xMin, h: yMax - yMin, cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2 };
+}
+
+function printCanvas(modeType = 'standard') {
     let paperDim = getPaperWorldDimensions();
     if (!paperDim) { alert("Izaberite format papira iz menija pre printanja!"); return; }
-    isPrinting = true; selectedElements = []; hideDynamicInput(); hidePropsMenu();
+
+    let targetElements = (modeType === 'selection') ? selectedElements : elements;
+    if (targetElements.length === 0) {
+        alert(modeType === 'selection' ? "Nema selektovanih elemenata za printanje!" : "Crtež je prazan!");
+        return;
+    }
+
+    isPrinting = true; 
+    isPrintingBestFit = (modeType === 'best_fit' || modeType === 'selection');
+
+    hideDynamicInput(); 
+    hidePropsMenu();
+
     const oldScale = scale, oldPanX = panX, oldPanY = panY, oldW = canvas.width, oldH = canvas.height;
-    canvas.width = 1600; canvas.height = 1600 * (paperDim.h / paperDim.w);
-    scale = canvas.width / paperDim.w; panX = 0; panY = canvas.height; 
+    const oldElements = [...elements];
+
+    if (modeType === 'selection') {
+        elements = [...selectedElements];
+    }
+
+    canvas.width = 2400; 
+    canvas.height = 2400 * (paperDim.h / paperDim.w);
+
+    if (isPrintingBestFit) {
+        let bbox = getElementsBoundingBox(elements);
+        if (bbox && bbox.w > 0 && bbox.h > 0) {
+            let marginMM = 5;
+            let scaleSelect = document.getElementById('scale-select');
+            let unitSelect = document.getElementById('unit-select');
+            let selectedScaleVal = scaleSelect ? parseFloat(scaleSelect.value) : 1;
+            let unit = unitSelect ? unitSelect.value : 'cm';
+            let unitFactor = 1.0; if (unit === 'cm') unitFactor = 0.1; if (unit === 'm') unitFactor = 0.001;
+
+            let marginWorld = marginMM * unitFactor * selectedScaleVal;
+            let availW = Math.max(0.1, paperDim.w - 2 * marginWorld);
+            let availH = Math.max(0.1, paperDim.h - 2 * marginWorld);
+
+            let fitScaleFactor = Math.min(availW / bbox.w, availH / bbox.h);
+            scale = (canvas.width / paperDim.w) * fitScaleFactor;
+
+            let screenCenterX = canvas.width / 2;
+            let screenCenterY = canvas.height / 2;
+
+            panX = screenCenterX - bbox.cx * scale;
+            panY = screenCenterY + bbox.cy * scale;
+        } else {
+            scale = canvas.width / paperDim.w; panX = 0; panY = canvas.height;
+        }
+    } else {
+        scale = canvas.width / paperDim.w; panX = 0; panY = canvas.height; 
+    }
+
+    let currentSel = [...selectedElements];
+    selectedElements = [];
+
     drawEverything();
     window.print();
-    isPrinting = false; canvas.width = oldW; canvas.height = oldH; scale = oldScale; panX = oldPanX; panY = oldPanY;
+
+    isPrinting = false; 
+    isPrintingBestFit = false;
+    elements = oldElements;
+    selectedElements = currentSel;
+
+    canvas.width = oldW; canvas.height = oldH; scale = oldScale; panX = oldPanX; panY = oldPanY;
     drawEverything(); canvas.focus();
 }
 
@@ -1209,9 +1822,7 @@ function zoomToPaper() {
 
     if (availW <= 0 || availH <= 0) return;
 
-    let scaleX = availW / paperDim.w;
-    let scaleY = availH / paperDim.h;
-    scale = Math.min(scaleX, scaleY);
+    scale = availH / paperDim.h;
     scale = Math.max(0.01, Math.min(scale, 50));
 
     let screenCx = visibleXMin + availW / 2;
@@ -1224,8 +1835,20 @@ function zoomToPaper() {
     panY = screenCy + worldCy * scale;
 }
 
-window.addEventListener('load', updateSidebarPosition);
-window.addEventListener('resize', updateSidebarPosition);
+window.addEventListener('load', () => {
+    ensureTextSidebarButton();
+    updateSidebarPosition();
+    let paperSelect = document.getElementById('paper-select');
+    if (paperSelect && (!paperSelect.value || paperSelect.value === 'NONE')) {
+        paperSelect.value = 'A4_P';
+    }
+    updatePaperStyle();
+});
+
+window.addEventListener('resize', () => {
+    updateSidebarPosition();
+    resizeCanvas();
+});
 
 window.addEventListener('keydown', (e) => {
     if (e.key === 'F2') { e.preventDefault(); toggleSnap(); }
@@ -1233,10 +1856,12 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'F4') { e.preventDefault(); toggleOrtho(); }
     if (e.key === 'Delete') deleteSelected();
     if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); }
+    if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) { e.preventDefault(); printCanvas('standard'); }
     
     if (document.activeElement !== dynInput && document.activeElement.tagName !== 'INPUT') {
         if (e.key === 'l' || e.key === 'L') setMode('line');
         if (e.key === 'd' || e.key === 'D') setMode('dimension');
+        if (e.key === 't' || e.key === 'T') setMode('text');
         if (e.key === 's' || e.key === 'S') setMode('select');
         if (e.key === 'm' || e.key === 'M') setMode('move');
         if (e.key === 'r' || e.key === 'R') setMode('rotate');
