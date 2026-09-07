@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulacija Gravitacionog Dovoda i Rezervoara</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Kontrole */
+        #sidebar {
+            width: 380px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .control-label span.val {
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        /* Main Viewport */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Metrics Bar */
+        #metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            padding: 15px 20px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metric-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .metric-card .title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .metric-card .value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-top: 4px;
+        }
+
+        /* Canvas Wrapper */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #090d16;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Legend Overlay */
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-line {
+            width: 25px;
+            height: 3px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR PARAMETRI -->
+    <div id="sidebar">
+        <h1 style="font-size: 1.3rem; color: #fff; margin-bottom: 10px;">Simulacija Dovoda Vode</h1>
+
+        <h2>1. Desni Rezervoar (Gornji / Kaptaža)</h2>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Izdašnost vrela (Q<sub>in</sub>):</span>
+                <span class="val" id="val_Qin">6.0 L/s</span>
+            </div>
+            <input type="range" id="param_Qin" min="0" max="20" step="0.5" value="6.0">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Kota dna (Z<sub>1</sub>):</span>
+                <span class="val" id="val_Z1">120.0 m</span>
+            </div>
+            <input type="range" id="param_Z1" min="100" max="150" step="1" value="120">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Širina rezervoara (B<sub>1</sub>):</span>
+                <span class="val" id="val_B1">4.0 m</span>
+            </div>
+            <input type="range" id="param_B1" min="2" max="10" step="0.5" value="4">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Maks. visina (H<sub>max1</sub>):</span>
+                <span class="val" id="val_Hmax1">4.0 m</span>
+            </div>
+            <input type="range" id="param_Hmax1" min="2" max="6" step="0.5" value="4">
+        </div>
+
+        <h2>2. Dovodni Cjevovod</h2>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Dužina cijevi (L):</span>
+                <span class="val" id="val_L">500 m</span>
+            </div>
+            <input type="range" id="param_L" min="100" max="2000" step="50" value="500">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Unutrašnji prečnik (D):</span>
+                <span class="val" id="val_D">110 mm</span>
+            </div>
+            <input type="range" id="param_D" min="50" max="300" step="5" value="110">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Koef. trenja (λ):</span>
+                <span class="val" id="val_lambda">0.025</span>
+            </div>
+            <input type="range" id="param_lambda" min="0.010" max="0.060" step="0.001" value="0.025">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Lokalni gubici / Ventil (Σξ):</span>
+                <span class="val" id="val_xi">3.0</span>
+            </div>
+            <input type="range" id="param_xi" min="0" max="50" step="0.5" value="3.0">
+        </div>
+
+        <h2>3. Lijevi Rezervoar (Donji / Selo)</h2>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Potrošnja sela (Q<sub>out</sub>):</span>
+                <span class="val" id="val_Qout">4.5 L/s</span>
+            </div>
+            <input type="range" id="param_Qout" min="0" max="20" step="0.5" value="4.5">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Kota dna (Z<sub>2</sub>):</span>
+                <span class="val" id="val_Z2">90.0 m</span>
+            </div>
+            <input type="range" id="param_Z2" min="50" max="100" step="1" value="90">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Širina rezervoara (B<sub>2</sub>):</span>
+                <span class="val" id="val_B2">5.0 m</span>
+            </div>
+            <input type="range" id="param_B2" min="2" max="12" step="0.5" value="5">
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Maks. visina (H<sub>max2</sub>):</span>
+                <span class="val" id="val_Hmax2">4.0 m</span>
+            </div>
+            <input type="range" id="param_Hmax2" min="2" max="6" step="0.5" value="4">
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT VIEW -->
+    <div id="main-content">
+        <!-- METRICS PANEL -->
+        <div id="metrics-bar">
+            <div class="metric-card">
+                <div class="title">Protok u cijevi (Q<sub>pipe</sub>)</div>
+                <div class="value" id="m_Qpipe">0.0 L/s</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Brzina strujanja (v)</div>
+                <div class="value" id="m_velocity">0.00 m/s</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Gubici pritiska (h<sub>f</sub>)</div>
+                <div class="value" id="m_loss" style="color: var(--accent-red);">0.00 m</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Pritisak na ulazu u donji rez.</div>
+                <div class="value" id="m_press" style="color: var(--accent-yellow);">0.00 bar</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Visinska razlika (ΔH)</div>
+                <div class="value" id="m_dH" style="color: var(--accent-blue);">0.00 m</div>
+            </div>
+        </div>
+
+        <!-- CANVAS -->
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+
+            <!-- LEGEND -->
+            <div id="legend">
+                <div class="legend-item">
+                    <div class="legend-line" style="background: #38bdf8;"></div>
+                    <span>Cjevovod & Vodno tijelo</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line" style="background: #ef4444;"></div>
+                    <span>Dinamička Piezometarska linija (HGL)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line" style="background: #eab308;"></div>
+                    <span>Energetska linija (EGL)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line" style="background: rgba(255,255,255,0.3);"></div>
+                    <span>Statička piezometarska linija</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STANJE I PARAMETRI SIMULACIJE ---
+        const state = {
+            // Desni rezervoar (Gornji / Kaptaža)
+            Qin: 6.0,          // L/s
+            Z1: 120.0,         // m (Kota dna)
+            B1: 4.0,           // m (Širina / kvadratna osnova A = B^2)
+            Hmax1: 4.0,        // m (Maksimalna dubina)
+            H1: 2.5,           // m (Trenutni nivo vode)
+
+            // Cjevovod
+            L: 500,            // m (Dužina)
+            D: 110,            // mm (Prečnik)
+            lambda: 0.025,     // Bezdimenzionalno (Koef. trenja)
+            xi: 3.0,           // Bezdimenzionalno (Lokalni gubici)
+
+            // Lijevi rezervoar (Donji / Selo)
+            Qout: 4.5,         // L/s
+            Z2: 90.0,          // m (Kota dna)
+            B2: 5.0,           // m (Širina)
+            Hmax2: 4.0,        // m (Maksimalna dubina)
+            H2: 1.8,           // m (Trenutni nivo vode)
+
+            // Izračunate hidrauličke vrijednosti
+            Qpipe: 0,          // m^3/s
+            v: 0,              // m/s
+            hf: 0,             // m (Gubici)
+            p_entry: 0,        // bar (Pritisak na ulazu u donji rezervoar)
+            particles: []      // Animacija čestica u cijevi
+        };
+
+        const g = 9.81;
+
+        // Inicijalizacija čestica za vizuelni prikaz protoka
+        for (let i = 0; i < 40; i++) {
+            state.particles.push({ progress: Math.random() });
+        }
+
+        // Bindovanje DOM elemenata
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function bindInput(id, paramName, formatFn) {
+            const el = document.getElementById('param_' + id);
+            const valEl = document.getElementById('val_' + id);
+            el.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state[paramName] = val;
+                valEl.textContent = formatFn(val);
+            });
+        }
+
+        bindInput('Qin', 'Qin', v => v.toFixed(1) + ' L/s');
+        bindInput('Z1', 'Z1', v => v.toFixed(1) + ' m');
+        bindInput('B1', 'B1', v => v.toFixed(1) + ' m');
+        bindInput('Hmax1', 'Hmax1', v => v.toFixed(1) + ' m');
+
+        bindInput('L', 'L', v => v.toFixed(0) + ' m');
+        bindInput('D', 'D', v => v.toFixed(0) + ' mm');
+        bindInput('lambda', 'lambda', v => v.toFixed(3));
+        bindInput('xi', 'xi', v => v.toFixed(1));
+
+        bindInput('Qout', 'Qout', v => v.toFixed(1) + ' L/s');
+        bindInput('Z2', 'Z2', v => v.toFixed(1) + ' m');
+        bindInput('B2', 'B2', v => v.toFixed(1) + ' m');
+        bindInput('Hmax2', 'Hmax2', v => v.toFixed(1) + ' m');
+
+        // Resizing Canvas
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- PRORAČUN HIDRAULIKE I NUMERIČKA INTEGRACIJA ---
+        let lastTime = performance.now();
+
+        function updateHydraulics(dt) {
+            const A1 = state.B1 * state.B1; 
+            const A2 = state.B2 * state.B2; 
+
+            const D_m = state.D / 1000.0;   
+            const A_pipe = (Math.PI * D_m * D_m) / 4.0; 
+
+            const E1 = state.Z1 + state.H1;
+            const E2 = state.Z2 + state.H2;
+
+            const dH = E1 - E2; 
+
+            if (dH > 0 && state.H1 > 0.05) {
+                const K_total = (state.lambda * state.L / D_m) + state.xi + 1.0;
+                state.v = Math.sqrt((2 * g * dH) / K_total);
+                state.Qpipe = state.v * A_pipe; 
+                state.hf = ((state.lambda * state.L / D_m) + state.xi) * (state.v * state.v) / (2 * g);
+            } else {
+                state.v = 0;
+                state.Qpipe = 0;
+                state.hf = 0;
+            }
+
+            const piezometric_head_end = Math.max(0, (E1 - state.hf) - state.Z2);
+            state.p_entry = (piezometric_head_end * 9.81 * 1000) / 100000; 
+
+            const simSpeed = 10.0; 
+            const Qin_m3s = state.Qin / 1000.0;
+            const Qout_m3s = state.Qout / 1000.0;
+
+            if (state.H1 < state.Hmax1 || (Qin_m3s - state.Qpipe) < 0) {
+                state.H1 += ((Qin_m3s - state.Qpipe) / A1) * dt * simSpeed;
+                state.H1 = Math.max(0, Math.min(state.Hmax1, state.H1));
+            }
+
+            if (state.H2 < state.Hmax2 || (state.Qpipe - Qout_m3s) < 0) {
+                state.H2 += ((state.Qpipe - Qout_m3s) / A2) * dt * simSpeed;
+                state.H2 = Math.max(0, Math.min(state.Hmax2, state.H2));
+            }
+
+            if (state.v > 0) {
+                const step = (state.v / state.L) * dt * simSpeed * 2.0;
+                state.particles.forEach(p => {
+                    p.progress += step;
+                    if (p.progress > 1) p.progress -= 1;
+                });
+            }
+
+            document.getElementById('m_Qpipe').textContent = (state.Qpipe * 1000).toFixed(2) + ' L/s';
+            document.getElementById('m_velocity').textContent = state.v.toFixed(2) + ' m/s';
+            document.getElementById('m_loss').textContent = state.hf.toFixed(2) + ' m';
+            document.getElementById('m_press').textContent = state.p_entry.toFixed(2) + ' bar';
+            document.getElementById('m_dH').textContent = dH.toFixed(2) + ' m';
+        }
+
+        // --- RENDEROVANJE / GRAPHICS (CANVAS) ---
+        function render() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const margin = 80;
+            const minZ = Math.min(state.Z1, state.Z2) - 10;
+            const maxZ = Math.max(state.Z1 + state.Hmax1, state.Z2 + state.Hmax2) + 15;
+
+            function toScreenY(z) {
+                return h - margin - ((z - minZ) / (maxZ - minZ)) * (h - 2 * margin);
+            }
+
+            const x_R2 = margin + 60;      
+            const x_R1 = w - margin - 60;  
+            const resWidth = 70;
+
+            const y_Z1 = toScreenY(state.Z1);
+            const y_H1 = toScreenY(state.Z1 + state.H1);
+            const y_Hmax1 = toScreenY(state.Z1 + state.Hmax1);
+
+            const y_Z2 = toScreenY(state.Z2);
+            const y_H2 = toScreenY(state.Z2 + state.H2);
+            const y_Hmax2 = toScreenY(state.Z2 + state.Hmax2);
+
+            // Teren
+            ctx.beginPath();
+            ctx.moveTo(x_R2 - resWidth, y_Z2 + 30);
+            ctx.lineTo(x_R2 + resWidth / 2, y_Z2 + 20);
+            ctx.lineTo(x_R1 - resWidth / 2, y_Z1 + 20);
+            ctx.lineTo(x_R1 + resWidth, y_Z1 + 30);
+            ctx.lineTo(x_R1 + resWidth, h);
+            ctx.lineTo(x_R2 - resWidth, h);
+            ctx.closePath();
+            ctx.fillStyle = '#111827';
+            ctx.fill();
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Cjevovod
+            const pipeStart = { x: x_R1, y: y_Z1 };
+            const pipeEnd = { x: x_R2, y: y_Z2 };
+
+            ctx.beginPath();
+            ctx.moveTo(pipeStart.x, pipeStart.y);
+            ctx.lineTo(pipeEnd.x, pipeEnd.y);
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = Math.max(4, state.D / 15);
+            ctx.stroke();
+
+            // Čestice
+            if (state.v > 0) {
+                ctx.fillStyle = '#7dd3fc';
+                state.particles.forEach(p => {
+                    const px = pipeStart.x + (pipeEnd.x - pipeStart.x) * p.progress;
+                    const py = pipeStart.y + (pipeEnd.y - pipeStart.y) * p.progress;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // Rezervoar 1
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x_R1 - resWidth / 2, y_Hmax1, resWidth, y_Z1 - y_Hmax1);
+
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+            ctx.fillRect(x_R1 - resWidth / 2 + 2, y_H1, resWidth - 4, y_Z1 - y_H1);
+
+            if (state.Qin > 0) {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+                ctx.fillRect(x_R1 + resWidth / 4 - 5, y_Hmax1 - 25, 10, y_H1 - (y_Hmax1 - 25));
+            }
+
+            // Rezervoar 2
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x_R2 - resWidth / 2, y_Hmax2, resWidth, y_Z2 - y_Hmax2);
+
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+            ctx.fillRect(x_R2 - resWidth / 2 + 2, y_H2, resWidth - 4, y_Z2 - y_H2);
+
+            if (state.Qout > 0) {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+                ctx.fillRect(x_R2 - resWidth / 2 - 25, y_Z2 - 15, 25, 8);
+            }
+
+            // Piezometarske linije
+            if (state.H1 > 0.1) {
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(x_R1, y_H1);
+                ctx.lineTo(x_R2, y_H1);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const E1_abs = state.Z1 + state.H1;
+                const hf_total = state.hf;
+                const y_HGL_end = toScreenY(E1_abs - hf_total);
+
+                ctx.beginPath();
+                ctx.moveTo(x_R1, y_H1);
+                ctx.lineTo(x_R2, y_HGL_end);
+                ctx.strokeStyle = '#ef4444'; 
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                const hv = (state.v * state.v) / (2 * g);
+                const y_EGL_start = toScreenY(E1_abs + hv);
+                const y_EGL_end = toScreenY((E1_abs - hf_total) + hv);
+
+                ctx.beginPath();
+                ctx.moveTo(x_R1, y_EGL_start);
+                ctx.lineTo(x_R2, y_EGL_end);
+                ctx.strokeStyle = '#eab308'; 
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // Tekstualne oznake
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '12px Segoe UI';
+
+            ctx.fillText('KAPTAŽA (Gornji)', x_R1 - 45, y_Hmax1 - 35);
+            ctx.fillText(`Z_dna = ${state.Z1.toFixed(1)} m`, x_R1 + resWidth / 2 + 10, y_Z1);
+            ctx.fillText(`H1 = ${state.H1.toFixed(2)} m`, x_R1 - 25, y_H1 - 8);
+
+            ctx.fillText('REZERVOAR SELO (Donji)', x_R2 - 55, y_Hmax2 - 35);
+            ctx.fillText(`Z_dna = ${state.Z2.toFixed(1)} m`, x_R2 - resWidth / 2 - 85, y_Z2);
+            ctx.fillText(`H2 = ${state.H2.toFixed(2)} m`, x_R2 - 25, y_H2 - 8);
+
+            const midX = (x_R1 + x_R2) / 2;
+            const midY = (y_Z1 + y_Z2) / 2;
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(`L = ${state.L}m, Ø${state.D}mm`, midX - 40, midY + 25);
+        }
+
+        // --- MAIN LOOP ---
+        function loop(timestamp) {
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.1); 
+            lastTime = timestamp;
+
+            updateHydraulics(dt);
+            render();
+
+            requestAnimationFrame(loop);
+        }
+
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
