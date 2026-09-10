@@ -1106,20 +1106,18 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     
     // Kotiranje: debljine su izražene u mm na gotovom papiru.
     const DIM_THICKNESS = 0.20;
-    const DIM_EXT_THICKNESS = 0.15;
+const DIM_EXT_THICKNESS = 0.15;
 
-    let extThick = isPrinting
-        ? getPrintLineWidth(DIM_EXT_THICKNESS)
-        : (DIM_THICKNESS / scrScale);
+let extThick = isPrinting
+    ? getPrintLineWidth(DIM_EXT_THICKNESS)
+    : (DIM_EXT_THICKNESS / scrScale);
 
-    let mainThickArg = isPrinting
-        ? getPrintLineWidth(DIM_THICKNESS)
-        : (DIM_THICKNESS / scrScale);
+let mainThickArg = isPrinting
+    ? DIM_THICKNESS
+    : (DIM_THICKNESS / scrScale);
 
-    // Produžne linije moraju koristiti vlastitu debljinu,
-    // a ne naslijediti lineWidth prethodno iscrtane linije.
-    ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = extThick;
+ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 255, 255, 0.6)';
+ctx.lineWidth = extThick;
 
     let txtPrefix = "";
 
