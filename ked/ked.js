@@ -1964,37 +1964,100 @@ function exportDXF() {
     dxf.push("0", "SECTION", "2", "ENTITIES");
 
     elements.forEach(el => {
-        if (el.type === 'line') {
+        // --- LINE ---
+        if (el.type === 'line' && el.p1 && el.p2) {
             dxf.push("0", "LINE", "8", "0");
             dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
             dxf.push("11", el.p2.x.toFixed(4), "21", el.p2.y.toFixed(4), "31", "0.0");
         } 
+
+        // --- CIRCLE ---
         else if (el.type === 'circle' && el.p1) {
             let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
             dxf.push("0", "CIRCLE", "8", "0");
             dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
             dxf.push("40", r.toFixed(4));
         } 
-        else if (el.type === 'text') {
+
+        // --- RECT / POLYGON / POLYLINE ---
+        else if ((el.type === 'rect' || el.type === 'polygon' || el.type === 'polyline') && el.pts && el.pts.length > 1) {
+            let isClosed = (el.type === 'rect' || el.type === 'polygon');
+            dxf.push("0", "LWPOLYLINE", "8", "0");
+            dxf.push("90", el.pts.length);
+            dxf.push("70", isClosed ? "1" : "0");
+            el.pts.forEach(pt => {
+                dxf.push("10", pt.x.toFixed(4), "20", pt.y.toFixed(4));
+            });
+        } 
+
+        // --- BEZIER ---
+        else if (el.type === 'bezier' && el.nodes && el.nodes.length > 1) {
+            let samples = 20;
+            let curvePts = [];
+            for (let i = 0; i < el.nodes.length - 1; i++) {
+                let n1 = el.nodes[i], n2 = el.nodes[i + 1];
+                for (let step = (i === 0 ? 0 : 1); step <= samples; step++) {
+                    let t = step / samples;
+                    let invT = 1 - t;
+                    let x = invT*invT*invT * n1.anchor.x + 3*invT*invT*t * n1.handleOut.x + 3*invT*t*t * n2.handleIn.x + t*t*t * n2.anchor.x;
+                    let y = invT*invT*invT * n1.anchor.y + 3*invT*invT*t * n1.handleOut.y + 3*invT*t*t * n2.handleIn.y + t*t*t * n2.anchor.y;
+                    curvePts.push({ x, y });
+                }
+            }
+            dxf.push("0", "LWPOLYLINE", "8", "0");
+            dxf.push("90", curvePts.length);
+            dxf.push("70", "0");
+            curvePts.forEach(pt => {
+                dxf.push("10", pt.x.toFixed(4), "20", pt.y.toFixed(4));
+            });
+        } 
+
+        // --- TEXT ---
+        else if (el.type === 'text' && el.p1) {
             dxf.push("0", "TEXT", "8", "0");
             dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
-            dxf.push("40", (el.fontSize || 16).toFixed(4));
+            dxf.push("40", (el.fontSize || 14).toFixed(4));
             dxf.push("1", el.text || "");
-        }
-        else if (el.type === 'rect' && el.pts && el.pts.length === 4) {
-            for (let i = 0; i < 4; i++) {
-                let pA = el.pts[i], pB = el.pts[(i + 1) % 4];
-                dxf.push("0", "LINE", "8", "0");
-                dxf.push("10", pA.x.toFixed(4), "20", pA.y.toFixed(4), "30", "0.0");
-                dxf.push("11", pB.x.toFixed(4), "21", pB.y.toFixed(4), "31", "0.0");
-            }
-        }
+        } 
+
+        // --- DIMENSION ---
         else if (el.type === 'dimension') {
             let pts = getDimEndpoints(el);
             if (pts) {
-                dxf.push("0", "LINE", "8", "0", "10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0", "11", pts.p1.x.toFixed(4), "21", pts.p1.y.toFixed(4), "31", "0.0");
-                dxf.push("0", "LINE", "8", "0", "10", el.p2.x.toFixed(4), "20", el.p2.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
-                dxf.push("0", "LINE", "8", "0", "10", pts.p1.x.toFixed(4), "20", pts.p1.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
+                // Pomoćne linije kote
+                if (el.dimType !== 'radial') {
+                    dxf.push("0", "LINE", "8", "KOTE", "10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0", "11", pts.p1.x.toFixed(4), "21", pts.p1.y.toFixed(4), "31", "0.0");
+                    dxf.push("0", "LINE", "8", "KOTE", "10", el.p2.x.toFixed(4), "20", el.p2.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
+                }
+                
+                // Glavna linija kote
+                dxf.push("0", "LINE", "8", "KOTE", "10", pts.p1.x.toFixed(4), "20", pts.p1.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
+
+                // Kosi tick-ovi
+                let dx = pts.p2.x - pts.p1.x, dy = pts.p2.y - pts.p1.y;
+                let angle = Math.atan2(dy, dx);
+                let tickLen = 1.5;
+                let tAng = angle + Math.PI / 4;
+
+                [{ x: pts.p1.x, y: pts.p1.y }, { x: pts.p2.x, y: pts.p2.y }].forEach(pt => {
+                    let tx1 = pt.x - Math.cos(tAng) * tickLen, ty1 = pt.y - Math.sin(tAng) * tickLen;
+                    let tx2 = pt.x + Math.cos(tAng) * tickLen, ty2 = pt.y + Math.sin(tAng) * tickLen;
+                    dxf.push("0", "LINE", "8", "KOTE", "10", tx1.toFixed(4), "20", ty1.toFixed(4), "30", "0.0", "11", tx2.toFixed(4), "21", ty2.toFixed(4), "31", "0.0");
+                });
+
+                // Tekst kote
+                let dist = (el.dimType === 'radial') ? (el.radius || Math.hypot(dx, dy)) : Math.hypot(dx, dy);
+                let mx = (pts.p1.x + pts.p2.x) / 2, my = (pts.p1.y + pts.p2.y) / 2;
+                let scaleSelect = document.getElementById('scale-select');
+                let unitSelect = document.getElementById('unit-select');
+                let selectedScale = scaleSelect ? parseFloat(scaleSelect.value) : 1;
+                let unit = unitSelect ? unitSelect.value : 'cm';
+                let txtVal = (el.dimType === 'radial' ? "R " : "") + (dist / selectedScale).toFixed(1) + " " + unit;
+
+                dxf.push("0", "TEXT", "8", "KOTE");
+                dxf.push("10", mx.toFixed(4), "20", (my + 1.0).toFixed(4), "30", "0.0");
+                dxf.push("40", "2.5"); // Standardna CAD visina teksta u model prostoru
+                dxf.push("1", txtVal);
             }
         }
     });
