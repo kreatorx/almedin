@@ -2038,6 +2038,7 @@ function importDXF(event) {
                 if (p.code === 0) {
                     let entityType = p.val.toUpperCase();
 
+                    // --- LINE ---
                     if (entityType === "LINE") {
                         let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
                         let j = i + 1;
@@ -2050,14 +2051,14 @@ function importDXF(event) {
                         }
                         if (!isNaN(x1) && !isNaN(y1) && !isNaN(x2) && !isNaN(y2)) {
                             elements.push({
-                                type: 'line',
-                                p1: { x: x1, y: y1 },
-                                p2: { x: x2, y: y2 },
+                                type: 'line', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 },
                                 thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
                             });
                             importedCount++;
                         }
                     }
+
+                    // --- CIRCLE ---
                     else if (entityType === "CIRCLE") {
                         let cx = 0, cy = 0, r = 0;
                         let j = i + 1;
@@ -2069,27 +2070,62 @@ function importDXF(event) {
                         }
                         if (!isNaN(cx) && !isNaN(cy) && !isNaN(r) && r > 0) {
                             elements.push({
-                                type: 'circle',
-                                p1: { x: cx, y: cy },
-                                p2: { x: cx + r, y: cy },
-                                radius: r,
-                                thickness: 0.2, color: '#ffffff'
+                                type: 'circle', p1: { x: cx, y: cy }, p2: { x: cx + r, y: cy },
+                                radius: r, thickness: 0.2, color: '#ffffff'
                             });
                             importedCount++;
                         }
                     }
+
+                    // --- ARC ---
+                    else if (entityType === "ARC") {
+                        let cx = 0, cy = 0, r = 0, startAngle = 0, endAngle = 0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) cx = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) cy = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 40) r = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 50) startAngle = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 51) endAngle = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(cx) && !isNaN(cy) && !isNaN(r) && r > 0) {
+                            let startRad = (startAngle * Math.PI) / 180;
+                            let endRad = (endAngle * Math.PI) / 180;
+                            if (endRad <= startRad) endRad += Math.PI * 2;
+                            let sweep = endRad - startRad;
+                            let segments = Math.max(12, Math.ceil((sweep / (Math.PI * 2)) * 32));
+
+                            let prevX = cx + Math.cos(startRad) * r;
+                            let prevY = cy + Math.sin(startRad) * r;
+
+                            for (let k = 1; k <= segments; k++) {
+                                let t = startRad + (sweep * k) / segments;
+                                let currX = cx + Math.cos(t) * r;
+                                let currY = cy + Math.sin(t) * r;
+                                elements.push({
+                                    type: 'line', p1: { x: prevX, y: prevY }, p2: { x: currX, y: currY },
+                                    thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                });
+                                prevX = currX; prevY = currY;
+                            }
+                            importedCount++;
+                        }
+                    }
+
+                    // --- LWPOLYLINE / POLYLINE ---
                     else if (entityType === "LWPOLYLINE" || entityType === "POLYLINE") {
                         let pts = [];
+                        let isClosed = false;
                         let currX = null, currY = null;
                         let j = i + 1;
                         while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 70) isClosed = (parseInt(pairs[j].val, 10) & 1) !== 0;
                             if (pairs[j].code === 10) {
                                 if (currX !== null && currY !== null) pts.push({ x: currX, y: currY });
                                 currX = parseFloat(pairs[j].val);
                             }
-                            if (pairs[j].code === 20) {
-                                currY = parseFloat(pairs[j].val);
-                            }
+                            if (pairs[j].code === 20) currY = parseFloat(pairs[j].val);
                             j++;
                         }
                         if (currX !== null && currY !== null) pts.push({ x: currX, y: currY });
@@ -2097,33 +2133,178 @@ function importDXF(event) {
                         if (pts.length > 1) {
                             for (let k = 0; k < pts.length - 1; k++) {
                                 elements.push({
-                                    type: 'line',
-                                    p1: { x: pts[k].x, y: pts[k].y },
-                                    p2: { x: pts[k + 1].x, y: pts[k + 1].y },
+                                    type: 'line', p1: { x: pts[k].x, y: pts[k].y }, p2: { x: pts[k + 1].x, y: pts[k + 1].y },
+                                    thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                });
+                            }
+                            if (isClosed && pts.length > 2) {
+                                elements.push({
+                                    type: 'line', p1: { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y }, p2: { x: pts[0].x, y: pts[0].y },
                                     thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
                                 });
                             }
                             importedCount++;
                         }
                     }
+
+                    // --- ELLIPSE ---
+                    else if (entityType === "ELLIPSE") {
+                        let cx = 0, cy = 0, mx = 0, my = 0, ratio = 1, startP = 0, endP = Math.PI * 2;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) cx = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) cy = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 11) mx = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 21) my = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 40) ratio = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 41) startP = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 42) endP = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(cx) && !isNaN(cy)) {
+                            let majorLen = Math.hypot(mx, my);
+                            let minorLen = majorLen * ratio;
+                            let angle = Math.atan2(my, mx);
+                            if (endP <= startP) endP += Math.PI * 2;
+                            let sweep = endP - startP;
+                            let segs = 32;
+
+                            let prevX = null, prevY = null;
+                            for (let k = 0; k <= segs; k++) {
+                                let t = startP + (sweep * k) / segs;
+                                let ex = Math.cos(t) * majorLen;
+                                let ey = Math.sin(t) * minorLen;
+                                let rx = cx + ex * Math.cos(angle) - ey * Math.sin(angle);
+                                let ry = cy + ex * Math.sin(angle) + ey * Math.cos(angle);
+
+                                if (prevX !== null && prevY !== null) {
+                                    elements.push({
+                                        type: 'line', p1: { x: prevX, y: prevY }, p2: { x: rx, y: ry },
+                                        thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                    });
+                                }
+                                prevX = rx; prevY = ry;
+                            }
+                            importedCount++;
+                        }
+                    }
+
+                    // --- POINT ---
+                    else if (entityType === "POINT") {
+                        let px = 0, py = 0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) px = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) py = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(px) && !isNaN(py)) {
+                            elements.push({
+                                type: 'circle', p1: { x: px, y: py }, p2: { x: px + 0.1, y: py },
+                                radius: 0.1, thickness: 0.2, color: '#ffffff'
+                            });
+                            importedCount++;
+                        }
+                    }
+
+                    // --- SPLINE ---
+                    else if (entityType === "SPLINE") {
+                        let ctrlPts = [];
+                        let currX = null, currY = null;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) {
+                                if (currX !== null && currY !== null) ctrlPts.push({ x: currX, y: currY });
+                                currX = parseFloat(pairs[j].val);
+                            }
+                            if (pairs[j].code === 20) currY = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (currX !== null && currY !== null) ctrlPts.push({ x: currX, y: currY });
+
+                        if (ctrlPts.length > 1) {
+                            for (let k = 0; k < ctrlPts.length - 1; k++) {
+                                elements.push({
+                                    type: 'line', p1: { x: ctrlPts[k].x, y: ctrlPts[k].y }, p2: { x: ctrlPts[k + 1].x, y: ctrlPts[k + 1].y },
+                                    thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                });
+                            }
+                            importedCount++;
+                        }
+                    }
+
+                    // --- SOLID / 3DFACE / TRACE ---
+                    else if (entityType === "SOLID" || entityType === "3DFACE" || entityType === "TRACE") {
+                        let x1=0, y1=0, x2=0, y2=0, x3=0, y3=0, x4=0, y4=0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) x1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) y1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 11) x2 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 21) y2 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 12) x3 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 22) y3 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 13) x4 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 23) y4 = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        let polyPts = [{x:x1,y:y1}, {x:x2,y:y2}, {x:x3,y:y3}];
+                        if (x4 !== 0 || y4 !== 0) polyPts.push({x:x4,y:y4});
+
+                        if (polyPts.length >= 3) {
+                            for (let k = 0; k < polyPts.length; k++) {
+                                let pA = polyPts[k], pB = polyPts[(k + 1) % polyPts.length];
+                                elements.push({
+                                    type: 'line', p1: { x: pA.x, y: pA.y }, p2: { x: pB.x, y: pB.y },
+                                    thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                });
+                            }
+                            importedCount++;
+                        }
+                    }
+
+                    // --- TEXT / MTEXT ---
                     else if (entityType === "TEXT" || entityType === "MTEXT") {
-                        let tx = 0, ty = 0, size = 16, textVal = "";
+                        let tx = 0, ty = 0, size = 16, textVal = "", extraText = "";
                         let j = i + 1;
                         while (j < pairs.length && pairs[j].code !== 0) {
                             if (pairs[j].code === 10) tx = parseFloat(pairs[j].val);
                             if (pairs[j].code === 20) ty = parseFloat(pairs[j].val);
                             if (pairs[j].code === 40) size = parseFloat(pairs[j].val);
                             if (pairs[j].code === 1) textVal = pairs[j].val;
+                            if (pairs[j].code === 3) extraText += pairs[j].val;
                             j++;
                         }
-                        if (textVal) {
+                        let fullText = extraText + textVal;
+                        fullText = fullText.replace(/\\P/g, " ").replace(/\\[A-Za-z0-9.]+[;]/g, "").replace(/[{}]/g, "").trim();
+
+                        if (fullText) {
                             elements.push({
-                                type: 'text',
-                                p1: { x: tx, y: ty },
-                                text: textVal,
-                                font: 'Arial',
-                                fontSize: size || 16,
-                                color: '#ffffff'
+                                type: 'text', p1: { x: tx, y: ty }, text: fullText,
+                                font: 'Arial', fontSize: size || 16, color: '#ffffff'
+                            });
+                            importedCount++;
+                        }
+                    }
+
+                    // --- DIMENSION ---
+                    else if (entityType === "DIMENSION") {
+                        let x1=0, y1=0, x2=0, y2=0, x3=0, y3=0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) x1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) y1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 13) x2 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 23) y2 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 14) x3 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 24) y3 = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(x2) && !isNaN(y2) && !isNaN(x3) && !isNaN(y3)) {
+                            let offset = (y1 !== 0) ? (y1 - y2) : 10;
+                            elements.push({
+                                type: 'dimension', p1: { x: x2, y: y2 }, p2: { x: x3, y: y3 },
+                                offset: offset, dimType: 'aligned'
                             });
                             importedCount++;
                         }
@@ -2135,9 +2316,9 @@ function importDXF(event) {
 
             if (importedCount > 0) {
                 zoomExtents();
-                showStatusMessage(`DXF učitan: uvezeno ${importedCount} entiteta.`);
+                showStatusMessage(`DXF uspešno učitan: uvezeno ${importedCount} entiteta.`);
             } else {
-                showStatusMessage("Upozorenje: DXF nema podržanih entiteta (LINE, CIRCLE, POLYLINE, TEXT).");
+                showStatusMessage("Upozorenje: DXF nema podržanih CAD entiteta.");
             }
 
         } catch (err) {
