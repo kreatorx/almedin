@@ -16,10 +16,13 @@ const PAPERS = {
 };
 
 let scale = 1.0;
+let savedScreenScale = 1.0;
 let panX = 150, panY = window.innerHeight - 150;
 let isPanning = false;
 let startPanX = 0, startPanY = 0;
 let startPanMouseX = 0, startPanMouseY = 0;
+let canvasLineWidthFactor = 1.0;
+let printDashScale = 1.0;
 
 let mode = 'select'; 
 let elements = []; 
@@ -29,6 +32,9 @@ let osnapEnabled = true;
 let orthoEnabled = true;   
 let isPrinting = false; 
 let isPrintingBestFit = false;
+
+let temporaryStatusMessage = "";
+let statusMessageTimer = null;
 
 // MOD KOTIRANJA: 0 = Dijagonalno (Aligned), 1 = Ortogonalno (H/V), 2 = Radijalno (R)
 let dimMode = 0; 
@@ -69,6 +75,10 @@ mobileDimBtn.onclick = () => {
     drawEverything();
 };
 
+function getScreenScale() {
+    return (isPrinting && savedScreenScale > 0) ? savedScreenScale : scale;
+}
+
 function updateDimBtnUI() {
     const labels = ['Kotiranje: Dijagonalno', 'Kotiranje: Ortogonalno', 'Kotiranje: Radijalno'];
     mobileDimBtn.style.background = dimMode !== 0 ? '#00e5ff' : '#333';
@@ -93,12 +103,38 @@ window.addEventListener('contextmenu', e => e.preventDefault());
 function updatePaperStyle() {
     let paperKey = document.getElementById('paper-select').value;
     if (PAPERS[paperKey]) {
-        styleTag.innerHTML = `@media print { 
-            @page { size: ${PAPERS[paperKey].css}; margin: 0mm; } 
-            html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; width: 100% !important; height: 100% !important; }
-            #cadCanvas { width: 100vw !important; height: 100vh !important; display: block !important; object-fit: fill !important; }
-            #toolbar, #sidebar, #info-panel, #dynamic-input-container, #line-props-menu, #btn-dim-ortho, #btn-bezier-type { display: none !important; }
-        }`;
+        styleTag.innerHTML = `@media print {
+    @page {
+        size: ${PAPERS[paperKey].w}mm ${PAPERS[paperKey].h}mm;
+        margin: 0;
+    }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: ${PAPERS[paperKey].w}mm !important;
+        height: ${PAPERS[paperKey].h}mm !important;
+        overflow: hidden !important;
+    }
+
+    #cadCanvas {
+        display: block !important;
+        width: ${PAPERS[paperKey].w}mm !important;
+        height: ${PAPERS[paperKey].h}mm !important;
+        max-width: none !important;
+        max-height: none !important;
+    }
+
+    #toolbar,
+    #sidebar,
+    #info-panel,
+    #dynamic-input-container,
+    #line-props-menu,
+    #btn-dim-ortho,
+    #btn-bezier-type {
+        display: none !important;
+    }
+}`;
         zoomToPaper();
     }
     drawEverything();
@@ -236,18 +272,30 @@ function getDimEndpoints(el) {
 function renderExtendedElement(ctx, el, isSel, isPrinting, currentScale) {
     ctx.save();
     let color = isPrinting ? '#000000' : (isSel ? '#ff3333' : (el.color || '#ffffff'));
-    let baseThick = (el.thickness !== undefined) ? el.thickness * 10 : 2;
-    let thickness = isPrinting ? (baseThick * 1.25 / currentScale) : ((isSel ? baseThick * 1.5 : baseThick) / currentScale);
+    
+    let actualLineWidth;
+    let baseThick = el.thickness || 0.2;
+    if (isPrinting) {
+    actualLineWidth = getPrintLineWidth(baseThick);   // baseThick = mm
+    } else {
+        let pixelWidth = Math.max(1.4, baseThick * canvasLineWidthFactor * 5.0);
+        if (isSel) pixelWidth *= 1.5;
+        actualLineWidth = pixelWidth / currentScale;
+    }
 
     ctx.strokeStyle = color;
-    ctx.lineWidth = thickness;
+    ctx.lineWidth = actualLineWidth; 
 
     let dashLen = el.dashLength || 10;
     let dashGap = el.dashGap || 5;
     if (el.lineType === 'dashed') {
-        ctx.setLineDash([dashLen / currentScale, dashGap / currentScale]);
+    let dLen = isPrinting ? getPrintLineWidth(dashLen) : (dashLen / currentScale);
+    let dGap = isPrinting ? getPrintLineWidth(dashGap) : (dashGap / currentScale);
+    ctx.setLineDash([dLen, dGap]);
     } else if (el.lineType === 'dashdot') {
-        ctx.setLineDash([dashLen / currentScale, dashGap / currentScale, (dashLen / 4) / currentScale, dashGap / currentScale]);
+        let dLen = isPrinting ? getPrintLineWidth(dashLen) : (dashLen / currentScale);
+        let dGap = isPrinting ? getPrintLineWidth(dashGap) : (dashGap / currentScale);
+        ctx.setLineDash([dLen, dGap, dLen / 4, dGap]);
     } else {
         ctx.setLineDash([]);
     }
@@ -569,6 +617,11 @@ function getWorldMousePos(e) {
 }
 
 function drawEverything() {
+    if (!isPrinting) {
+        savedScreenScale = scale;
+    }
+    let scrScale = getScreenScale();
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(panX, panY);
@@ -578,7 +631,6 @@ function drawEverything() {
 
     let paperDim = getPaperWorldDimensions();
     if (paperDim && !isPrintingBestFit) {
-        // VANJSKI DIO OKVIRA SE NE CRTA KADA SE PRINTA
         if (!isPrinting) {
             ctx.strokeStyle = 'rgba(255, 80, 80, 0.5)';
             ctx.lineWidth = 1.5 / scale; 
@@ -586,7 +638,7 @@ function drawEverything() {
         }
 
         ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 80, 80, 0.3)';
-        ctx.lineWidth = isPrinting ? 1.5 / scale : 1 / scale;
+        ctx.lineWidth = 0.5 / scrScale;
         ctx.strokeRect(paperDim.leftMargin, paperDim.margin, paperDim.w - paperDim.leftMargin - paperDim.margin, paperDim.h - paperDim.margin * 2);
 
         if (isPrinting) {
@@ -597,7 +649,8 @@ function drawEverything() {
             ctx.scale(1, -1);
             ctx.rotate(-Math.PI / 2);
             ctx.fillStyle = '#000000';
-            ctx.font = `${32 / scale}px Arial`;
+            console.log("Screen scale: ", scrScale);
+            ctx.font = `${0.35}px Arial`;
             ctx.textAlign = 'left';
             ctx.fillText("almedin.vercel.app    husalmedin@gmail.com", 0, 0);
             ctx.restore();
@@ -608,23 +661,39 @@ function drawEverything() {
         drawAllCandidateSnapPoints();
     }
 
+    // Proračun živog pomaka za Move alat
+    let moveOffset = { x: 0, y: 0 };
+    let isMovingPreview = (mode === 'move' && typeof ToolState !== 'undefined' && ToolState.step === 2 && ToolState.points && ToolState.points.length > 0);
+    if (isMovingPreview) {
+        let basePt = ToolState.points[0];
+        let targetPt = orthoEnabled ? orthoCorrectedWorldPos : mouseWorldPos;
+        moveOffset.x = targetPt.x - basePt.x;
+        moveOffset.y = targetPt.y - basePt.y;
+    }
+
+    // Iscrtavanje svih elemenata
     elements.forEach(el => {
         let isSel = selectedElements.includes(el);
         let color = isPrinting ? '#000000' : (isSel ? '#ff3333' : (el.color || '#ffffff'));
         
+        ctx.save();
+        if (isSel && isMovingPreview) {
+            ctx.translate(moveOffset.x, moveOffset.y);
+        }
+
         if (el.type === 'line') {
-            let baseThick = (el.thickness !== undefined) ? el.thickness * 10 : 2;
-            let thickness = isPrinting ? (baseThick * 1.25 / scale) : ((isSel ? baseThick * 1.5 : baseThick) / scale);
+            let thickness = isSel ? (el.thickness || 0.2) * 1.5 : (el.thickness || 0.2);
             drawLine(el.p1, el.p2, color, thickness, el.lineType || 'solid', el.dashLength || 10, el.dashGap || 5);
         } else if (el.type === 'dimension') {
-            let thickness = isPrinting ? (2.5 / scale) : ((isSel ? 3 : 2) / scale);
             drawAutoCADDimension(el.p1, el.p2, el.offset, false, isSel, el.dimType || 'aligned', el.radius, el.startOffset);
         } else if (el.type === 'text') {
             ctx.save();
             ctx.fillStyle = isPrinting ? '#000000' : (isSel ? '#ff3333' : (el.color || '#ffffff'));
             let baseSize = el.fontSize || 16;
-            let fSize = (isPrinting ? baseSize * 4 : baseSize) / scale;
+            let fSize = baseSize / scrScale;
             ctx.font = `${fSize}px ${el.font || 'Arial'}`;
+            ctx.textAlign = 'left'; 
+            ctx.textBaseline = 'bottom';
             ctx.translate(el.p1.x, el.p1.y);
             ctx.scale(1, -1);
             ctx.fillText(el.text || '', 0, 0);
@@ -632,17 +701,26 @@ function drawEverything() {
         } else {
             renderExtendedElement(ctx, el, isSel, isPrinting, scale);
         }
+
+        ctx.restore();
     });
 
+    // Vektor linija vodiilja pri pomjeranju
+    if (isMovingPreview) {
+        let basePt = ToolState.points[0];
+        let targetPt = orthoEnabled ? orthoCorrectedWorldPos : mouseWorldPos;
+        drawLine(basePt, targetPt, '#00e5ff', 1 / scale, 'dashed', 10, 5, true);
+    }
+
     if (!isPrinting) {
-        if (mode === 'line' && isDrawing) drawLine(startPoint, currentPoint, '#007acc', 2 / scale);
+        if (mode === 'line' && isDrawing) drawLine(startPoint, currentPoint, '#007acc', 0.2);
         else if (mode === 'dimension') {
             if (dimMode === 2 && dimStep === 1) {
                 let angle = Math.atan2(mouseWorldPos.y - dimP1.y, mouseWorldPos.x - dimP1.x);
                 let p2Radial = { x: dimP1.x + Math.cos(angle) * dimRadius, y: dimP1.y + Math.sin(angle) * dimRadius };
                 drawAutoCADDimension(dimP1, p2Radial, 0, true, false, 'radial', dimRadius);
             } else if (dimStep === 1) {
-                drawLine(dimP1, mouseWorldPos, 'rgba(0, 229, 255, 0.4)', 1 / scale);
+                drawLine(dimP1, mouseWorldPos, 'rgba(0, 229, 255, 0.4)', 1 / scale, 'solid', 10, 5, true);
             } else if (dimStep === 2) {
                 let params = getDimParams(dimP1, dimP2, mouseWorldPos);
                 drawAutoCADDimension(dimP1, dimP2, params.offset, true, false, params.type);
@@ -668,7 +746,8 @@ function drawEverything() {
         }
         let snappedScreenPos = worldToScreen(mouseWorldPos.x, mouseWorldPos.y);
         drawCadCursor(snappedScreenPos.x, snappedScreenPos.y);
-        infoPanel.innerText = `X: ${mouseWorldPos.x.toFixed(2)}, Y: ${mouseWorldPos.y.toFixed(2)} | Snap-Rez: ${gridSize}`;
+        let coordsText = `X: ${mouseWorldPos.x.toFixed(2)}, Y: ${mouseWorldPos.y.toFixed(2)} | Snap-Rez: ${gridSize}`;
+        infoPanel.innerText = temporaryStatusMessage ? `[ ${temporaryStatusMessage} ]   |   ${coordsText}` : coordsText;
     }
 }
 
@@ -698,23 +777,40 @@ function drawUCS() {
     ctx.strokeStyle = '#33ff33'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 40 / scale); ctx.stroke();
 }
 
-function drawLine(p1, p2, color, width, lineType = 'solid', dashLen = 10, dashGap = 5) { 
+function drawLine(p1, p2, color, width, lineType = 'solid', dashLen = 10, dashGap = 5, widthIsWorldUnits = false) { 
     ctx.save();
     ctx.strokeStyle = color; 
-    ctx.lineWidth = width; 
     
+    let actualLineWidth;
+    if (isPrinting) {
+        // width je u mm na papiru
+        actualLineWidth = getPrintLineWidth(width);
+    } else if (widthIsWorldUnits) {
+        actualLineWidth = width;
+    } else {
+        let pixelWidth = Math.max(1.4, width * canvasLineWidthFactor * 5.0);
+        actualLineWidth = pixelWidth / scale;
+    }
+    
+    ctx.lineWidth = actualLineWidth; 
+    
+    let dLen, dGap;
+    if (isPrinting) {
+        dLen = getPrintLineWidth(dashLen);
+        dGap = getPrintLineWidth(dashGap);
+    } else {
+        dLen = dashLen / scale;
+        dGap = dashGap / scale;
+    }
+
     if (lineType === 'dashed') {
-        ctx.setLineDash([dashLen / scale, dashGap / scale]);
+        ctx.setLineDash([dLen, dGap]);
     } else if (lineType === 'dashdot') {
-        ctx.setLineDash([dashLen / scale, dashGap / scale, (dashLen / 4) / scale, dashGap / scale]);
+        ctx.setLineDash([dLen, dGap, dLen / 4, dGap]);
     } else {
         ctx.setLineDash([]);
     }
-
-    ctx.beginPath(); 
-    ctx.moveTo(p1.x, p1.y); 
-    ctx.lineTo(p2.x, p2.y); 
-    ctx.stroke(); 
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); 
     ctx.restore();
 }
 
@@ -791,7 +887,7 @@ function showDynamicInput(x, y, placeholder = "Vrednost ili X,Y") {
 function hideDynamicInput() { dynContainer.style.display = 'none'; dynInput.value = ''; canvas.focus(); }
 
 function openPropsMenu(x, y) {
-    if (selectedElements.length !== 1) return;
+    if (selectedElements.length === 0) return;
     let el = selectedElements[0];
     
     document.getElementById('prop-thickness').value = el.thickness || 0.2;
@@ -822,38 +918,42 @@ function openPropsMenu(x, y) {
         propsMenu.appendChild(textContainer);
 
         document.getElementById('prop-text-val').addEventListener('input', (e) => {
-            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
-                selectedElements[0].text = e.target.value;
-                drawEverything();
-            }
+            selectedElements.forEach(item => {
+                if (item.type === 'text') item.text = e.target.value;
+            });
+            drawEverything();
         });
         document.getElementById('prop-text-font').addEventListener('change', (e) => {
-            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
-                selectedElements[0].font = e.target.value;
-                drawEverything();
-            }
+            selectedElements.forEach(item => {
+                if (item.type === 'text') item.font = e.target.value;
+            });
+            drawEverything();
         });
         document.getElementById('prop-text-size').addEventListener('input', (e) => {
-            if (selectedElements.length === 1 && selectedElements[0].type === 'text') {
-                selectedElements[0].fontSize = parseFloat(e.target.value) || 16;
-                drawEverything();
-            }
+            let sz = parseFloat(e.target.value) || 16;
+            selectedElements.forEach(item => {
+                if (item.type === 'text') item.fontSize = sz;
+            });
+            drawEverything();
         });
     }
 
-    if (el.type === 'text') {
+    let hasText = selectedElements.some(item => item.type === 'text');
+    if (hasText) {
         textContainer.style.display = 'block';
-        document.getElementById('prop-text-val').value = el.text || '';
-        document.getElementById('prop-text-font').value = el.font || 'Arial';
-        document.getElementById('prop-text-size').value = el.fontSize || 16;
+        let firstText = selectedElements.find(item => item.type === 'text');
+        document.getElementById('prop-text-val').value = firstText.text || '';
+        document.getElementById('prop-text-font').value = firstText.font || 'Arial';
+        document.getElementById('prop-text-size').value = firstText.fontSize || 16;
     } else {
         textContainer.style.display = 'none';
     }
     
     let bezProp = document.getElementById('bezier-handle-props');
     if (bezProp) {
-        bezProp.style.display = (el.type === 'bezier') ? 'block' : 'none';
-        if (el.type === 'bezier' && el.nodes && el.nodes.length > 0) {
+        let isSingleBezier = (selectedElements.length === 1 && el.type === 'bezier');
+        bezProp.style.display = isSingleBezier ? 'block' : 'none';
+        if (isSingleBezier && el.nodes && el.nodes.length > 0) {
             let activeIdx = (selectedBezierNodeIndex !== null) ? selectedBezierNodeIndex : 0;
             let activeNode = el.nodes[activeIdx] || el.nodes[0];
             let currentType = activeNode.type || 'symmetric';
@@ -869,13 +969,16 @@ function openPropsMenu(x, y) {
 
     updateLineTypeButtons(el.lineType || 'solid');
     
-    let menuW = 250, menuH = 380;
-    let posX = Math.min(x, window.innerWidth - menuW - 10);
-    let posY = Math.min(y, window.innerHeight - menuH - 10);
+    propsMenu.style.display = 'block';
+
+    let menuW = propsMenu.offsetWidth || 250;
+    let menuH = propsMenu.offsetHeight || 380;
+    
+    let posX = Math.max(10, Math.min(x, window.innerWidth - menuW - 10));
+    let posY = Math.max(10, Math.min(y, window.innerHeight - menuH - 10));
     
     propsMenu.style.left = posX + 'px';
     propsMenu.style.top = posY + 'px';
-    propsMenu.style.display = 'block';
 }
 
 function hidePropsMenu() {
@@ -883,15 +986,19 @@ function hidePropsMenu() {
 }
 
 function updateLineFromMenu() {
-    if (selectedElements.length !== 1) return;
-    let el = selectedElements[0];
+    if (selectedElements.length === 0) return;
     
     let thick = parseFloat(document.getElementById('prop-thickness').value);
-    el.thickness = thick;
+    let dashLen = parseFloat(document.getElementById('prop-dash-len').value) || 10;
+    let dashGap = parseFloat(document.getElementById('prop-dash-gap').value) || 5;
+    
     document.getElementById('thick-val').innerText = thick.toFixed(2);
     
-    el.dashLength = parseFloat(document.getElementById('prop-dash-len').value) || 10;
-    el.dashGap = parseFloat(document.getElementById('prop-dash-gap').value) || 5;
+    selectedElements.forEach(el => {
+        el.thickness = thick;
+        el.dashLength = dashLen;
+        el.dashGap = dashGap;
+    });
     
     drawEverything();
 }
@@ -948,8 +1055,10 @@ function setLineThickness(val) {
 }
 
 function setLineType(type) {
-    if (selectedElements.length !== 1) return;
-    selectedElements[0].lineType = type;
+    if (selectedElements.length === 0) return;
+    selectedElements.forEach(el => {
+        el.lineType = type;
+    });
     updateLineTypeButtons(type);
     drawEverything();
 }
@@ -962,8 +1071,10 @@ function updateLineTypeButtons(type) {
 }
 
 function setLineColor(hex) {
-    if (selectedElements.length !== 1) return;
-    selectedElements[0].color = hex;
+    if (selectedElements.length === 0) return;
+    selectedElements.forEach(el => {
+        el.color = hex;
+    });
     document.getElementById('prop-hex-color').value = hex;
     drawEverything();
 }
@@ -991,10 +1102,24 @@ function getDimParams(p1, p2, mousePos) {
 function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = false, dimType = 'aligned', storedRadius = 0, startOffCustom = undefined) {
     let distance, dimLineP1, dimLineP2;
     let mainColor = isPrinting ? '#000000' : (isSelected ? '#ff3333' : (isPreview ? '#ffaa00' : '#00e5ff'));
-    let thickness = 1.5 / scale;
+    let scrScale = getScreenScale();
+    
+    // Kotiranje: debljine su izražene u mm na gotovom papiru.
+    const DIM_THICKNESS = 0.20;
+    const DIM_EXT_THICKNESS = 0.15;
 
-    ctx.strokeStyle = isPrinting ? 'rgba(0,0,0,0.3)' : 'rgba(255, 255, 255, 0.3)'; 
-    ctx.lineWidth = 0.5 / scale;
+    let extThick = isPrinting
+        ? getPrintLineWidth(DIM_EXT_THICKNESS)
+        : (DIM_THICKNESS / scrScale);
+
+    let mainThickArg = isPrinting
+        ? getPrintLineWidth(DIM_THICKNESS)
+        : (DIM_THICKNESS / scrScale);
+
+    // Produžne linije moraju koristiti vlastitu debljinu,
+    // a ne naslijediti lineWidth prethodno iscrtane linije.
+    ctx.strokeStyle = isPrinting ? '#000000' : 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = extThick;
 
     let txtPrefix = "";
 
@@ -1009,7 +1134,7 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
         dimLineP1 = { x: p1.x + Math.cos(angle) * startOffset, y: p1.y + Math.sin(angle) * startOffset };
         dimLineP2 = { x: p1.x + Math.cos(angle) * distance, y: p1.y + Math.sin(angle) * distance };
 
-        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawLine(dimLineP1, dimLineP2, mainColor, mainThickArg, 'solid', 10, 5, false);
         drawCadTick(dimLineP2, angle, mainColor);
     } 
     else if (dimType === 'horizontal') {
@@ -1020,7 +1145,7 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
         
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineP1.x, dimLineP1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineP2.x, dimLineP2.y); ctx.stroke();
-        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawLine(dimLineP1, dimLineP2, mainColor, mainThickArg, 'solid', 10, 5, false);
         drawCadTick(dimLineP1, 0, mainColor);
         drawCadTick(dimLineP2, 0, mainColor);
     } 
@@ -1032,7 +1157,7 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
         
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineX, p1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineX, p2.y); ctx.stroke();
-        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawLine(dimLineP1, dimLineP2, mainColor, mainThickArg, 'solid', 10, 5, false);
         drawCadTick(dimLineP1, Math.PI / 2, mainColor);
         drawCadTick(dimLineP2, Math.PI / 2, mainColor);
     } 
@@ -1046,7 +1171,7 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(dimLineP1.x, dimLineP1.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(dimLineP2.x, dimLineP2.y); ctx.stroke();
         let angle = Math.atan2(dy, dx);
-        drawLine(dimLineP1, dimLineP2, mainColor, thickness);
+        drawLine(dimLineP1, dimLineP2, mainColor, mainThickArg, 'solid', 10, 5, false);
         drawCadTick(dimLineP1, angle, mainColor);
         drawCadTick(dimLineP2, angle, mainColor);
     }
@@ -1054,16 +1179,47 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     let dx = dimLineP2.x - dimLineP1.x;
     let dy = dimLineP2.y - dimLineP1.y;
     let angle = Math.atan2(dy, dx);
+    let len = Math.hypot(dx, dy);
 
-    let mx = (dimLineP1.x + dimLineP2.x) / 2; 
-    let my = (dimLineP1.y + dimLineP2.y) / 2;
-    let fontSize = isPrinting ? (48 / scale) : (12 / scale);
-    
-    ctx.fillStyle = mainColor; 
-    ctx.font = `bold ${fontSize}px Arial`; 
-    ctx.textAlign = 'center';
+    let fontSize;
+    if (isPrinting) {
+        fontSize = getPrintLineWidth(3.5);   // 3.5 mm visina teksta
+    } else {
+        fontSize = 14 / scrScale;
+    }
     
     ctx.save(); 
+    ctx.font = `bold ${fontSize}px Arial`; 
+
+    let scaleSelect = document.getElementById('scale-select');
+    let unitSelect = document.getElementById('unit-select');
+    let selectedScale = scaleSelect ? parseFloat(scaleSelect.value) : 1;
+    let unit = unitSelect ? unitSelect.value : 'cm';
+    let txt = txtPrefix + (distance / selectedScale).toFixed(1) + " " + unit;
+    
+    let textWidth = ctx.measureText(txt).width;
+    let mx, my;
+
+    if (dimType === 'radial') {
+        let margin = isPrinting ? getPrintLineWidth(1) : (3 / scrScale);
+        let midX = len / 2; 
+        let maxEndX = len - margin; 
+
+        let localX = midX;
+        if (midX + (textWidth / 2) > maxEndX) {
+            localX = maxEndX - (textWidth / 2);
+        }
+
+        mx = dimLineP1.x + Math.cos(angle) * localX;
+        my = dimLineP1.y + Math.sin(angle) * localX;
+    } else {
+        mx = (dimLineP1.x + dimLineP2.x) / 2; 
+        my = (dimLineP1.y + dimLineP2.y) / 2;
+    }
+
+    ctx.fillStyle = mainColor; 
+    ctx.textAlign = 'center';
+    
     ctx.translate(mx, my); 
     ctx.scale(1, -1); 
     
@@ -1074,21 +1230,23 @@ function drawAutoCADDimension(p1, p2, offset, isPreview = false, isSelected = fa
     
     ctx.rotate(txtAngle);
     
-    let scaleSelect = document.getElementById('scale-select');
-    let unitSelect = document.getElementById('unit-select');
-    let selectedScale = scaleSelect ? parseFloat(scaleSelect.value) : 1;
-    let unit = unitSelect ? unitSelect.value : 'cm';
-    let txt = txtPrefix + (distance / selectedScale).toFixed(1) + " " + unit;
-    
-    let cleanPadding = 8 / scale;
+    let cleanPadding = isPrinting ? getPrintLineWidth(1.0) : (6 / scrScale);
     ctx.fillText(txt, 0, -cleanPadding);
     ctx.restore();
 }
 
 function drawCadTick(pt, lineAngle, color) {
-    let tickLength = 5 / scale; let tickAngle = lineAngle + Math.PI / 4;
-    ctx.strokeStyle = color; ctx.lineWidth = isPrinting ? (2.0 / scale) : (2 / scale);
-    ctx.beginPath(); ctx.moveTo(pt.x - Math.cos(tickAngle) * tickLength, pt.y - Math.sin(tickAngle) * tickLength); ctx.lineTo(pt.x + Math.cos(tickAngle) * tickLength, pt.y + Math.sin(tickAngle) * tickLength); ctx.stroke();
+    let scrScale = getScreenScale();
+    let tickLength = isPrinting ? getPrintLineWidth(1.0) : (6 / scrScale); 
+    let tickAngle = lineAngle + Math.PI / 4;
+    ctx.strokeStyle = color; 
+    let tickWidth = isPrinting ? getPrintLineWidth(0.20) : (1.6 / scrScale);
+    ctx.lineWidth = tickWidth;
+
+    ctx.beginPath(); 
+    ctx.moveTo(pt.x - Math.cos(tickAngle) * tickLength, pt.y - Math.sin(tickAngle) * tickLength); 
+    ctx.lineTo(pt.x + Math.cos(tickAngle) * tickLength, pt.y + Math.sin(tickAngle) * tickLength); 
+    ctx.stroke();
 }
 
 function checkGripClick(scrX, scrY) {
@@ -1204,27 +1362,29 @@ canvas.addEventListener('mousedown', (e) => {
             showDynamicInput(e.clientX, e.clientY, label);
             drawEverything();
             return;
-        } else if (mode === 'select' && selectedElements.length === 1) {
-            let el = selectedElements[0];
-            let posClick = getWorldMousePos(e);
-            if (el.type === 'bezier' && el.nodes) {
-                let bestD = 25 / scale;
-                for (let i = 0; i < el.nodes.length; i++) {
-                    let d = Math.hypot(posClick.x - el.nodes[i].anchor.x, posClick.y - el.nodes[i].anchor.y);
-                    if (d < bestD) {
-                        bestD = d;
-                        selectedBezierNodeIndex = i;
+        } else if (mode === 'select' && selectedElements.length > 0) {
+            if (selectedElements.length === 1) {
+                let el = selectedElements[0];
+                let posClick = getWorldMousePos(e);
+                if (el.type === 'bezier' && el.nodes) {
+                    let bestD = 25 / scale;
+                    for (let i = 0; i < el.nodes.length; i++) {
+                        let d = Math.hypot(posClick.x - el.nodes[i].anchor.x, posClick.y - el.nodes[i].anchor.y);
+                        if (d < bestD) {
+                            bestD = d;
+                            selectedBezierNodeIndex = i;
+                        }
                     }
                 }
             }
             openPropsMenu(e.clientX, e.clientY);
             return;
         } else {
-            resetDrawingState(); 
+                    resetDrawingState(); 
+                }
+            drawEverything(); 
+            return; 
         }
-        drawEverything(); 
-        return; 
-    }
 
     hidePropsMenu();
 
@@ -1711,15 +1871,29 @@ function getElementsBoundingBox(targetElements) {
     return { xMin, xMax, yMin, yMax, w: xMax - xMin, h: yMax - yMin, cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2 };
 }
 
+function getPrintLineWidth(thicknessMM) {
+    // thicknessMM je fizička debljina na papiru.
+    // Vraćamo odgovarajući broj world-unit-a u print transformaciji.
+    if (!Number.isFinite(thicknessMM) || thicknessMM <= 0) return 0;
+
+    const paperSelect = document.getElementById('paper-select');
+    const paperKey = paperSelect ? paperSelect.value : 'A4_P';
+    const paper = PAPERS[paperKey] || PAPERS['A4_P'];
+
+    const paperDim = getPaperWorldDimensions();
+    if (!paperDim || !paper.w || paper.w <= 0) return thicknessMM;
+
+    // paperDim.w world-unit-a odgovara paper.w mm fizičke širine papira.
+    // Nakon canvas print scale-a dobija se tačno thicknessMM mm na papiru.
+    return thicknessMM * (paperDim.w / paper.w);
+}
+
 function printCanvas(modeType = 'standard') {
     let paperDim = getPaperWorldDimensions();
-    if (!paperDim) { alert("Izaberite format papira iz menija pre printanja!"); return; }
 
     let targetElements = (modeType === 'selection') ? selectedElements : elements;
-    if (targetElements.length === 0) {
-        alert(modeType === 'selection' ? "Nema selektovanih elemenata za printanje!" : "Crtež je prazan!");
-        return;
-    }
+
+    savedScreenScale = scale;
 
     isPrinting = true; 
     isPrintingBestFit = (modeType === 'best_fit' || modeType === 'selection');
@@ -1781,6 +1955,206 @@ function printCanvas(modeType = 'standard') {
     drawEverything(); canvas.focus();
 }
 
+function exportDXF() {
+    if (elements.length === 0) {
+        showStatusMessage("Upozorenje: Crtež je prazan, nema elemenata za izvoz.");
+        return;
+    }
+
+    let dxf = [];
+    dxf.push("0", "SECTION", "2", "HEADER", "0", "ENDSEC");
+    dxf.push("0", "SECTION", "2", "ENTITIES");
+
+    elements.forEach(el => {
+        if (el.type === 'line') {
+            dxf.push("0", "LINE", "8", "0");
+            dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
+            dxf.push("11", el.p2.x.toFixed(4), "21", el.p2.y.toFixed(4), "31", "0.0");
+        } 
+        else if (el.type === 'circle' && el.p1) {
+            let r = (el.radius !== undefined) ? el.radius : Math.hypot(el.p2.x - el.p1.x, el.p2.y - el.p1.y);
+            dxf.push("0", "CIRCLE", "8", "0");
+            dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
+            dxf.push("40", r.toFixed(4));
+        } 
+        else if (el.type === 'text') {
+            dxf.push("0", "TEXT", "8", "0");
+            dxf.push("10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0");
+            dxf.push("40", (el.fontSize || 16).toFixed(4));
+            dxf.push("1", el.text || "");
+        }
+        else if (el.type === 'rect' && el.pts && el.pts.length === 4) {
+            for (let i = 0; i < 4; i++) {
+                let pA = el.pts[i], pB = el.pts[(i + 1) % 4];
+                dxf.push("0", "LINE", "8", "0");
+                dxf.push("10", pA.x.toFixed(4), "20", pA.y.toFixed(4), "30", "0.0");
+                dxf.push("11", pB.x.toFixed(4), "21", pB.y.toFixed(4), "31", "0.0");
+            }
+        }
+        else if (el.type === 'dimension') {
+            let pts = getDimEndpoints(el);
+            if (pts) {
+                dxf.push("0", "LINE", "8", "0", "10", el.p1.x.toFixed(4), "20", el.p1.y.toFixed(4), "30", "0.0", "11", pts.p1.x.toFixed(4), "21", pts.p1.y.toFixed(4), "31", "0.0");
+                dxf.push("0", "LINE", "8", "0", "10", el.p2.x.toFixed(4), "20", el.p2.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
+                dxf.push("0", "LINE", "8", "0", "10", pts.p1.x.toFixed(4), "20", pts.p1.y.toFixed(4), "30", "0.0", "11", pts.p2.x.toFixed(4), "21", pts.p2.y.toFixed(4), "31", "0.0");
+            }
+        }
+    });
+
+    dxf.push("0", "ENDSEC", "0", "EOF");
+
+    let blob = new Blob([dxf.join("\n")], { type: "application/dxf" });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "crtez.dxf";
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    showStatusMessage("DXF uspješno generisan i sačuvan!");
+}
+
+function importDXF(event) {
+    let file = event.target.files[0];
+    if (!file) return;
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let rawText = e.target.result;
+            let lines = rawText.split(/\r?\n/).map(l => l.trim());
+            
+            let pairs = [];
+            for (let i = 0; i < lines.length - 1; i += 2) {
+                let code = parseInt(lines[i], 10);
+                let val = lines[i + 1];
+                if (!isNaN(code) && val !== undefined) {
+                    pairs.push({ code, val });
+                }
+            }
+
+            let importedCount = 0;
+
+            for (let i = 0; i < pairs.length; i++) {
+                let p = pairs[i];
+
+                if (p.code === 0) {
+                    let entityType = p.val.toUpperCase();
+
+                    if (entityType === "LINE") {
+                        let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) x1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) y1 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 11) x2 = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 21) y2 = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(x1) && !isNaN(y1) && !isNaN(x2) && !isNaN(y2)) {
+                            elements.push({
+                                type: 'line',
+                                p1: { x: x1, y: y1 },
+                                p2: { x: x2, y: y2 },
+                                thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                            });
+                            importedCount++;
+                        }
+                    }
+                    else if (entityType === "CIRCLE") {
+                        let cx = 0, cy = 0, r = 0;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) cx = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) cy = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 40) r = parseFloat(pairs[j].val);
+                            j++;
+                        }
+                        if (!isNaN(cx) && !isNaN(cy) && !isNaN(r) && r > 0) {
+                            elements.push({
+                                type: 'circle',
+                                p1: { x: cx, y: cy },
+                                p2: { x: cx + r, y: cy },
+                                radius: r,
+                                thickness: 0.2, color: '#ffffff'
+                            });
+                            importedCount++;
+                        }
+                    }
+                    else if (entityType === "LWPOLYLINE" || entityType === "POLYLINE") {
+                        let pts = [];
+                        let currX = null, currY = null;
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) {
+                                if (currX !== null && currY !== null) pts.push({ x: currX, y: currY });
+                                currX = parseFloat(pairs[j].val);
+                            }
+                            if (pairs[j].code === 20) {
+                                currY = parseFloat(pairs[j].val);
+                            }
+                            j++;
+                        }
+                        if (currX !== null && currY !== null) pts.push({ x: currX, y: currY });
+
+                        if (pts.length > 1) {
+                            for (let k = 0; k < pts.length - 1; k++) {
+                                elements.push({
+                                    type: 'line',
+                                    p1: { x: pts[k].x, y: pts[k].y },
+                                    p2: { x: pts[k + 1].x, y: pts[k + 1].y },
+                                    thickness: 0.2, lineType: 'solid', dashLength: 10, dashGap: 5, color: '#ffffff'
+                                });
+                            }
+                            importedCount++;
+                        }
+                    }
+                    else if (entityType === "TEXT" || entityType === "MTEXT") {
+                        let tx = 0, ty = 0, size = 16, textVal = "";
+                        let j = i + 1;
+                        while (j < pairs.length && pairs[j].code !== 0) {
+                            if (pairs[j].code === 10) tx = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 20) ty = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 40) size = parseFloat(pairs[j].val);
+                            if (pairs[j].code === 1) textVal = pairs[j].val;
+                            j++;
+                        }
+                        if (textVal) {
+                            elements.push({
+                                type: 'text',
+                                p1: { x: tx, y: ty },
+                                text: textVal,
+                                font: 'Arial',
+                                fontSize: size || 16,
+                                color: '#ffffff'
+                            });
+                            importedCount++;
+                        }
+                    }
+                }
+            }
+
+            event.target.value = '';
+
+            if (importedCount > 0) {
+                zoomExtents();
+                showStatusMessage(`DXF učitan: uvezeno ${importedCount} entiteta.`);
+            } else {
+                showStatusMessage("Upozorenje: DXF nema podržanih entiteta (LINE, CIRCLE, POLYLINE, TEXT).");
+            }
+
+        } catch (err) {
+            console.error("DXF Error:", err);
+            showStatusMessage("Greška pri parsiranju DXF fajla!");
+        }
+    };
+
+    reader.onerror = function() {
+        showStatusMessage("Greška pri čitanju fajla sa diska.");
+    };
+
+    reader.readAsText(file);
+}
+
 function updateSidebarPosition() {
     const toolbar = document.getElementById('toolbar');
     const sidebar = document.getElementById('sidebar');
@@ -1798,6 +2172,26 @@ if (window.ResizeObserver) {
         });
         toolbarObserver.observe(toolbar);
     }
+}
+
+function zoomExtents() {
+    let bbox = getElementsBoundingBox(elements);
+    if (!bbox || bbox.w <= 0 || bbox.h <= 0) return;
+
+    let padding = 60;
+    let availW = canvas.width - padding * 2;
+    let availH = canvas.height - padding * 2;
+
+    if (availW <= 0 || availH <= 0) return;
+
+    scale = Math.min(availW / bbox.w, availH / bbox.h);
+    scale = Math.max(0.01, Math.min(scale, 50));
+
+    let screenCx = canvas.width / 2;
+    let screenCy = canvas.height / 2;
+
+    panX = screenCx - bbox.cx * scale;
+    panY = screenCy + bbox.cy * scale;
 }
 
 function zoomToPaper() {
@@ -1833,6 +2227,16 @@ function zoomToPaper() {
 
     panX = screenCx - worldCx * scale;
     panY = screenCy + worldCy * scale;
+}
+
+function showStatusMessage(msg, duration = 4000) {
+    temporaryStatusMessage = msg;
+    if (statusMessageTimer) clearTimeout(statusMessageTimer);
+    statusMessageTimer = setTimeout(() => {
+        temporaryStatusMessage = "";
+        drawEverything();
+    }, duration);
+    drawEverything();
 }
 
 window.addEventListener('load', () => {

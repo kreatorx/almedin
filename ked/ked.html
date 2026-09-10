@@ -10,6 +10,9 @@
 
     <!-- Gornji Toolbar -->
     <div id="toolbar">
+        <button id="btn-load-dxf" class="sidebar-btn" onclick="document.getElementById('dxf-file-input').click()">Load DXF</button>
+<button id="btn-save-dxf" class="sidebar-btn" onclick="exportDXF()">Save DXF</button>
+<input type="file" id="dxf-file-input" accept=".dxf" style="display: none;" onchange="importDXF(event)">
         <span style="font-size:12px;">Jedinica:</span>
         <select id="unit-select" onchange="drawEverything()">
             <option value="mm">mm</option>
@@ -103,20 +106,20 @@
 
         <div class="sidebar-separator"></div>
 
-        <!-- Manipulacije -->
-        <button id="btn-offset" class="sidebar-btn" onclick="setMode('offset')" title="Offset (Paralela)">
+<!-- Manipulacije (Neimplementirane funkcije - Onemogućeno) -->
+        <button id="btn-offset" class="sidebar-btn" disabled style="opacity: 0.35; cursor: not-allowed; pointer-events: none;" title="Offset (Nije implementirano)">
             <svg viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16" stroke-dasharray="3 3"/></svg>
         </button>
-        <button id="btn-fillet" class="sidebar-btn" onclick="setMode('fillet')" title="Fillet (Zaobljenje/Round)">
+        <button id="btn-fillet" class="sidebar-btn" disabled style="opacity: 0.35; cursor: not-allowed; pointer-events: none;" title="Fillet (Nije implementirano)">
             <svg viewBox="0 0 24 24"><path d="M4 20v-8a8 8 0 0 1 8-8h8"/></svg>
         </button>
-        <button id="btn-trim" class="sidebar-btn" onclick="setMode('trim')" title="Trim (Odsijecanje)">
+        <button id="btn-trim" class="sidebar-btn" disabled style="opacity: 0.35; cursor: not-allowed; pointer-events: none;" title="Trim (Nije implementirano)">
             <svg viewBox="0 0 24 24"><line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20" stroke-dasharray="4 4"/></svg>
         </button>
-        <button id="btn-extend" class="sidebar-btn" onclick="setMode('extend')" title="Extend (Produženje)">
+        <button id="btn-extend" class="sidebar-btn" disabled style="opacity: 0.35; cursor: not-allowed; pointer-events: none;" title="Extend (Nije implementirano)">
             <svg viewBox="0 0 24 24"><line x1="18" y1="4" x2="18" y2="20"/><line x1="4" y1="12" x2="14" y2="12"/><path d="M11 9l3 3-3 3"/></svg>
         </button>
-        <button id="btn-hatch" class="sidebar-btn" onclick="setMode('hatch')" title="Hatch (Šrafura)">
+        <button id="btn-hatch" class="sidebar-btn" disabled style="opacity: 0.35; cursor: not-allowed; pointer-events: none;" title="Hatch (Nije implementirano)">
             <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><line x1="4" y1="12" x2="12" y2="4"/><line x1="4" y1="20" x2="20" y2="4"/><line x1="12" y1="20" x2="20" y2="12"/></svg>
         </button>
     </div>
