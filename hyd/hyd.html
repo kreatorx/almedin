@@ -3,604 +3,2064 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulacija Gravitacionog Dovoda i Rezervoara</title>
+    <title>VodovodCAD by Almedin</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="HYDProracun.js"></script>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --accent-blue: #38bdf8;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --accent-yellow: #eab308;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Sidebar Kontrole */
-        #sidebar {
-            width: 380px;
-            background-color: var(--panel-bg);
-            border-right: 1px solid var(--border-color);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            overflow-y: auto;
-        }
-
-        h2 {
-            font-size: 1.1rem;
-            color: var(--accent-blue);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 5px;
-            margin-top: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .control-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .control-label span.val {
-            color: var(--accent-blue);
-            font-weight: bold;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            accent-color: var(--accent-blue);
-            cursor: pointer;
-        }
-
-        /* Main Viewport */
-        #main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* Metrics Bar */
-        #metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            padding: 15px 20px;
-            background-color: var(--panel-bg);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .metric-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .metric-card .title {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .metric-card .value {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--accent-green);
-            margin-top: 4px;
-        }
-
-        /* Canvas Wrapper */
-        #canvas-container {
-            flex: 1;
-            position: relative;
-            background: #090d16;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        /* Legend Overlay */
-        #legend {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(30, 41, 59, 0.85);
-            backdrop-filter: blur(4px);
-            border: 1px solid var(--border-color);
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .legend-line {
-            width: 25px;
-            height: 3px;
-            border-radius: 2px;
-        }
+        :root { --bg-dark: #181825; --bg-panel: #1e1e2e; --bg-input: #313244; --accent-cyan: #89dceb; --accent-blue: #89b4fa; --accent-green: #a6e3a1; --accent-orange: #fab387; --accent-red: #f38ba8; --accent-purple: #cba6f7; --accent-yellow: #f9e2af; --text-main: #cdd6f4; --text-sub: #bac2de; --border-color: #45475a; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        input, select { user-select: text; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        header { background: var(--bg-panel); border-bottom: 1px solid var(--border-color); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 52px; z-index: 100; }
+        .logo { font-weight: bold; font-size: 0.95rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px; }
+        .toolbar-group { display: flex; align-items: center; gap: 6px; }
+        .btn { background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 9px; border-radius: 4px; cursor: pointer; font-size: 0.78rem; display: flex; align-items: center; gap: 4px; transition: background 0.2s, color 0.2s, border-color 0.2s; }
+        .btn:hover { background: var(--accent-blue); color: #11111b; border-color: var(--accent-blue); }
+        .btn.active { background: var(--accent-cyan); color: #11111b; font-weight: bold; border-color: var(--accent-cyan); }
+        select, input[type="number"], input[type="text"], input[type="range"] { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 6px; border-radius: 4px; font-size: 0.78rem; outline: none; }
+        select:focus, input:focus { border-color: var(--accent-blue); }
+        input[type="file"] { display: none; }
+        .slider-group { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color); }
+        .app-container { flex: 1; display: flex; flex-direction: row; width: 100vw; min-height: 0; overflow: hidden; background: var(--bg-dark); }
+        .pane-column { display: flex; flex-direction: column; flex: 1; height: 100%; min-width: 300px; overflow: hidden; }
+        .pane-row { display: flex; flex-direction: row; flex: 1.2; min-height: 150px; overflow: hidden; }
+        .pane { position: relative; overflow: hidden; background: #11111b; height: 100%; width: 100%; }
+        #pane-plan { flex: 1.4; min-width: 200px; }
+        #pane-3d { flex: 0.8; min-width: 150px; background: #11111b; }
+        #pane-profile { flex: 1; min-height: 150px; cursor: crosshair; }
+        #pane-inspector { width: 320px; min-width: 220px; background: var(--bg-panel); border-left: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .splitter-v { width: 6px; background: var(--bg-panel); border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); cursor: col-resize; z-index: 20; position: relative; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .splitter-h { height: 6px; background: var(--bg-panel); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); cursor: row-resize; z-index: 20; position: relative; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .splitter-v:hover, .splitter-h:hover, .splitter-v.dragging, .splitter-h.dragging { background: var(--accent-blue); }
+        .splitter-btn { position: absolute; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; font-size: 9px; width: 16px; height: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 25; padding: 0; line-height: 1; transition: background 0.2s, color 0.2s; }
+        .splitter-h .splitter-btn { width: 22px; height: 16px; }
+        .splitter-btn:hover { background: var(--accent-blue); color: #11111b; border-color: var(--accent-blue); }
+        .pane-collapsed { display: none !important; }
+        .pane-expanded { flex: 1 1 100% !important; width: 100% !important; height: 100% !important; }
+        .inspector-title { font-weight: bold; color: var(--accent-cyan); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; }
+        .form-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.78rem; }
+        .section-header { font-size: 0.8rem; font-weight: bold; color: var(--accent-orange); margin-top: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 3px; }
+        canvas { display: block; width: 100%; height: 100%; }
+        .view-label { position: absolute; top: 8px; left: 8px; background: rgba(24, 24, 37, 0.85); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color); font-weight: bold; color: var(--accent-cyan); pointer-events: none; z-index: 10; }
+        .info-panel { position: absolute; bottom: 8px; right: 8px; background: rgba(24, 24, 37, 0.85); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--border-color); color: var(--text-sub); pointer-events: none; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <!-- SIDEBAR PARAMETRI -->
-    <div id="sidebar">
-        <h1 style="font-size: 1.3rem; color: #fff; margin-bottom: 10px;">Simulacija Dovoda Vode</h1>
+    <!-- HEADER / TOOLBAR -->
+    <header>
+        <div class="logo">🚰 VodovodCAD v1.0 (test)</div>
 
-        <h2>1. Desni Rezervoar (Gornji / Kaptaža)</h2>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Izdašnost vrela (Q<sub>in</sub>):</span>
-                <span class="val" id="val_Qin">6.0 L/s</span>
-            </div>
-            <input type="range" id="param_Qin" min="0" max="20" step="0.5" value="6.0">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Kota dna (Z<sub>1</sub>):</span>
-                <span class="val" id="val_Z1">120.0 m</span>
-            </div>
-            <input type="range" id="param_Z1" min="100" max="150" step="1" value="120">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Širina rezervoara (B<sub>1</sub>):</span>
-                <span class="val" id="val_B1">4.0 m</span>
-            </div>
-            <input type="range" id="param_B1" min="2" max="10" step="0.5" value="4">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Maks. visina (H<sub>max1</sub>):</span>
-                <span class="val" id="val_Hmax1">4.0 m</span>
-            </div>
-            <input type="range" id="param_Hmax1" min="2" max="6" step="0.5" value="4">
+        <div class="toolbar-group">
+            <label class="btn">📂 DXF (Izohipse) <input type="file" id="dxf-input" accept=".dxf"></label>
+            <label class="btn">🖼️ Slika Podloga <input type="file" id="img-input" accept="image/*"></label>
+            <button class="btn" id="btn-demo-terrain">⛰️ Demo Teren</button>
         </div>
 
-        <h2>2. Dovodni Cjevovod</h2>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Dužina cijevi (L):</span>
-                <span class="val" id="val_L">500 m</span>
-            </div>
-            <input type="range" id="param_L" min="100" max="2000" step="50" value="500">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Unutrašnji prečnik (D):</span>
-                <span class="val" id="val_D">110 mm</span>
-            </div>
-            <input type="range" id="param_D" min="50" max="300" step="5" value="110">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Koef. trenja (λ):</span>
-                <span class="val" id="val_lambda">0.025</span>
-            </div>
-            <input type="range" id="param_lambda" min="0.010" max="0.060" step="0.001" value="0.025">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Lokalni gubici / Ventil (Σξ):</span>
-                <span class="val" id="val_xi">3.0</span>
-            </div>
-            <input type="range" id="param_xi" min="0" max="50" step="0.5" value="3.0">
+        <div class="toolbar-group" style="background: rgba(255,255,255,0.05); padding: 3px 6px; border-radius: 4px;">
+            <span style="font-size:0.78rem;">Vod:</span>
+            <select id="select-alignment"></select>
+            <button class="btn" id="btn-add-align">➕ Novi Vod</button>
         </div>
 
-        <h2>3. Lijevi Rezervoar (Donji / Selo)</h2>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Potrošnja sela (Q<sub>out</sub>):</span>
-                <span class="val" id="val_Qout">4.5 L/s</span>
-            </div>
-            <input type="range" id="param_Qout" min="0" max="20" step="0.5" value="4.5">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Kota dna (Z<sub>2</sub>):</span>
-                <span class="val" id="val_Z2">90.0 m</span>
-            </div>
-            <input type="range" id="param_Z2" min="50" max="100" step="1" value="90">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Širina rezervoara (B<sub>2</sub>):</span>
-                <span class="val" id="val_B2">5.0 m</span>
-            </div>
-            <input type="range" id="param_B2" min="2" max="12" step="0.5" value="5">
-        </div>
-        <div class="control-group">
-            <div class="control-label">
-                <span>Maks. visina (H<sub>max2</sub>):</span>
-                <span class="val" id="val_Hmax2">4.0 m</span>
-            </div>
-            <input type="range" id="param_Hmax2" min="2" max="6" step="0.5" value="4">
-        </div>
-    </div>
-
-    <!-- MAIN CONTENT VIEW -->
-    <div id="main-content">
-        <!-- METRICS PANEL -->
-        <div id="metrics-bar">
-            <div class="metric-card">
-                <div class="title">Protok u cijevi (Q<sub>pipe</sub>)</div>
-                <div class="value" id="m_Qpipe">0.0 L/s</div>
-            </div>
-            <div class="metric-card">
-                <div class="title">Brzina strujanja (v)</div>
-                <div class="value" id="m_velocity">0.00 m/s</div>
-            </div>
-            <div class="metric-card">
-                <div class="title">Gubici pritiska (h<sub>f</sub>)</div>
-                <div class="value" id="m_loss" style="color: var(--accent-red);">0.00 m</div>
-            </div>
-            <div class="metric-card">
-                <div class="title">Pritisak na ulazu u donji rez.</div>
-                <div class="value" id="m_press" style="color: var(--accent-yellow);">0.00 bar</div>
-            </div>
-            <div class="metric-card">
-                <div class="title">Visinska razlika (ΔH)</div>
-                <div class="value" id="m_dH" style="color: var(--accent-blue);">0.00 m</div>
-            </div>
+        <div class="toolbar-group">
+            <button class="btn active" id="tool-select">🔍 Pan/Odabir</button>
+            <button class="btn" id="tool-draw">✏️ Crtaj Trasu</button>
+            <button class="btn" id="tool-img">🖼️ Uredi Sliku</button>
         </div>
 
-        <!-- CANVAS -->
-        <div id="canvas-container">
-            <canvas id="simCanvas"></canvas>
+        <div class="toolbar-group">
+            <div class="slider-group">
+                <span>Profil V-Mjerilo:</span>
+                <input type="range" id="input-profile-v-exag" min="1" max="10" value="1" step="1" style="width:60px;">
+                <span id="label-profile-v-exag" style="color:var(--accent-cyan); font-weight:bold;">1x</span>
+            </div>
+            <div class="slider-group">
+                <span>3D Z-Mjerilo:</span>
+                <input type="range" id="input-z-exag" min="1" max="5" value="1" step="0.5" style="width:55px;">
+                <span id="label-z-exag" style="color:var(--accent-cyan); font-weight:bold;">1x</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:5px; margin-left:6px;">
+            <label for="input-pipe-depth" style="font-size:0.8rem; color:var(--text-sub); white-space:nowrap;">Dubina cijevi (m):</label>
+            <input type="number" id="input-pipe-depth" style="width:55px" value="0.80" step="0.05">
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:5px; margin-left:6px;">
+                <label for="input-extra-station" style="font-size:0.8rem; color:var(--text-sub); white-space:nowrap;">Stacionaže (m):</label>
+                <input type="text" id="input-extra-station" value="0" placeholder="npr. 10 ili 0,10,153.8" style="width:100px;" title="Unesite korak ili tačne stacionaže odvojene zarezom (0 = isključeno)">
+            </div>
+            
+            <button class="btn" id="btn-auto-valves" style="color:var(--accent-orange)">Auto Ventili</button>
+            <button class="btn" id="btn-reset" style="color:var(--accent-red)">🗑️ Očisti</button>
+        </div>
+    </header>
 
-            <!-- LEGEND -->
-            <div id="legend">
-                <div class="legend-item">
-                    <div class="legend-line" style="background: #38bdf8;"></div>
-                    <span>Cjevovod & Vodno tijelo</span>
+    <!-- MAIN RESIZABLE LAYOUT -->
+    <div class="app-container">
+        <!-- LIJEVA STRANA -->
+        <div id="left-column" class="pane-column">
+            <!-- Gornja zona: Situacija + 3D Pregled -->
+            <div id="top-zone" class="pane-row">
+                <div id="pane-plan" class="pane">
+                    <div class="view-label">SITUACIJA</div>
+                    <canvas id="canvasPlan"></canvas>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-line" style="background: #ef4444;"></div>
-                    <span>Dinamička Piezometarska linija (HGL)</span>
+                
+                <div id="splitter-v-top" class="splitter-v">
+                    <button class="splitter-btn" id="btn-toggle-3d" title="Sakrij/Prikaži 3D pregled">◀</button>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-line" style="background: #eab308;"></div>
-                    <span>Energetska linija (EGL)</span>
+
+                <div id="pane-3d" class="pane">
+                    <div class="view-label">3D PREGLED</div>
+                    <canvas id="canvas3D"></canvas>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-line" style="background: rgba(255,255,255,0.3);"></div>
-                    <span>Statička piezometarska linija</span>
-                </div>
+            </div>
+
+            <div id="splitter-h-left" class="splitter-h">
+                <button class="splitter-btn" id="btn-toggle-profile" title="Sakrij/Prikaži Profil">▼</button>
+            </div>
+
+            <!-- Donja zona: Uzdužni Profil -->
+            <div id="pane-profile" class="pane">
+                <div class="view-label">UZDUŽNI PROFIL</div>
+                <canvas id="canvasProfile"></canvas>
+            </div>
+        </div>
+
+        <div id="splitter-v-main" class="splitter-v">
+            <button class="splitter-btn" id="btn-toggle-inspector" title="Sakrij/Prikaži Inspector">▶</button>
+        </div>
+
+        <!-- DESNA STRANA: Inspector Sidebar -->
+        <div id="pane-inspector" class="pane">
+            <div class="inspector-title" id="inspector-header-title">⚙️ Inspector</div>
+            <div id="inspector-content">
+                <p style="font-size:0.75rem; color:var(--text-sub);">Odaberite čvor, objekat ili dionicu cijevi.</p>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- STANJE I PARAMETRI SIMULACIJE ---
-        const state = {
-            // Desni rezervoar (Gornji / Kaptaža)
-            Qin: 6.0,          // L/s
-            Z1: 120.0,         // m (Kota dna)
-            B1: 4.0,           // m (Širina / kvadratna osnova A = B^2)
-            Hmax1: 4.0,        // m (Maksimalna dubina)
-            H1: 2.5,           // m (Trenutni nivo vode)
+<script>
+/* ============================================================
+   2. GLOBALNO STANJE
+   ============================================================ */
+const state = {
+    mode: 'select',
+    dxfContours: [], dxfBgBox: null,
+    bgImage: null,
+    bgImgBounds: { x: 0, y: 0, w: 0, h: 0, scale: 1.0, isFitted: false },
+    alignments: [{ id: 1, name: "Glavni vod (ID: 1)", points: [], airValves: [] }],
+    activeAlignId: 1,
+    pipeDepth: 0.80,
+    zExaggeration: 1.0,
+    profileVExag: 1.0,
+    planPan: { x: 100, y: 100 }, planZoom: 1.2,
+    profilePan: { x: 140, y: 0 }, profileZoom: { x: 1.5, y: 1.0 },
+    selectedNodeType: null, selectedPlanNode: -1, selectedPipeIdx: -1,
+    isDraggingProfileNode: false, isPanningProfile: false, profilePanStart: { x: 0, y: 0 },
+    activeSnapPoint: null,
+    animTime: 0,
+    lastTimestamp: performance.now(),
+    extraStationInterval: 0,
+    bandHeight: 120,
+    bandFontSize: 8
+};
 
-            // Cjevovod
-            L: 500,            // m (Dužina)
-            D: 110,            // mm (Prečnik)
-            lambda: 0.025,     // Bezdimenzionalno (Koef. trenja)
-            xi: 3.0,           // Bezdimenzionalno (Lokalni gubici)
+const NODE_TYPES = {
+    sastavni:   { name: 'Sastavni čvor / Potrošač / Dotok', zeta: 0.0,  symbol: 'circle', color: '#89b4fa' },
+    kaptaza:    { name: 'Kaptaža (Izvorište)',      zeta: 0.0,  symbol: 'kaptaza',       color: '#a6e3a1' },
+    rezervoar:  { name: 'Rezervoar (Vodosprema)',   zeta: 0.0,  symbol: 'rezervoar',     color: '#fab387' },
+    pumpRes:    { name: 'Rezervoar sa pumpom',      zeta: 0.0,  symbol: 'pumpRes',       color: '#f9e2af' },
+    prozracni:  { name: 'Odzračni ventil',          zeta: 0.2,  symbol: 'triangle_up',   color: '#f38ba8' },
+    zatvarac:   { name: 'Zasuni / Ventili',         zeta: 0.15, symbol: 'valve',         color: '#cba6f7' },
+    muljni:     { name: 'Muljni ispusni ventil',    zeta: 0.3,  symbol: 'triangle_down', color: '#a6adc8' },
+    tracva:     { name: 'T-Račva',                  zeta: 0.5,  symbol: 'square',        color: '#89dceb' },
+    yracva:     { name: 'Y-Račva',                  zeta: 0.4,  symbol: 'diamond',       color: '#89dceb' },
+    razdjelnik: { name: 'Distributivni sklop',      zeta: 1.0,  symbol: 'double_circle', color: '#f9e2af' }
+};
 
-            // Lijevi rezervoar (Donji / Selo)
-            Qout: 4.5,         // L/s
-            Z2: 90.0,          // m (Kota dna)
-            B2: 5.0,           // m (Širina)
-            Hmax2: 4.0,        // m (Maksimalna dubina)
-            H2: 1.8,           // m (Trenutni nivo vode)
+const PIPE_MATERIALS = {
+    'PE-HD':    { name: 'PE-HD Plastika',            roughness: 0.01  },
+    'PVC':      { name: 'PVC Plastika',              roughness: 0.015 },
+    'Steel':    { name: 'Čelik (Novi)',              roughness: 0.045 },
+    'Ductile':  { name: 'Duktilno Liveno Željezo',  roughness: 0.03  },
+    'Concrete': { name: 'Beton',                     roughness: 0.3   }
+};
 
-            // Izračunate hidrauličke vrijednosti
-            Qpipe: 0,          // m^3/s
-            v: 0,              // m/s
-            hf: 0,             // m (Gubici)
-            p_entry: 0,        // bar (Pritisak na ulazu u donji rezervoar)
-            particles: []      // Animacija čestica u cijevi
-        };
+function getActiveAlignment() {
+    let found = state.alignments.find(a => a.id === state.activeAlignId);
+    if (!found && state.alignments.length > 0) { found = state.alignments[0]; state.activeAlignId = found.id; }
+    return found;
+}
 
-        const g = 9.81;
+const canvasPlan = document.getElementById('canvasPlan');
+const ctxPlan = canvasPlan.getContext('2d');
+const canvasProfile = document.getElementById('canvasProfile');
+const ctxProfile = canvasProfile.getContext('2d');
 
-        // Inicijalizacija čestica za vizuelni prikaz protoka
-        for (let i = 0; i < 40; i++) {
-            state.particles.push({ progress: Math.random() });
+/* ============================================================
+   3. POMOĆNE FUNKCIJE & GEOMETRIJA TERENA
+   ============================================================ */
+function distToSegment(p, v, w) {
+    let l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+    if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+    let t = Math.max(0, Math.min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+    return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+}
+
+function getSnappedCoordinates(worldX, worldY, snapThresholdPx = 14) {
+    let snapDistWorld = snapThresholdPx / state.planZoom;
+    let minDistance = snapDistWorld, snappedCoord = null;
+    for (let align of state.alignments) {
+        for (let pt of align.points) {
+            let dist = Math.hypot(pt.x - worldX, pt.y - worldY);
+            if (dist < minDistance) { minDistance = dist; snappedCoord = { x: pt.x, y: pt.y }; }
+        }
+    }
+    state.activeSnapPoint = snappedCoord;
+    return snappedCoord ? snappedCoord : { x: worldX, y: worldY };
+}
+
+function moveSharedNodes(targetX, targetY, newX, newY) {
+    state.alignments.forEach(align => {
+        align.points.forEach(p => {
+            if (Math.hypot(p.x - targetX, p.y - targetY) < 1.0) {
+                p.x = newX;
+                p.y = newY;
+            }
+        });
+    });
+}
+
+function updateSharedNodeDepths(targetX, targetY, newDepth) {
+    state.alignments.forEach(align => {
+        align.points.forEach(p => {
+            if (Math.hypot(p.x - targetX, p.y - targetY) < 1.0) {
+                p.depth = newDepth;
+            }
+        });
+    });
+}
+
+// Zzaglađena interpolacija kote terena (bez skokovitih promjena)
+function getElevationAt(x, y) {
+    if (state.dxfContours.length > 0) {
+        let candidates = [];
+        for (let c of state.dxfContours) {
+            for (let p of c.points) {
+                let d = Math.hypot(p.x - x, p.y - y);
+                if (d < 0.05) return c.elevation;
+                candidates.push({ d, z: c.elevation });
+            }
+        }
+        candidates.sort((a, b) => a.d - b.d);
+        const topK = candidates.slice(0, 4);
+        if (topK.length === 0) return 250.0;
+        let wSum = 0, zSum = 0;
+        for (let item of topK) {
+            let w = 1.0 / Math.pow(item.d, 2);
+            wSum += w;
+            zSum += item.z * w;
+        }
+        return zSum / wSum;
+    }
+    const dx = x - 250, dy = y - 250;
+    const dist = Math.hypot(dx, dy);
+    const zHill = Math.max(0, (1 - dist / 300)) * 45;
+    return 230.0 + zHill + Math.sin(x * 0.02) * 3;
+}
+
+function generateDemoTerrain() {
+    state.dxfContours = [];
+    const baseZ = 230, maxZ = 280;
+    for (let elev = baseZ; elev <= maxZ; elev += 3.0) {
+        let contour = { elevation: elev, points: [] };
+        let radius = (maxZ - elev + 5) * 4.5;
+        for (let a = 0; a <= Math.PI * 2; a += 0.15) {
+            let r = radius + Math.sin(a * 4) * 6;
+            contour.points.push({ x: 250 + Math.cos(a) * r, y: 250 + Math.sin(a) * r });
+        }
+        state.dxfContours.push(contour);
+    }
+    update3DScene();
+    center3DCameraOnTerrain();
+    centerProfileOnTerrain();
+}
+
+function fitImageToDxfBox() {
+    if (state.dxfBgBox && state.bgImage) {
+        state.bgImgBounds.x = state.dxfBgBox.minX;
+        state.bgImgBounds.y = state.dxfBgBox.minY;
+        state.bgImgBounds.w = state.dxfBgBox.w;
+        state.bgImgBounds.h = state.dxfBgBox.h;
+        state.bgImgBounds.isFitted = true;
+    }
+}
+
+function resizeCanvases() {
+    if (canvasPlan && canvasPlan.parentElement) {
+        canvasPlan.width = canvasPlan.parentElement.clientWidth;
+        canvasPlan.height = canvasPlan.parentElement.clientHeight;
+    }
+    if (canvasProfile && canvasProfile.parentElement) {
+        canvasProfile.width = canvasProfile.parentElement.clientWidth;
+        canvasProfile.height = canvasProfile.parentElement.clientHeight;
+    }
+    if (renderer3D) {
+        const c3 = document.getElementById('pane-3d');
+        if (c3) {
+            renderer3D.setSize(c3.clientWidth, c3.clientHeight);
+            camera3D.aspect = c3.clientWidth / c3.clientHeight;
+            camera3D.updateProjectionMatrix();
+        }
+    }
+}
+window.addEventListener('resize', resizeCanvases);
+
+/* ============================================================
+   4. GEOMETRIJA TRASE
+   ============================================================ */
+function ProcessAlignment(align) {
+    if (!align || !align.points) return { sampledPoints: [], totalLength: 0 };
+    const pts = align.points;
+    if (pts.length < 2) return { sampledPoints: [], totalLength: 0 };
+
+    let sampled = [], currentStation = 0;
+    for (let i = 0; i < pts.length; i++) {
+        let p = pts[i];
+        if (p.depth === undefined) p.depth = state.pipeDepth;
+        if (p.type === undefined) p.type = 'sastavni';
+        if (p.zeta === undefined) p.zeta = NODE_TYPES[p.type].zeta;
+        if (p.qFlow === undefined) p.qFlow = 10.0;
+        if (p.qIn === undefined) p.qIn = 0.0;
+
+        if (p.type === 'rezervoar' && !p.resData)
+            p.resData = { width: 8, length: 10, height: 4, chambers: 2, waterLevel: 3.2, qIn: 10.0, isConstantLevel: true };
+        if (p.type === 'pumpRes' && !p.resData)
+            p.resData = { width: 6, length: 8, height: 3, chambers: 1, waterLevel: 2.0, qIn: 10.0, pumpHead: 25.0, isConstantLevel: true };
+        if (p.type === 'kaptaza' && !p.kapData)
+            p.kapData = { width: 4, height: 2.5, muljnaWidth: 1.2, pregradaH: 1.4, qSource: 10.0 };
+        if (!p.pipeSegment)
+            p.pipeSegment = { material: 'PE-HD', roughness: 0.01, diameter: 110, wallThickness: 6.6, bendRadius: 0, bendAngle: 0 };
+
+        const zElev = (p.z !== undefined) ? p.z : getElevationAt(p.x, p.y);
+
+        if (i === 0 || i === pts.length - 1 || !p.radius || p.radius <= 0) {
+            if (sampled.length > 0) {
+                let prev = sampled[sampled.length - 1];
+                currentStation += Math.hypot(p.x - prev.x, p.y - prev.y);
+            }
+            sampled.push({ x: p.x, y: p.y, station: currentStation, z: zElev, isNode: true, nodeRef: p, origIdx: i });
+        } else {
+            let prev = pts[i - 1], next = pts[i + 1];
+            let v1 = { x: prev.x - p.x, y: prev.y - p.y };
+            let v2 = { x: next.x - p.x, y: next.y - p.y };
+            let len1 = Math.hypot(v1.x, v1.y), len2 = Math.hypot(v2.x, v2.y);
+            if (len1 === 0 || len2 === 0) continue;
+            let u1 = { x: v1.x / len1, y: v1.y / len1 };
+            let u2 = { x: v2.x / len2, y: v2.y / len2 };
+            let dot = u1.x * u2.x + u1.y * u2.y;
+            let angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+            let R = p.radius;
+            let T = R * Math.tan((Math.PI - angle) / 2);
+            if (T >= len1 / 2 || T >= len2 / 2 || isNaN(T)) {
+                let dist = Math.hypot(p.x - sampled[sampled.length - 1].x, p.y - sampled[sampled.length - 1].y);
+                currentStation += dist;
+                sampled.push({ x: p.x, y: p.y, station: currentStation, z: zElev, isNode: true, nodeRef: p, origIdx: i });
+                continue;
+            }
+            let T1 = { x: p.x + u1.x * T, y: p.y + u1.y * T };
+            let T2 = { x: p.x + u2.x * T, y: p.y + u2.y * T };
+            let d1 = Math.hypot(T1.x - sampled[sampled.length - 1].x, T1.y - sampled[sampled.length - 1].y);
+            currentStation += d1;
+            sampled.push({ x: T1.x, y: T1.y, station: currentStation, z: zElev, isNode: true, nodeRef: p, origIdx: i });
+            const steps = 6;
+            for (let k = 1; k <= steps; k++) {
+                let t = k / steps;
+                let bx = (1 - t) * (1 - t) * T1.x + 2 * (1 - t) * t * p.x + t * t * T2.x;
+                let by = (1 - t) * (1 - t) * T1.y + 2 * (1 - t) * t * p.y + t * t * T2.y;
+                let lastP = sampled[sampled.length - 1];
+                currentStation += Math.hypot(bx - lastP.x, by - lastP.y);
+                sampled.push({ x: bx, y: by, station: currentStation, z: getElevationAt(bx, by), isNode: false, nodeRef: p, origIdx: i });
+            }
+        }
+    }
+    return { sampledPoints: sampled, totalLength: currentStation };
+}
+
+function centerProfileOnTerrain() {
+    const activeAlign = getActiveAlignment();
+    const { sampledPoints } = ProcessAlignment(activeAlign);
+    if (!sampledPoints || sampledPoints.length < 2) return;
+    let minZ = Infinity, maxZ = -Infinity;
+    sampledPoints.forEach(p => { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; });
+    const zMidWorld = ((minZ + maxZ) / 2 - 200) * state.profileVExag;
+    const h = canvasProfile.height, bandHeight = 100;
+    state.profilePan.y = zMidWorld * state.profileZoom.y - (h - bandHeight) / 2;
+}
+
+function center3DCameraOnTerrain() {
+    if (!state.dxfContours || state.dxfContours.length === 0) return;
+    let minZ = Infinity, maxZ = -Infinity;
+    state.dxfContours.forEach(c => { if (c.elevation < minZ) minZ = c.elevation; if (c.elevation > maxZ) maxZ = c.elevation; });
+    if (minZ === Infinity) return;
+    const zCenter3D = ((minZ + maxZ) / 2 - 200) * state.zExaggeration;
+    if (controls3D && camera3D) {
+        const deltaZ = zCenter3D - controls3D.target.z;
+        controls3D.target.z = zCenter3D;
+        camera3D.position.z += deltaZ;
+        controls3D.update();
+    }
+}
+
+function worldToProfileScreen(station, z) {
+    const bandHeight = state.bandHeight || 120;
+    const datum = 200;
+    const vExag = state.profileVExag;
+    const screenX = state.profilePan.x + (station * state.profileZoom.x);
+    const screenY = (canvasProfile.height - bandHeight + state.profilePan.y) - ((z - datum) * vExag * state.profileZoom.y);
+    return { x: screenX, y: screenY };
+}
+
+/* ============================================================
+   5. TOPOLOŠKI HIDRAULIČKI SOLVER MREŽE
+   ============================================================ */
+function solveAllAlignments() {
+    const calculatedHGLAtNode = new Map();
+    let finalMap = new Map();
+
+    for (let iter = 0; iter < 3; iter++) {
+        finalMap = solveAllAlignmentsSinglePass(calculatedHGLAtNode);
+    }
+    return finalMap;
+}
+
+function solveAllAlignmentsSinglePass(calculatedHGLAtNode) {
+    const map = new Map();
+    const processedMap = new Map();
+
+    state.alignments.forEach(align => {
+        processedMap.set(align.id, ProcessAlignment(align));
+    });
+
+    // Pomoćna funkcija: Pronalazi fizički objekat (pumpa, rezervoar, kaptaža) na datim koorinatam bez obzira na vod
+    const getPhysicalNodeAt = (x, y) => {
+        let found = null;
+        state.alignments.forEach(a => {
+            a.points.forEach(p => {
+                if (Math.hypot(p.x - x, p.y - y) < 1.0) {
+                    if (['rezervoar', 'pumpRes', 'kaptaza'].includes(p.type)) {
+                        found = p;
+                    }
+                }
+            });
+        });
+        if (found) return found;
+        state.alignments.forEach(a => {
+            a.points.forEach(p => {
+                if (Math.hypot(p.x - x, p.y - y) < 1.0) {
+                    found = p;
+                }
+            });
+        });
+        return found;
+    };
+
+    const getSourceHGL = (node, alignId, zPipe, key, x, y) => {
+        const physNode = getPhysicalNodeAt(x, y);
+        if (physNode && physNode.type === 'pumpRes' && physNode.resData) {
+            const isInlet = physNode.resData.pipeRoles?.[alignId] === true;
+            const head = (!isInlet) ? (physNode.resData.pumpHead || 0) : 0;
+            return zPipe + (physNode.resData.waterLevel || 0) + head;
+        } else if (physNode && physNode.type === 'rezervoar' && physNode.resData) {
+            return zPipe + (physNode.resData.waterLevel || 0);
+        } else if (physNode && physNode.type === 'kaptaza' && physNode.kapData) {
+            return zPipe + 2.0;
+        } else if (physNode && physNode.qIn > 0) {
+            return zPipe + 5.0;
+        }
+        return calculatedHGLAtNode.has(key) ? calculatedHGLAtNode.get(key) : -Infinity;
+    };
+
+    const getResParams = (node, alignId, x, y) => {
+        const physNode = getPhysicalNodeAt(x, y);
+        if (physNode && (physNode.type === 'rezervoar' || physNode.type === 'pumpRes')) {
+            const isInlet = physNode.resData?.pipeRoles?.[alignId] === true;
+            const head = (physNode.type === 'pumpRes' && !isInlet) ? (physNode.resData.pumpHead || 0) : 0;
+            return (physNode.resData?.waterLevel || 0) + head;
+        }
+        return 2.0;
+    };
+
+    const safeQ = (gravRes) => {
+        if (gravRes && typeof gravRes === 'object') {
+            return { Q: Number(gravRes.Q_lps) || 0, partial: !!gravRes.isPartiallyFilled };
+        }
+        return { Q: (typeof gravRes === 'number' && isFinite(gravRes)) ? gravRes : 0, partial: false };
+    };
+
+    state.alignments.forEach(align => {
+        const { sampledPoints } = processedMap.get(align.id) || { sampledPoints: [] };
+        if (sampledPoints.length < 2) {
+            map.set(align.id, { sampledPoints, profileData: [], hasFlow: false, hasWater: false, velocity: 0, Q_lps: 0, isReversed: false });
+            return;
         }
 
-        // Bindovanje DOM elemenata
-        const canvas = document.getElementById('simCanvas');
-        const ctx = canvas.getContext('2d');
+        const firstPt = sampledPoints[0];
+        const lastPt = sampledPoints[sampledPoints.length - 1];
+        const keyStart = `${firstPt.x.toFixed(2)},${firstPt.y.toFixed(2)}`;
+        const keyEnd = `${lastPt.x.toFixed(2)},${lastPt.y.toFixed(2)}`;
 
-        function bindInput(id, paramName, formatFn) {
-            const el = document.getElementById('param_' + id);
-            const valEl = document.getElementById('val_' + id);
-            el.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
-                state[paramName] = val;
-                valEl.textContent = formatFn(val);
+        const nodeStart = getPhysicalNodeAt(firstPt.x, firstPt.y);
+        const nodeEnd = getPhysicalNodeAt(lastPt.x, lastPt.y);
+
+        const zPipeStart = firstPt.z - (nodeStart?.depth ?? state.pipeDepth);
+        const zPipeEnd = lastPt.z - (nodeEnd?.depth ?? state.pipeDepth);
+
+        const hglStart = getSourceHGL(nodeStart, align.id, zPipeStart, keyStart, firstPt.x, firstPt.y);
+        const hglEnd = getSourceHGL(nodeEnd, align.id, zPipeEnd, keyEnd, lastPt.x, lastPt.y);
+
+        let forcedReversed = null;
+        if (nodeStart && nodeStart.type === 'pumpRes') {
+            const isInlet = nodeStart.resData?.pipeRoles?.[align.id] === true;
+            forcedReversed = isInlet;
+        } else if (nodeEnd && nodeEnd.type === 'pumpRes') {
+            const isInlet = nodeEnd.resData?.pipeRoles?.[align.id] === true;
+            forcedReversed = !isInlet;
+        }
+
+        let isReversed = false;
+        let startHGL = -Infinity;
+
+        if (forcedReversed === true) {
+            isReversed = true;
+            startHGL = hglEnd;
+        } else if (forcedReversed === false) {
+            isReversed = false;
+            startHGL = hglStart;
+        } else {
+            if (hglStart !== -Infinity && hglStart >= hglEnd) {
+                isReversed = false; startHGL = hglStart;
+            } else if (hglEnd !== -Infinity && hglEnd > hglStart) {
+                isReversed = true; startHGL = hglEnd;
+            }
+        }
+
+        let Q_lps = 0, isPartiallyFilled = false;
+
+        if (startHGL !== -Infinity) {
+            const totalL = sampledPoints[sampledPoints.length - 1].station;
+            let ptsForCalc, sourceNode, targetElev;
+
+            if (isReversed) {
+                ptsForCalc = [...sampledPoints].reverse().map(p => ({ ...p, station: totalL - p.station }));
+                sourceNode = nodeEnd;
+                targetElev = zPipeStart;
+            } else {
+                ptsForCalc = sampledPoints;
+                sourceNode = nodeStart;
+                targetElev = zPipeEnd;
+            }
+            const otherHGL = isReversed ? hglStart : hglEnd;
+            if (otherHGL !== -Infinity) targetElev = otherHGL;
+
+            const valveMult = (sourceNode?.qFlow !== undefined) ? (sourceNode.qFlow / 10.0) : 1.0;
+
+            if (sourceNode?.type === 'kaptaza' && sourceNode.kapData) {
+                Q_lps = (sourceNode.kapData.qSource ?? 10.0) * valveMult;
+            } else if (sourceNode?.qIn > 0) {
+                Q_lps = sourceNode.qIn * valveMult;
+            } else if (sourceNode?.type === 'rezervoar' || sourceNode?.type === 'pumpRes') {
+                const resWater = getResParams(sourceNode, align.id, sourceNode.x, sourceNode.y);
+                const h_offset = sourceNode.resData?.outlets?.[align.id] ?? 0.05;
+                const g = hydEngine.solveGravityFlow(ptsForCalc, startHGL, targetElev, valveMult, resWater, h_offset);
+                const r = safeQ(g); Q_lps = r.Q; isPartiallyFilled = r.partial;
+            } else {
+                const g = hydEngine.solveGravityFlow(ptsForCalc, startHGL, targetElev, valveMult, 2.0, 0.05);
+                const r = safeQ(g); Q_lps = r.Q;
+            }
+        }
+
+        let profileData = [];
+        const hasWater = (startHGL !== -Infinity);
+
+        if (hasWater) {
+            const totalL = sampledPoints[sampledPoints.length - 1].station;
+            const ptsForCalc = isReversed
+                ? [...sampledPoints].reverse().map(p => ({ ...p, station: totalL - p.station }))
+                : sampledPoints;
+
+            const hydRes = hydEngine.calculateProfile(ptsForCalc, Q_lps / 1000.0, startHGL);
+            profileData = hydRes.profile || [];
+
+            if (isReversed) {
+                profileData = profileData.reverse().map((pd, idx) => ({ ...pd, station: sampledPoints[idx].station }));
+            }
+
+            if (Q_lps > 0.0001) {
+                profileData.forEach((pd, idx) => {
+                    if (sampledPoints[idx] && sampledPoints[idx].isNode) {
+                        const p = sampledPoints[idx];
+                        calculatedHGLAtNode.set(`${p.x.toFixed(2)},${p.y.toFixed(2)}`, pd.hgl);
+                    }
+                });
+            }
+        } else {
+            profileData = sampledPoints.map(p => {
+                const zPipe = p.z - (p.nodeRef?.depth ?? state.pipeDepth);
+                return { station: p.station, z: p.z, hgl: zPipe, egl: zPipe, pressureBar: 0, velocity: 0 };
             });
         }
 
-        bindInput('Qin', 'Qin', v => v.toFixed(1) + ' L/s');
-        bindInput('Z1', 'Z1', v => v.toFixed(1) + ' m');
-        bindInput('B1', 'B1', v => v.toFixed(1) + ' m');
-        bindInput('Hmax1', 'Hmax1', v => v.toFixed(1) + ' m');
+        map.get(align.id)
+        map.set(align.id, {
+            sampledPoints, profileData,
+            hasFlow: Q_lps > 0.0001 && hasWater,
+            hasWater, velocity: profileData[0] ? profileData[0].velocity : 0,
+            Q_lps, isPartiallyFilled, isReversed
+        });
+    });
 
-        bindInput('L', 'L', v => v.toFixed(0) + ' m');
-        bindInput('D', 'D', v => v.toFixed(0) + ' mm');
-        bindInput('lambda', 'lambda', v => v.toFixed(3));
-        bindInput('xi', 'xi', v => v.toFixed(1));
+    return map;
+}
 
-        bindInput('Qout', 'Qout', v => v.toFixed(1) + ' L/s');
-        bindInput('Z2', 'Z2', v => v.toFixed(1) + ' m');
-        bindInput('B2', 'B2', v => v.toFixed(1) + ' m');
-        bindInput('Hmax2', 'Hmax2', v => v.toFixed(1) + ' m');
+/* ============================================================
+   6. CRTANJE SIMBOLA
+   ============================================================ */
+function drawCadSymbol(ctx, x, y, typeKey, isSelected, zoomScale = 1.0, isProfile = false) {
+    const type = NODE_TYPES[typeKey || 'sastavni'];
+    const s = (isSelected ? 7 : 5) / (isProfile ? 1.0 : zoomScale);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = isSelected ? '#fab387' : type.color;
+    ctx.strokeStyle = isSelected ? '#fab387' : '#ffffff';
+    ctx.lineWidth = 1.5;
 
-        // Resizing Canvas
-        function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+    switch (type.symbol) {
+        case 'circle':        ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); break;
+        case 'triangle_up':   ctx.beginPath(); ctx.moveTo(0, -s * 1.3); ctx.lineTo(-s, s); ctx.lineTo(s, s); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+        case 'triangle_down': ctx.beginPath(); ctx.moveTo(0, s * 1.3); ctx.lineTo(-s, -s); ctx.lineTo(s, -s); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+        case 'valve':
+            ctx.beginPath(); ctx.moveTo(-s, -s / 1.5); ctx.lineTo(0, 0); ctx.lineTo(-s, s / 1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(s, -s / 1.5); ctx.lineTo(0, 0); ctx.lineTo(s, s / 1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+            break;
+        case 'square':        ctx.fillRect(-s, -s, s * 2, s * 2); ctx.strokeRect(-s, -s, s * 2, s * 2); break;
+        case 'diamond':       ctx.beginPath(); ctx.moveTo(0, -s * 1.3); ctx.lineTo(s * 1.3, 0); ctx.lineTo(0, s * 1.3); ctx.lineTo(-s * 1.3, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+        case 'double_circle': ctx.beginPath(); ctx.arc(0, 0, s * 1.2, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2); ctx.fill(); break;
+        case 'pumpRes':
+            ctx.beginPath(); ctx.arc(0, 0, s * 1.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#11111b';
+            ctx.beginPath(); ctx.moveTo(0, -s * 0.7); ctx.lineTo(-s * 0.7, s * 0.5); ctx.lineTo(s * 0.7, s * 0.5); ctx.closePath(); ctx.fill();
+            break;
+        default:               ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill(); break;
+    }
+    ctx.restore();
+}
+
+function drawAnimatedReservoir(ctx, x, y, resData, isSelected, hasPump) {
+    const res = resData || { width: 8, length: 10, height: 4, waterLevel: 3.2, chambers: 2 };
+    const boxW = 70, boxH = 42;
+    const rectX = x - boxW / 2, rectY = y - boxH + 8;
+    ctx.fillStyle = 'rgba(30, 30, 46, 0.95)';
+    ctx.strokeStyle = isSelected ? '#fab387' : (hasPump ? '#f9e2af' : '#a6e3a1');
+    ctx.lineWidth = isSelected ? 2.5 : 1.6;
+    ctx.fillRect(rectX, rectY, boxW, boxH);
+    ctx.strokeRect(rectX, rectY, boxW, boxH);
+
+    if (res.chambers === 2) {
+        ctx.strokeStyle = '#45475a';
+        ctx.beginPath(); ctx.moveTo(x, rectY); ctx.lineTo(x, rectY + boxH); ctx.stroke();
+    }
+
+    const waterH = Math.max(0, Math.min(boxH - 6, (res.waterLevel / Math.max(0.01, res.height)) * boxH));
+    const waterY = rectY + boxH - waterH;
+    ctx.fillStyle = 'rgba(137, 220, 235, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(rectX + 2, waterY);
+    for (let wx = rectX + 2; wx <= rectX + boxW - 2; wx += 4) {
+        ctx.lineTo(wx, waterY + Math.sin(wx * 0.2 + state.animTime * 5) * 1.5);
+    }
+    ctx.lineTo(rectX + boxW - 2, rectY + boxH - 2);
+    ctx.lineTo(rectX + 2, rectY + boxH - 2);
+    ctx.closePath();
+    ctx.fill();
+
+    if (hasPump) {
+        ctx.fillStyle = '#f9e2af';
+        ctx.beginPath(); ctx.arc(x + boxW / 2 - 8, rectY + boxH - 8, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#11111b'; ctx.font = 'bold 7px Segoe UI';
+        ctx.fillText('P', x + boxW / 2 - 10, rectY + boxH - 6);
+    }
+
+    const V = (res.width * res.length * res.height).toFixed(1);
+    ctx.fillStyle = '#cdd6f4'; ctx.font = 'bold 9px monospace';
+    const label = hasPump
+        ? `P-VS V=${V}m³ h=${res.waterLevel.toFixed(2)}m`
+        : `VS V=${V}m³ h=${res.waterLevel.toFixed(2)}m`;
+    ctx.fillText(label, x - boxW / 2, rectY - 5);
+}
+
+function drawAnimatedCaptage(ctx, x, y, kapData, isSelected) {
+    const boxW = 46, boxH = 32;
+    const rectX = x - boxW / 2, rectY = y - boxH + 8;
+    ctx.fillStyle = 'rgba(30, 30, 46, 0.95)';
+    ctx.strokeStyle = isSelected ? '#fab387' : '#89b4fa';
+    ctx.lineWidth = isSelected ? 2.5 : 1.5;
+    ctx.fillRect(rectX, rectY, boxW, boxH);
+    ctx.strokeRect(rectX, rectY, boxW, boxH);
+    ctx.fillStyle = '#585b70';
+    ctx.fillRect(rectX + 16, rectY + 10, 3, boxH - 10);
+    ctx.fillStyle = 'rgba(166, 227, 161, 0.45)';
+    ctx.fillRect(rectX + 2, rectY + 10, boxW - 4, boxH - 12);
+    ctx.fillStyle = '#cdd6f4'; ctx.font = 'bold 9px monospace';
+    ctx.fillText(`KAPTAŽA Q=${(kapData?.qSource || 0).toFixed(1)}L/s`, x - boxW / 2, rectY - 5);
+}
+
+/* ============================================================
+   7. RENDER PLAN — SVI VODOVI SIMULTANO I SPREGNUTI
+   ============================================================ */
+function renderPlanView(networkHydraulics) {
+    if (!networkHydraulics) networkHydraulics = solveAllAlignments();
+
+    ctxPlan.clearRect(0, 0, canvasPlan.width, canvasPlan.height);
+    ctxPlan.save();
+    ctxPlan.translate(state.planPan.x, state.planPan.y);
+    ctxPlan.scale(state.planZoom, state.planZoom);
+
+    // Mreža
+    ctxPlan.strokeStyle = '#232433'; ctxPlan.lineWidth = 0.5;
+    for (let x = -1000; x < 2000; x += 50) { ctxPlan.beginPath(); ctxPlan.moveTo(x, -1000); ctxPlan.lineTo(x, 2000); ctxPlan.stroke(); }
+    for (let y = -1000; y < 2000; y += 50) { ctxPlan.beginPath(); ctxPlan.moveTo(-1000, y); ctxPlan.lineTo(2000, y); ctxPlan.stroke(); }
+
+    // Podloga
+    if (state.bgImage) {
+        ctxPlan.save(); ctxPlan.globalAlpha = 0.65;
+        if (state.bgImgBounds.isFitted) {
+            ctxPlan.drawImage(state.bgImage, state.bgImgBounds.x, state.bgImgBounds.y, state.bgImgBounds.w, state.bgImgBounds.h);
+            ctxPlan.strokeStyle = '#a6e3a1'; ctxPlan.lineWidth = 1 / state.planZoom;
+            ctxPlan.strokeRect(state.bgImgBounds.x, state.bgImgBounds.y, state.bgImgBounds.w, state.bgImgBounds.h);
+        } else {
+            ctxPlan.drawImage(state.bgImage, state.bgImgBounds.x, state.bgImgBounds.y, state.bgImage.width * state.bgImgBounds.scale, state.bgImage.height * state.bgImgBounds.scale);
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        ctxPlan.restore();
+    }
 
-        // --- PRORAČUN HIDRAULIKE I NUMERIČKA INTEGRACIJA ---
-        let lastTime = performance.now();
+    // Izohipse
+    for (let c of state.dxfContours) {
+        ctxPlan.strokeStyle = c.elevation % 10 === 0 ? '#585b70' : '#2a2b3d';
+        ctxPlan.lineWidth = c.elevation % 10 === 0 ? 1.0 : 0.5;
+        ctxPlan.beginPath();
+        c.points.forEach((pt, i) => { if (i === 0) ctxPlan.moveTo(pt.x, pt.y); else ctxPlan.lineTo(pt.x, pt.y); });
+        ctxPlan.stroke();
+    }
 
-        function updateHydraulics(dt) {
-            const A1 = state.B1 * state.B1; 
-            const A2 = state.B2 * state.B2; 
+    // SVI VODOVI
+    state.alignments.forEach(align => {
+        const isActive = align.id === state.activeAlignId;
+        const hyd = networkHydraulics.get(align.id);
 
-            const D_m = state.D / 1000.0;   
-            const A_pipe = (Math.PI * D_m * D_m) / 4.0; 
+        if (!hyd || hyd.sampledPoints.length < 2) {
+            if (hyd && hyd.sampledPoints.length > 1) {
+                ctxPlan.strokeStyle = '#585b70';
+                ctxPlan.lineWidth = 2 / state.planZoom;
+                ctxPlan.beginPath();
+                hyd.sampledPoints.forEach((p, i) => { if (i === 0) ctxPlan.moveTo(p.x, p.y); else ctxPlan.lineTo(p.x, p.y); });
+                ctxPlan.stroke();
+            }
+            align.points.forEach((p, idx) => {
+                const isSel = (isActive && state.selectedNodeType === 'node' && idx === state.selectedPlanNode);
+                drawCadSymbol(ctxPlan, p.x, p.y, p.type, isSel, state.planZoom);
+            });
+            return;
+        }
 
-            const E1 = state.Z1 + state.H1;
-            const E2 = state.Z2 + state.H2;
+        const { sampledPoints, profileData, hasFlow, isReversed } = hyd;
 
-            const dH = E1 - E2; 
+        for (let i = 0; i < sampledPoints.length - 1; i++) {
+            let p1 = sampledPoints[i], p2 = sampledPoints[i + 1];
+            let isPipeSel = (isActive && state.selectedNodeType === 'pipe' && state.selectedPipeIdx === p1.origIdx);
 
-            if (dH > 0 && state.H1 > 0.05) {
-                const K_total = (state.lambda * state.L / D_m) + state.xi + 1.0;
-                state.v = Math.sqrt((2 * g * dH) / K_total);
-                state.Qpipe = state.v * A_pipe; 
-                state.hf = ((state.lambda * state.L / D_m) + state.xi) * (state.v * state.v) / (2 * g);
+            ctxPlan.strokeStyle = isPipeSel ? '#fab387' : (isActive ? '#89dceb' : '#45475a');
+            ctxPlan.lineWidth = (isPipeSel ? 4.5 : (isActive ? 3 : 1.8)) / state.planZoom;
+            ctxPlan.beginPath(); ctxPlan.moveTo(p1.x, p1.y); ctxPlan.lineTo(p2.x, p2.y); ctxPlan.stroke();
+
+            if (hasFlow) {
+                const vel = profileData[i] ? profileData[i].velocity : 0;
+                if (vel > 0.02) {
+                    let dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                    let fromPt = isReversed ? p2 : p1;
+                    let toPt = isReversed ? p1 : p2;
+                    let angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
+                    const speedPxPerSec = Math.min(vel * 25, 120);
+                    const spacing = 28;
+                    let arrowOffset = (state.animTime * speedPxPerSec) % spacing;
+
+                    ctxPlan.fillStyle = isActive ? '#a6e3a1' : '#6c7086';
+                    for (let d = arrowOffset; d < dist; d += spacing) {
+                        let ax = fromPt.x + Math.cos(angle) * d;
+                        let ay = fromPt.y + Math.sin(angle) * d;
+                        ctxPlan.save();
+                        ctxPlan.translate(ax, ay);
+                        ctxPlan.rotate(angle);
+                        ctxPlan.beginPath();
+                        ctxPlan.moveTo(0, 0);
+                        ctxPlan.lineTo(-4 / state.planZoom, -2.5 / state.planZoom);
+                        ctxPlan.lineTo(-4 / state.planZoom, 2.5 / state.planZoom);
+                        ctxPlan.closePath(); ctxPlan.fill();
+                        ctxPlan.restore();
+                    }
+                }
+            }
+        }
+
+        if (isActive) {
+            ctxPlan.fillStyle = '#bac2de';
+            ctxPlan.font = `${9 / state.planZoom}px monospace`;
+            sampledPoints.forEach(p => {
+                if (p.isNode) {
+                    ctxPlan.fillRect(p.x - 2 / state.planZoom, p.y - 2 / state.planZoom, 4 / state.planZoom, 4 / state.planZoom);
+                    ctxPlan.fillText(`${p.station.toFixed(1)}m`, p.x + 4 / state.planZoom, p.y - 4 / state.planZoom);
+                }
+            });
+        }
+
+        align.points.forEach((p, idx) => {
+            const isSel = (isActive && state.selectedNodeType === 'node' && idx === state.selectedPlanNode);
+            drawCadSymbol(ctxPlan, p.x, p.y, p.type, isSel, state.planZoom);
+        });
+    });
+
+    if (state.activeSnapPoint) {
+        const size = 10 / state.planZoom;
+        ctxPlan.strokeStyle = '#fab387';
+        ctxPlan.lineWidth = 2 / state.planZoom;
+        ctxPlan.strokeRect(state.activeSnapPoint.x - size / 2, state.activeSnapPoint.y - size / 2, size, size);
+    }
+
+    ctxPlan.restore();
+}
+
+/* ============================================================
+   8. RENDER PROFIL
+   ============================================================ */
+function renderProfileView(networkHydraulics) {
+    if (!networkHydraulics) networkHydraulics = solveAllAlignments();
+    if (!networkHydraulics) return;
+
+    ctxProfile.clearRect(0, 0, canvasProfile.width, canvasProfile.height);
+    const bandHeight = state.bandHeight || 120;
+    const fontSize = state.bandFontSize || 8;
+    const activeHyd = networkHydraulics.get(state.activeAlignId);
+
+    if (!activeHyd || activeHyd.sampledPoints.length < 2) {
+        drawProfileBandTable([], 0, bandHeight, false, state.bandFontSize || 8);
+
+        // Potpis desno gore
+        ctxProfile.save();
+        ctxProfile.fillStyle = 'rgba(186, 194, 222, 0.6)';
+        ctxProfile.font = '10px "Segoe UI", monospace';
+        ctxProfile.textAlign = 'right';
+        ctxProfile.textBaseline = 'top';
+        ctxProfile.fillText('husalmedin@gmail.com', canvasProfile.width - 12, 12);
+        ctxProfile.restore();
+
+        return;
+    }
+
+    const { sampledPoints, profileData, hasFlow } = activeHyd;
+
+    // 1. TRANSFORMISANI SVJETSKI SKLOP
+    ctxProfile.save();
+    ctxProfile.translate(state.profilePan.x, canvasProfile.height - bandHeight + state.profilePan.y);
+    ctxProfile.scale(state.profileZoom.x, -state.profileZoom.y);
+
+    const datum = 200, vExag = state.profileVExag;
+    const thinLW = 1.0 / state.profileZoom.x;
+
+    // Teren
+    ctxProfile.strokeStyle = '#cba6f7';
+    ctxProfile.lineWidth = thinLW * 1.5;
+    ctxProfile.beginPath();
+    sampledPoints.forEach((p, i) => {
+        let zVal = (p.z - datum) * vExag;
+        if (i === 0) ctxProfile.moveTo(p.station, zVal); else ctxProfile.lineTo(p.station, zVal);
+    });
+    ctxProfile.stroke();
+
+    // HGL i EGL Prikaz: Crta se SAMO ako u sistemu zapravo ima vode
+    if (activeHyd.hasWater && profileData.length > 1) {
+        ctxProfile.strokeStyle = '#f38ba8';
+        ctxProfile.lineWidth = 1.6 / state.profileZoom.x;
+        ctxProfile.setLineDash([5 / state.profileZoom.x, 3 / state.profileZoom.x]);
+        ctxProfile.beginPath();
+        profileData.forEach((res, i) => {
+            let zEgl = (res.egl - datum) * vExag;
+            if (i === 0) ctxProfile.moveTo(res.station, zEgl); else ctxProfile.lineTo(res.station, zEgl);
+        });
+        ctxProfile.stroke();
+
+        ctxProfile.strokeStyle = '#a6e3a1';
+        ctxProfile.lineWidth = 1.8 / state.profileZoom.x;
+        ctxProfile.setLineDash([6 / state.profileZoom.x, 4 / state.profileZoom.x]);
+        ctxProfile.beginPath();
+        profileData.forEach((res, i) => {
+            let zHgl = (res.hgl - datum) * vExag;
+            if (i === 0) ctxProfile.moveTo(res.station, zHgl); else ctxProfile.lineTo(res.station, zHgl);
+        });
+        ctxProfile.stroke();
+        ctxProfile.setLineDash([]);
+    }
+
+    // Cijev
+    for (let i = 0; i < sampledPoints.length - 1; i++) {
+        let p1 = sampledPoints[i], p2 = sampledPoints[i + 1];
+        let depth1 = (p1.nodeRef && p1.nodeRef.depth !== undefined) ? p1.nodeRef.depth : state.pipeDepth;
+        let depth2 = (p2.nodeRef && p2.nodeRef.depth !== undefined) ? p2.nodeRef.depth : state.pipeDepth;
+        let zPipe1 = ((p1.z - depth1) - datum) * vExag;
+        let zPipe2 = ((p2.z - depth2) - datum) * vExag;
+        let isPipeSel = (state.selectedNodeType === 'pipe' && state.selectedPipeIdx === p1.origIdx);
+        ctxProfile.strokeStyle = isPipeSel ? '#fab387' : (hasFlow ? '#89dceb' : '#585b70');
+        ctxProfile.lineWidth = (isPipeSel ? 3.5 : 2.0) / state.profileZoom.x;
+        ctxProfile.beginPath();
+        ctxProfile.moveTo(p1.station, zPipe1);
+        ctxProfile.lineTo(p2.station, zPipe2);
+        ctxProfile.stroke();
+    }
+    ctxProfile.restore();
+
+    // 2. EKRANSKI ELEMENTI (Strelice animacije)
+    if (hasFlow) {
+        for (let i = 0; i < sampledPoints.length - 1; i++) {
+            let p1 = sampledPoints[i], p2 = sampledPoints[i + 1];
+            let depth1 = (p1.nodeRef && p1.nodeRef.depth !== undefined) ? p1.nodeRef.depth : state.pipeDepth;
+            let depth2 = (p2.nodeRef && p2.nodeRef.depth !== undefined) ? p2.nodeRef.depth : state.pipeDepth;
+            let sc1 = worldToProfileScreen(p1.station, p1.z - depth1);
+            let sc2 = worldToProfileScreen(p2.station, p2.z - depth2);
+            let dist = Math.hypot(sc2.x - sc1.x, sc2.y - sc1.y);
+            let isReversed = activeHyd.isReversed;
+            let fromSc = isReversed ? sc2 : sc1;
+            let toSc = isReversed ? sc1 : sc2;
+            let angle = Math.atan2(toSc.y - fromSc.y, toSc.x - fromSc.x);
+            let velocity = profileData[i] ? profileData[i].velocity : 0;
+            if (velocity < 0.02) continue;
+            const speedPxPerSec = Math.min(velocity * 25, 120);
+            const spacing = 30;
+            let arrowOffset = (state.animTime * speedPxPerSec) % spacing;
+            ctxProfile.fillStyle = '#a6e3a1';
+            for (let d = arrowOffset; d < dist; d += spacing) {
+                let ax = fromSc.x + Math.cos(angle) * d;
+                let ay = fromSc.y + Math.sin(angle) * d;
+                ctxProfile.save();
+                ctxProfile.translate(ax, ay);
+                ctxProfile.rotate(angle);
+                ctxProfile.beginPath();
+                ctxProfile.moveTo(0, 0);
+                ctxProfile.lineTo(-5, -3);
+                ctxProfile.lineTo(-5, 3);
+                ctxProfile.closePath(); ctxProfile.fill();
+                ctxProfile.restore();
+            }
+        }
+    }
+
+    // 3. Simboli objekata
+    sampledPoints.forEach(p => {
+        if (p.isNode && p.nodeRef) {
+            const node = p.nodeRef;
+            const isSel = (state.selectedNodeType === 'node' && p.origIdx === state.selectedPlanNode);
+            const depth = node.depth !== undefined ? node.depth : state.pipeDepth;
+            const screenPipe = worldToProfileScreen(p.station, p.z - depth);
+            if (node.type === 'rezervoar') {
+                drawAnimatedReservoir(ctxProfile, screenPipe.x, screenPipe.y, node.resData, isSel, false);
+            } else if (node.type === 'pumpRes') {
+                drawAnimatedReservoir(ctxProfile, screenPipe.x, screenPipe.y, node.resData, isSel, true);
+            } else if (node.type === 'kaptaza') {
+                drawAnimatedCaptage(ctxProfile, screenPipe.x, screenPipe.y, node.kapData, isSel);
             } else {
-                state.v = 0;
-                state.Qpipe = 0;
-                state.hf = 0;
+                drawCadSymbol(ctxProfile, screenPipe.x, screenPipe.y, node.type, isSel, 1.0, true);
+            }
+        }
+    });
+
+    // 4. PRIPREMA KOMBINOVANIH TAČAKA ZA PROFILNU TABELU
+    let combinedBandPoints = sampledPoints.map((p, idx) => {
+        const res = profileData[idx] || {};
+        const depth = p.nodeRef?.depth !== undefined ? p.nodeRef.depth : state.pipeDepth;
+        return {
+            station: p.station,
+            zTerrain: p.z,
+            zPipe: p.z - depth,
+            hgl: res.hgl || 0,
+            pressureBar: res.pressureBar || 0,
+            isExtra: false
+        };
+    });
+
+    const rawInput = document.getElementById('input-extra-station')?.value || "0";
+    const totalLength = sampledPoints[sampledPoints.length - 1].station;
+    const extraStations = getExtraStationsList(rawInput, totalLength);
+
+    if (extraStations.length > 0) {
+        extraStations.forEach(s => {
+            const exists = combinedBandPoints.some(pt => Math.abs(pt.station - s) < 0.01);
+            if (!exists) {
+                const interpPt = interpolateProfileAtStation(sampledPoints, profileData, s);
+                if (interpPt) combinedBandPoints.push(interpPt);
+            }
+        });
+        combinedBandPoints.sort((a, b) => a.station - b.station);
+    }
+
+    drawProfileBandTable(combinedBandPoints, sampledPoints[sampledPoints.length - 1].station, bandHeight, hasFlow, fontSize);
+
+// 5. ISPIS POTPISA U GORNJEM DESNOM UGLU PROFILA
+    ctxProfile.save();
+    ctxProfile.fillStyle = 'rgba(186, 194, 222, 0.6)';
+    ctxProfile.font = '10px "Segoe UI", monospace';
+    ctxProfile.textAlign = 'right';
+    ctxProfile.textBaseline = 'top';
+    ctxProfile.fillText('husalmedin@gmail.com', canvasProfile.width - 12, 12);
+    ctxProfile.restore();
+
+
+}
+
+function drawProfileBandTable(bandPoints, totalLength, bandHeight = 120, hasFlow = false, fontSize = 8) {
+    if (!bandPoints || bandPoints.length === 0) return;
+
+    const bandTopY = canvasProfile.height - bandHeight;
+    ctxProfile.save();
+
+    ctxProfile.fillStyle = '#181825';
+    ctxProfile.fillRect(0, bandTopY, canvasProfile.width, bandHeight);
+    ctxProfile.strokeStyle = '#313244';
+    ctxProfile.lineWidth = 1;
+    ctxProfile.strokeRect(0, bandTopY, canvasProfile.width, bandHeight);
+
+    const labels = ["Stacionaža (m)", "Kota terena (m)", "Kota cijevi (m)", "Pritisak (bar)"];
+    const rowHeight = bandHeight / labels.length;
+
+    const labelFontSize = Math.min(11, Math.max(9, Math.round(fontSize)));
+    ctxProfile.font = `${labelFontSize}px 'Segoe UI', sans-serif`;
+    ctxProfile.textAlign = "left";
+    ctxProfile.textBaseline = "middle";
+
+    labels.forEach((label, idx) => {
+        const y = bandTopY + idx * rowHeight + rowHeight / 2;
+        ctxProfile.fillStyle = '#cdd6f4';
+        ctxProfile.fillText(label, 10, y);
+        
+        if (idx < labels.length - 1) {
+            ctxProfile.beginPath();
+            ctxProfile.moveTo(0, bandTopY + (idx + 1) * rowHeight);
+            ctxProfile.lineTo(canvasProfile.width, bandTopY + (idx + 1) * rowHeight);
+            ctxProfile.strokeStyle = '#313244';
+            ctxProfile.stroke();
+        }
+    });
+
+    function drawCellText(text, x, y, color, isVertical, fs) {
+        const cleanFS = Math.round(fs);
+        ctxProfile.save();
+        ctxProfile.fillStyle = color;
+        ctxProfile.font = isVertical ? `bold ${cleanFS}px 'Courier New', monospace` : `bold ${cleanFS}px monospace`;
+        ctxProfile.textAlign = "center";
+        ctxProfile.textBaseline = "middle";
+        ctxProfile.translate(Math.floor(x), Math.floor(y));
+        if (isVertical) ctxProfile.rotate(-Math.PI / 2);
+        ctxProfile.fillText(text, 0, 0);
+        ctxProfile.restore();
+    }
+
+    bandPoints.forEach(pt => {
+        const screenX = state.profilePan.x + (pt.station * state.profileZoom.x);
+
+        if (screenX >= 130 && screenX <= canvasProfile.width) {
+            ctxProfile.beginPath();
+            ctxProfile.moveTo(screenX, bandTopY);
+            ctxProfile.lineTo(screenX, bandTopY + bandHeight);
+            ctxProfile.strokeStyle = pt.isExtra ? 'rgba(0, 229, 255, 0.25)' : '#45475a';
+            ctxProfile.stroke();
+
+            const isVert = pt.isExtra;
+            const textColor = pt.isExtra ? '#00e5ff' : '#ffffff';
+            const terrainColor = pt.isExtra ? '#e6c890' : '#e5c890';
+            const pressureVal = pt.pressureBar !== undefined ? pt.pressureBar : 0;
+            const pressureColor = pressureVal < 0 ? '#f38ba8' : '#a6e3a1';
+
+            drawCellText(pt.station.toFixed(2), screenX, bandTopY + 0.5 * rowHeight, textColor, isVert, fontSize);
+            drawCellText(pt.zTerrain.toFixed(2), screenX, bandTopY + 1.5 * rowHeight, terrainColor, isVert, fontSize);
+            drawCellText(pt.zPipe.toFixed(2), screenX, bandTopY + 2.5 * rowHeight, textColor, isVert, fontSize);
+            
+            const pStr = (hasFlow || pt.isExtra) ? pressureVal.toFixed(2) : "0.00";
+            drawCellText(pStr, screenX, bandTopY + 3.5 * rowHeight, pressureColor, isVert, fontSize);
+        }
+    });
+
+    ctxProfile.restore();
+}
+
+function getExtraStationsList(inputStr, totalLength) {
+    if (!inputStr) return [];
+    const str = inputStr.toString().trim();
+    if (str === "0" || str === "") return [];
+
+    if (str.includes(',')) {
+        return str.split(',')
+            .map(v => parseFloat(v.trim()))
+            .filter(v => !isNaN(v) && v >= 0 && v <= totalLength);
+    }
+
+    let step = parseFloat(str);
+    if (isNaN(step) || step <= 0) return [];
+    if (step < 5) step = 5;
+
+    const stations = [];
+    for (let s = step; s < totalLength; s += step) {
+        stations.push(s);
+    }
+    return stations;
+}
+
+function interpolateProfileAtStation(sampledPoints, profileData, targetStation) {
+    if (!sampledPoints || sampledPoints.length === 0) return null;
+
+    if (targetStation <= sampledPoints[0].station) {
+        const p0 = sampledPoints[0], r0 = profileData[0] || {};
+        const zP0 = p0.z - (p0.nodeRef?.depth !== undefined ? p0.nodeRef.depth : state.pipeDepth);
+        return { station: targetStation, zTerrain: p0.z, zPipe: zP0, hgl: r0.hgl || 0, pressureBar: r0.pressureBar || 0, isExtra: true };
+    }
+    const lastIdx = sampledPoints.length - 1;
+    if (targetStation >= sampledPoints[lastIdx].station) {
+        const pL = sampledPoints[lastIdx], rL = profileData[lastIdx] || {};
+        const zPL = pL.z - (pL.nodeRef?.depth !== undefined ? pL.nodeRef.depth : state.pipeDepth);
+        return { station: targetStation, zTerrain: pL.z, zPipe: zPL, hgl: rL.hgl || 0, pressureBar: rL.pressureBar || 0, isExtra: true };
+    }
+
+    for (let i = 0; i < sampledPoints.length - 1; i++) {
+        const p1 = sampledPoints[i], p2 = sampledPoints[i + 1];
+        if (targetStation >= p1.station && targetStation <= p2.station) {
+            const r1 = profileData[i] || {}, r2 = profileData[i + 1] || {};
+            const L = p2.station - p1.station;
+            const factor = L > 0 ? (targetStation - p1.station) / L : 0;
+
+            const depth1 = p1.nodeRef?.depth !== undefined ? p1.nodeRef.depth : state.pipeDepth;
+            const depth2 = p2.nodeRef?.depth !== undefined ? p2.nodeRef.depth : state.pipeDepth;
+            const zPipe1 = p1.z - depth1;
+            const zPipe2 = p2.z - depth2;
+
+            const zTerrain = p1.z + factor * (p2.z - p1.z);
+            const zPipe = zPipe1 + factor * (zPipe2 - zPipe1);
+            const hgl = (r1.hgl || 0) + factor * ((r2.hgl || 0) - (r1.hgl || 0));
+            const pressureHead = hgl - zPipe;
+            const pressureBar = pressureHead / 10.197;
+
+            return { station: targetStation, zTerrain, zPipe, hgl, pressureBar, isExtra: true };
+        }
+    }
+    return null;
+}
+
+/* ============================================================
+   9. INSPECTOR — BEZ GUBITKA FOKUSA
+   ============================================================ */
+function updateInspectorUI() {
+    const activeAlign = getActiveAlignment();
+    const container = document.getElementById('inspector-content');
+    const headerTitle = document.getElementById('inspector-header-title');
+
+    if (state.selectedNodeType === 'node' && state.selectedPlanNode >= 0 && state.selectedPlanNode < activeAlign.points.length) {
+        headerTitle.innerText = "⚙️ Inspector Čvora";
+        const node = activeAlign.points[state.selectedPlanNode];
+        const { sampledPoints } = ProcessAlignment(activeAlign);
+        const sampledNode = sampledPoints.find(p => p.origIdx === state.selectedPlanNode) || { station: 0, z: 250 };
+
+        let typeOptions = '';
+        for (let k in NODE_TYPES)
+            typeOptions += `<option value="${k}" ${node.type === k ? 'selected' : ''}>${NODE_TYPES[k].name}</option>`;
+
+        let specificHTML = '';
+        if (node.type === 'rezervoar' || node.type === 'pumpRes') {
+            if (!node.resData) {
+                node.resData = { width: 4.0, length: 4.0, height: 3.0, waterLevel: 2.5, qIn: 0.0, isConstantLevel: true, outlets: {} };
+            }
+            const res = node.resData;
+            if (!res.outlets) res.outlets = {};
+
+            if (node.type === 'pumpRes' && (res.pumpHead === undefined || isNaN(res.pumpHead))) {
+                res.pumpHead = 25.0;
             }
 
-            const piezometric_head_end = Math.max(0, (E1 - state.hf) - state.Z2);
-            state.p_entry = (piezometric_head_end * 9.81 * 1000) / 100000; 
+            const V_cap = (res.width * res.length * res.height).toFixed(1);
+            const V_water = res.width * res.length * res.waterLevel;
+            const V_water_m3 = V_water.toFixed(1);
+            const V_water_L = Math.round(V_water * 1000).toLocaleString('bs-BA');
+            const isConst = res.isConstantLevel !== undefined ? res.isConstantLevel : true;
 
-            const simSpeed = 10.0; 
-            const Qin_m3s = state.Qin / 1000.0;
-            const Qout_m3s = state.Qout / 1000.0;
+            const outgoingAlignments = state.alignments.filter(a => {
+                if (!a.points || a.points.length === 0) return false;
+                const pStart = a.points[0];
+                const pEnd = a.points[a.points.length - 1];
+                const isStartConnected = Math.hypot(pStart.x - node.x, pStart.y - node.y) < 1.0;
+                const isEndConnected = Math.hypot(pEnd.x - node.x, pEnd.y - node.y) < 1.0;
+                return isStartConnected || isEndConnected;
+            });
 
-            if (state.H1 < state.Hmax1 || (Qin_m3s - state.Qpipe) < 0) {
-                state.H1 += ((Qin_m3s - state.Qpipe) / A1) * dt * simSpeed;
-                state.H1 = Math.max(0, Math.min(state.Hmax1, state.H1));
-            }
+            let outletsHTML = '';
+            if (!res.pipeRoles) res.pipeRoles = {};
 
-            if (state.H2 < state.Hmax2 || (state.Qpipe - Qout_m3s) < 0) {
-                state.H2 += ((state.Qpipe - Qout_m3s) / A2) * dt * simSpeed;
-                state.H2 = Math.max(0, Math.min(state.Hmax2, state.H2));
-            }
+            if (outgoingAlignments.length > 0) {
+                outletsHTML = ` 
+                <div class="section-header">🚪 Priključeni vodovi</div>
+                <div style="font-size:0.7rem; color:var(--text-sub); margin-bottom:6px;">Uključite kvačicu ako je vod ulazni</div>`;
+                
+                outgoingAlignments.forEach(outAlign => {
+                    const currentOffsetM = res.outlets[outAlign.id] !== undefined ? res.outlets[outAlign.id] : 0.05;
+                    const currentOffsetCm = (currentOffsetM * 100);
+                    const isInlet = res.pipeRoles[outAlign.id] === true;
 
-            if (state.v > 0) {
-                const step = (state.v / state.L) * dt * simSpeed * 2.0;
-                state.particles.forEach(p => {
-                    p.progress += step;
-                    if (p.progress > 1) p.progress -= 1;
+                    outletsHTML += `
+                        <div style="background:rgba(255,255,255,0.03); padding:6px; border:1px solid var(--border-color); border-radius:4px; margin-top:4px;">
+                            <div style="font-weight:bold; color:var(--accent-blue); margin-bottom:4px;">${outAlign.name}</div>
+                            
+                            <div class="form-row">
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                    <input type="checkbox" class="insp-pipe-checkbox" data-alignid="${outAlign.id}" ${isInlet ? 'checked' : ''}>
+                                    <span style="color:var(--accent-cyan);">Ulazni vod (Prima vodu)</span>
+                                </label>
+                            </div>
+
+                            <div class="form-row" style="margin-top:6px;">
+                                <span>Visina (od dna):</span>
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <input type="number" class="insp-outlet-offset" data-alignid="${outAlign.id}" value="${currentOffsetCm.toFixed(1)}" step="0.5" style="width:55px;">
+                                    <span>cm</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 });
+            } else {
+                outletsHTML = `<div class="form-row" style="color:var(--text-sub); margin-top:4px;"><span>Nema priključenih vodova</span></div>`;
             }
 
-            document.getElementById('m_Qpipe').textContent = (state.Qpipe * 1000).toFixed(2) + ' L/s';
-            document.getElementById('m_velocity').textContent = state.v.toFixed(2) + ' m/s';
-            document.getElementById('m_loss').textContent = state.hf.toFixed(2) + ' m';
-            document.getElementById('m_press').textContent = state.p_entry.toFixed(2) + ' bar';
-            document.getElementById('m_dH').textContent = dH.toFixed(2) + ' m';
+            const headerText = node.type === 'pumpRes' ? 'Rezervoar sa pumpom' : 'Geometrija Vodospreme';
+            let requiredHeadStr = '0.0';
+            if (node.type === 'pumpRes') {
+                const endNodeZ = sampledPoints.length > 0 ? sampledPoints[sampledPoints.length - 1].z : sampledNode.z;
+                requiredHeadStr = Math.max(0, endNodeZ - (sampledNode.z + res.waterLevel)).toFixed(1);
+            }
+
+            const pumpHTML = node.type === 'pumpRes' ? `
+                <div class="section-header">Pumpna Stanica</div>
+                <div class="form-row"><span>Napor pumpe H_p (m.v.s.):</span><input type="number" id="insp-pump-head" value="${res.pumpHead !== undefined ? res.pumpHead : 25}" step="1.0" min="0"></div>
+                <div class="form-row" style="margin-top:2px;">
+                    <span style="font-size:0.72rem; color:var(--text-sub);">Min. napor za vršnu kotu:</span>
+                    <span style="color:var(--accent-yellow); font-weight:bold;">~${requiredHeadStr} m</span>
+                </div>
+            ` : '';
+
+            specificHTML = `
+                <div class="section-header">${headerText} (B × D × H)</div>
+                <div class="form-row"><span>Širina B (m):</span><input type="number" id="insp-res-w" value="${res.width}" step="0.5"></div>
+                <div class="form-row"><span>Dužina D (m):</span><input type="number" id="insp-res-l" value="${res.length}" step="0.5"></div>
+                <div class="form-row"><span>Visina H (m):</span><input type="number" id="insp-res-h" value="${res.height}" step="0.5"></div>
+                <div class="form-row"><span>Kapacitet V: (Zapremina rezervoara):</span><span style="color:var(--accent-green); font-weight:bold;">${V_cap} m³</span></div>
+                <div class="form-row"><span>Zapremina vode:</span><span id="insp-res-vwater-val" style="color:var(--accent-cyan); font-weight:bold;">${V_water_m3} m³ / ${V_water_L} L</span></div>
+                <div class="form-row" style="margin-top:6px; background:rgba(255,255,255,0.05); padding:4px 6px; border-radius:4px;">
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:6px; width:100%;">
+                        <input type="checkbox" id="insp-res-const" ${isConst ? 'checked' : ''}>
+                        <span style="color:var(--accent-cyan); font-weight:bold;">Konstantan nivo vode</span>
+                    </label>
+                </div>
+                <div class="form-row"><span>Nivo Vode h (m):</span><input type="number" id="insp-res-wl" value="${res.waterLevel.toFixed(2)}" step="0.1" ${isConst ? '' : 'readonly'}></div>
+                <div class="form-row"><span>Dotok / uliv Q_in (L/s):</span><input type="number" id="insp-res-qin" value="${res.qIn.toFixed(1)}" step="0.5" ${isConst ? 'disabled' : ''}></div>
+                ${pumpHTML}
+                ${outletsHTML}
+            `;
+        } else if (node.type === 'kaptaza') {
+            if (!node.kapData) node.kapData = { qSource: 10.0 };
+            const kap = node.kapData;
+            specificHTML = `
+                <div class="section-header">Izvorište / Kaptaža</div>
+                <div class="form-row"><span>Kapacitet Q (L/s):</span><input type="number" id="insp-kap-qs" value="${kap.qSource}" step="0.5"></div>
+            `;
+        } else {
+            const isFreeEnd = (state.selectedPlanNode === 0 || state.selectedPlanNode === activeAlign.points.length - 1);
+            const currentValve = node.qFlow !== undefined ? node.qFlow : 10;
+            specificHTML = `
+                <div class="section-header">Protok (Ventil) i Dotok</div>
+                <div class="form-row"><span>Protok / Ventil (0=Zatvoreno, 10=Otvoreno):</span><input type="number" id="insp-node-q" value="${currentValve}" min="0" max="10" step="1" style="width:60px;"></div>
+                <div class="form-row" style="margin-top:6px;"><span>Dotok Q_in (L/s) [Slobodan kraj]:</span><input type="number" id="insp-node-qin" value="${node.qIn !== undefined ? node.qIn : 0.0}" step="0.5" style="width:70px;" ${isFreeEnd ? '' : 'disabled'}></div>
+            `;
         }
 
-        // --- RENDEROVANJE / GRAPHICS (CANVAS) ---
-        function render() {
-            const w = canvas.width;
-            const h = canvas.height;
+        container.innerHTML = `
+            <div class="form-group"><label>Funkcija čvora:</label><select id="insp-type">${typeOptions}</select></div>
+            <div class="form-row"><span>Stacionaža:</span><span style="font-weight:bold; color:var(--accent-cyan);">${sampledNode.station.toFixed(2)} m</span></div>
+            <div class="form-row"><span>Kota terena:</span><span>${sampledNode.z.toFixed(2)} m</span></div>
+            <div class="form-group"><label>Dubina ukopa / dno objekta (m):</label><input type="number" id="insp-depth" value="${(node.depth !== undefined ? node.depth : state.pipeDepth).toFixed(2)}" step="0.05"></div>
+            <div class="form-group"><label>Koeficijent otpora (&zeta;):</label><input type="number" id="insp-zeta" value="${(node.zeta !== undefined ? node.zeta : 0.0).toFixed(2)}" step="0.05"></div>
+            ${specificHTML}
+        `;
 
-            ctx.clearRect(0, 0, w, h);
-
-            const margin = 80;
-            const minZ = Math.min(state.Z1, state.Z2) - 10;
-            const maxZ = Math.max(state.Z1 + state.Hmax1, state.Z2 + state.Hmax2) + 15;
-
-            function toScreenY(z) {
-                return h - margin - ((z - minZ) / (maxZ - minZ)) * (h - 2 * margin);
+        document.getElementById('insp-type').addEventListener('change', (e) => { 
+            node.type = e.target.value; 
+            node.zeta = NODE_TYPES[node.type] ? NODE_TYPES[node.type].zeta : 0.0; 
+            if ((node.type === 'rezervoar' || node.type === 'pumpRes') && !node.resData) {
+                node.resData = { width: 4.0, length: 4.0, height: 3.0, waterLevel: 2.5, qIn: 0.0, isConstantLevel: true, outlets: {}, pumpHead: 25.0 };
             }
+            updateInspectorUI(); 
+        });
 
-            const x_R2 = margin + 60;      
-            const x_R1 = w - margin - 60;  
-            const resWidth = 70;
+        document.getElementById('insp-depth').addEventListener('input', (e) => { const newDepth = parseFloat(e.target.value) || 0; node.depth = newDepth; updateSharedNodeDepths(node.x, node.y, newDepth); });
+        document.getElementById('insp-zeta').addEventListener('input', (e) => { node.zeta = parseFloat(e.target.value) || 0; });
 
-            const y_Z1 = toScreenY(state.Z1);
-            const y_H1 = toScreenY(state.Z1 + state.H1);
-            const y_Hmax1 = toScreenY(state.Z1 + state.Hmax1);
+        if (document.getElementById('insp-node-q')) document.getElementById('insp-node-q').addEventListener('input', (e) => { node.qFlow = Math.max(0, Math.min(10, parseFloat(e.target.value) || 0)); });
+        if (document.getElementById('insp-node-qin')) document.getElementById('insp-node-qin').addEventListener('input', (e) => { node.qIn = parseFloat(e.target.value) || 0; });
 
-            const y_Z2 = toScreenY(state.Z2);
-            const y_H2 = toScreenY(state.Z2 + state.H2);
-            const y_Hmax2 = toScreenY(state.Z2 + state.Hmax2);
+        if (node.type === 'rezervoar' || node.type === 'pumpRes') {
+            document.getElementById('insp-res-const').addEventListener('change', (e) => { node.resData.isConstantLevel = e.target.checked; updateInspectorUI(); });
+            document.getElementById('insp-res-w').addEventListener('input', (e) => { node.resData.width = parseFloat(e.target.value) || 1; });
+            document.getElementById('insp-res-l').addEventListener('input', (e) => { node.resData.length = parseFloat(e.target.value) || 1; });
+            document.getElementById('insp-res-h').addEventListener('input', (e) => { node.resData.height = parseFloat(e.target.value) || 1; });
+            document.getElementById('insp-res-wl').addEventListener('input', (e) => { node.resData.waterLevel = parseFloat(e.target.value) || 0; });
+            document.getElementById('insp-res-qin').addEventListener('input', (e) => { node.resData.qIn = parseFloat(e.target.value) || 0; });
 
-            // Teren
-            ctx.beginPath();
-            ctx.moveTo(x_R2 - resWidth, y_Z2 + 30);
-            ctx.lineTo(x_R2 + resWidth / 2, y_Z2 + 20);
-            ctx.lineTo(x_R1 - resWidth / 2, y_Z1 + 20);
-            ctx.lineTo(x_R1 + resWidth, y_Z1 + 30);
-            ctx.lineTo(x_R1 + resWidth, h);
-            ctx.lineTo(x_R2 - resWidth, h);
-            ctx.closePath();
-            ctx.fillStyle = '#111827';
-            ctx.fill();
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // Napor pumpe — samo za pumpRes
+if (node.type === 'pumpRes') {
+    document.getElementById('insp-pump-head').addEventListener('input', (e) => {
+        node.resData.pumpHead = Math.max(0, parseFloat(e.target.value) || 0);
+    });
+}
 
-            // Cjevovod
-            const pipeStart = { x: x_R1, y: y_Z1 };
-            const pipeEnd = { x: x_R2, y: y_Z2 };
+// Kvačica ulazni/izlazni — radi za OBA tipa (pumpRes I rezervoar)
+document.querySelectorAll('.insp-pipe-checkbox').forEach(chkEl => {
+    chkEl.addEventListener('change', (e) => {
+        const alignId = parseInt(e.target.getAttribute('data-alignid'));
+        if (!node.resData.pipeRoles) node.resData.pipeRoles = {};
+        node.resData.pipeRoles[alignId] = e.target.checked;
+        // Odmah ažuriraj i naslov uloge u UI (opcionalno)
+        updateInspectorUI();
+    });
+});
 
-            ctx.beginPath();
-            ctx.moveTo(pipeStart.x, pipeStart.y);
-            ctx.lineTo(pipeEnd.x, pipeEnd.y);
-            ctx.strokeStyle = '#0284c7';
-            ctx.lineWidth = Math.max(4, state.D / 15);
-            ctx.stroke();
-
-            // Čestice
-            if (state.v > 0) {
-                ctx.fillStyle = '#7dd3fc';
-                state.particles.forEach(p => {
-                    const px = pipeStart.x + (pipeEnd.x - pipeStart.x) * p.progress;
-                    const py = pipeStart.y + (pipeEnd.y - pipeStart.y) * p.progress;
-                    ctx.beginPath();
-                    ctx.arc(px, py, 3, 0, Math.PI * 2);
-                    ctx.fill();
+            document.querySelectorAll('.insp-outlet-offset').forEach(inputEl => {
+                inputEl.addEventListener('input', (e) => {
+                    const alignId = parseInt(e.target.getAttribute('data-alignid'));
+                    const valCm = parseFloat(e.target.value) || 0;
+                    if (!node.resData.outlets) node.resData.outlets = {};
+                    node.resData.outlets[alignId] = valCm / 100.0;
                 });
+            });
+        } else if (node.type === 'kaptaza') {
+            document.getElementById('insp-kap-qs').addEventListener('input', (e) => { node.kapData.qSource = parseFloat(e.target.value) || 0; });
+        }
+    } else if (state.selectedNodeType === 'pipe' && state.selectedPipeIdx >= 0 && state.selectedPipeIdx < activeAlign.points.length - 1) {
+        headerTitle.innerText = "⚙️ Inspector Dionice Cijevi";
+        const node = activeAlign.points[state.selectedPipeIdx];
+        const pipe = node.pipeSegment;
+
+        let matOptions = '';
+        for (let m in PIPE_MATERIALS)
+            matOptions += `<option value="${m}" ${pipe.material === m ? 'selected' : ''}>${PIPE_MATERIALS[m].name}</option>`;
+
+        container.innerHTML = `
+            <div class="form-row"><span>Dionica:</span><span style="font-weight:bold; color:var(--accent-orange);">Čvor ${state.selectedPipeIdx + 1} ➔ ${state.selectedPipeIdx + 2}</span></div>
+            <div class="form-group"><label>Materijal:</label><select id="insp-pipe-mat">${matOptions}</select></div>
+            <div class="form-group"><label>Prečnik D (mm):</label><input type="number" id="insp-pipe-d" value="${pipe.diameter}" step="5"></div>
+            <div class="form-group"><label>Hrapavost k (mm):</label><input type="number" id="insp-pipe-k" value="${pipe.roughness}" step="0.005"></div>
+            <div class="form-group"><label>Debljina stijenke t (mm):</label><input type="number" id="insp-pipe-t" value="${pipe.wallThickness}" step="0.5"></div>
+        `;
+        document.getElementById('insp-pipe-mat').addEventListener('change', (e) => { pipe.material = e.target.value; pipe.roughness = PIPE_MATERIALS[pipe.material].roughness; updateInspectorUI(); });
+        document.getElementById('insp-pipe-d').addEventListener('input', (e) => { pipe.diameter = parseFloat(e.target.value) || 110; });
+        document.getElementById('insp-pipe-k').addEventListener('input', (e) => { pipe.roughness = parseFloat(e.target.value) || 0.01; });
+        document.getElementById('insp-pipe-t').addEventListener('input', (e) => { pipe.wallThickness = parseFloat(e.target.value) || 0; });
+        
+    } else {
+        headerTitle.innerText = "⚙️ Inspector";
+        container.innerHTML = `<p style="font-size:0.75rem; color:var(--text-sub);">Odaberite čvor, objekat ili dionicu cijevi.</p>`;
+    }
+}
+
+/* ============================================================
+   10. 3D SCENA
+   ============================================================ */
+let scene3D, camera3D, renderer3D, controls3D;
+let contours3DGroup = new THREE.Group();
+let pipes3DGroup = new THREE.Group();
+
+function init3D() {
+    const container = document.getElementById('pane-3d');
+    if (!container) return;
+    scene3D = new THREE.Scene();
+    scene3D.background = new THREE.Color('#11111b');
+    camera3D = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+    camera3D.position.set(250, -350, 250);
+    camera3D.up.set(0, 0, 1);
+    renderer3D = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('canvas3D') });
+    renderer3D.setSize(container.clientWidth, container.clientHeight);
+    controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+    controls3D.target.set(250, 250, 50);
+    scene3D.add(new THREE.AmbientLight(0xffffff, 0.8));
+    scene3D.add(contours3DGroup);
+    scene3D.add(pipes3DGroup);
+    update3DScene();
+    (function loop() { requestAnimationFrame(loop); controls3D.update(); renderer3D.render(scene3D, camera3D); })();
+}
+
+function update3DScene() {
+    if (!scene3D) return;
+    while (contours3DGroup.children.length > 0) contours3DGroup.remove(contours3DGroup.children[0]);
+    const datum = 200, zFactor = state.zExaggeration;
+
+    state.dxfContours.forEach(c => {
+        if (!c.points || c.points.length < 2) return;
+        const pts3D = c.points.map(pt => new THREE.Vector3(pt.x, pt.y, (c.elevation - datum) * zFactor));
+        const geometry = new THREE.BufferGeometry().setFromPoints(pts3D);
+        const isIndex = c.elevation % 10 === 0;
+        const material = new THREE.LineBasicMaterial({ color: isIndex ? 0x89b4fa : 0x45475a });
+        contours3DGroup.add(new THREE.Line(geometry, material));
+    });
+
+    while (pipes3DGroup.children.length > 0) pipes3DGroup.remove(pipes3DGroup.children[0]);
+
+    state.alignments.forEach(align => {
+        const { sampledPoints } = ProcessAlignment(align);
+        if (sampledPoints.length < 2) return;
+        const pipePts3D = sampledPoints.map(p => {
+            let depth = (p.nodeRef && p.nodeRef.depth !== undefined) ? p.nodeRef.depth : state.pipeDepth;
+            return new THREE.Vector3(p.x, p.y, ((p.z - depth) - datum) * zFactor);
+        });
+        const geometry = new THREE.BufferGeometry().setFromPoints(pipePts3D);
+        const material = new THREE.LineBasicMaterial({ color: align.id === state.activeAlignId ? 0x89dceb : 0x585b70 });
+        pipes3DGroup.add(new THREE.Line(geometry, material));
+
+        align.points.forEach(p => {
+            if ((p.type === 'rezervoar' || p.type === 'pumpRes') && p.resData) {
+                const zBottom = (getElevationAt(p.x, p.y) - p.depth - datum) * zFactor;
+                const geo = new THREE.BoxGeometry(p.resData.width, p.resData.length, p.resData.height * zFactor);
+                const color = p.type === 'pumpRes' ? 0xf9e2af : 0xfab387;
+                const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: color, wireframe: true }));
+                mesh.position.set(p.x, p.y, zBottom + (p.resData.height * zFactor) / 2);
+                pipes3DGroup.add(mesh);
             }
+        });
+    });
+}
 
-            // Rezervoar 1
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x_R1 - resWidth / 2, y_Hmax1, resWidth, y_Z1 - y_Hmax1);
+/* ============================================================
+   11. GLAVNA PETLJA
+   ============================================================ */
+let animLoopStarted = false;
+function startMainLoop() {
+    if (animLoopStarted) return;
+    animLoopStarted = true;
 
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
-            ctx.fillRect(x_R1 - resWidth / 2 + 2, y_H1, resWidth - 4, y_Z1 - y_H1);
+    (function loop(timestamp) {
+        const now = timestamp || performance.now();
+        const dt = Math.min((now - state.lastTimestamp) / 1000.0, 0.1);
+        state.lastTimestamp = now;
+        state.animTime += dt;
 
-            if (state.Qin > 0) {
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
-                ctx.fillRect(x_R1 + resWidth / 4 - 5, y_Hmax1 - 25, 10, y_H1 - (y_Hmax1 - 25));
-            }
+        const networkHydraulics = solveAllAlignments();
 
-            // Rezervoar 2
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x_R2 - resWidth / 2, y_Hmax2, resWidth, y_Z2 - y_Hmax2);
+        state.alignments.forEach(align => {
+            align.points.forEach((node) => {
+                if ((node.type === 'rezervoar' || node.type === 'pumpRes') && node.resData) {
+                    const res = node.resData;
+                    if (res.isConstantLevel === undefined) res.isConstantLevel = true;
 
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
-            ctx.fillRect(x_R2 - resWidth / 2 + 2, y_H2, resWidth - 4, y_Z2 - y_H2);
+                    let totalQin_lps = 0;
+                    let totalQout_lps = 0;
+                    
+                    state.alignments.forEach(otherAlign => {
+                        const hydOther = networkHydraulics.get(otherAlign.id);
+                        if (!hydOther || !hydOther.hasFlow) return;
+                        
+                        const pStart = hydOther.sampledPoints[0];
+                        const pEnd = hydOther.sampledPoints[hydOther.sampledPoints.length - 1];
+                        
+                        const isStartConnected = Math.hypot(pStart.x - node.x, pStart.y - node.y) < 1.0;
+                        const isEndConnected = Math.hypot(pEnd.x - node.x, pEnd.y - node.y) < 1.0;
+                        
+                        if (isStartConnected) {
+                            if (hydOther.isReversed) totalQin_lps += hydOther.Q_lps; // Voda teče 'uzvodno' u početak cijevi (ULAZ)
+                            else totalQout_lps += hydOther.Q_lps; // Voda normalno izlazi iz rezervoara
+                        } else if (isEndConnected) {
+                            if (hydOther.isReversed) totalQout_lps += hydOther.Q_lps; // Voda se pumpa 'uzvodno' napolje
+                            else totalQin_lps += hydOther.Q_lps; // Voda normalno utiče u rezervoar (ULAZ)
+                        }
+                    });
+                    
+                    // Uvijek sačuvaj stvarni dotok iz cijevi u ODVOJENO polje — ne diraj res.qIn
+                    res.qInFromPipes = totalQin_lps;
+                    res.qOutToPipes = totalQout_lps;
 
-            if (state.Qout > 0) {
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
-                ctx.fillRect(x_R2 - resWidth / 2 - 25, y_Z2 - 15, 25, 8);
-            }
+                    if (res.isConstantLevel) {
+                        // Nivo fiksan — ništa se ne mijenja, samo vodimo evidenciju
+                    } else {
+    const surfaceArea = Math.max(1, res.width * res.length);
+    const Q_net_m3s = ((res.qIn || 0) + totalQin_lps - totalQout_lps) / 1000.0;
+    let dh = (Q_net_m3s / surfaceArea) * dt * 6.0;
+    res.waterLevel = Math.max(0.05, Math.min(res.height, res.waterLevel + dh));
 
-            // Piezometarske linije
-            if (state.H1 > 0.1) {
-                ctx.beginPath();
-                ctx.setLineDash([5, 5]);
-                ctx.moveTo(x_R1, y_H1);
-                ctx.lineTo(x_R2, y_H1);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-                ctx.setLineDash([]);
+    // ═══════════════ REFRESH INSPECTOR-A ═══════════════
+    // Ažuriraj prikaz samo ako je OVAJ rezervoar trenutno odabran
+    const selAlign = getActiveAlignment();
+    if (selAlign && state.selectedNodeType === 'node' &&
+        state.selectedPlanNode >= 0 &&
+        selAlign.points[state.selectedPlanNode] === node) {
 
-                const E1_abs = state.Z1 + state.H1;
-                const hf_total = state.hf;
-                const y_HGL_end = toScreenY(E1_abs - hf_total);
-
-                ctx.beginPath();
-                ctx.moveTo(x_R1, y_H1);
-                ctx.lineTo(x_R2, y_HGL_end);
-                ctx.strokeStyle = '#ef4444'; 
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                const hv = (state.v * state.v) / (2 * g);
-                const y_EGL_start = toScreenY(E1_abs + hv);
-                const y_EGL_end = toScreenY((E1_abs - hf_total) + hv);
-
-                ctx.beginPath();
-                ctx.moveTo(x_R1, y_EGL_start);
-                ctx.lineTo(x_R2, y_EGL_end);
-                ctx.strokeStyle = '#eab308'; 
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
-
-            // Tekstualne oznake
-            ctx.fillStyle = '#f8fafc';
-            ctx.font = '12px Segoe UI';
-
-            ctx.fillText('KAPTAŽA (Gornji)', x_R1 - 45, y_Hmax1 - 35);
-            ctx.fillText(`Z_dna = ${state.Z1.toFixed(1)} m`, x_R1 + resWidth / 2 + 10, y_Z1);
-            ctx.fillText(`H1 = ${state.H1.toFixed(2)} m`, x_R1 - 25, y_H1 - 8);
-
-            ctx.fillText('REZERVOAR SELO (Donji)', x_R2 - 55, y_Hmax2 - 35);
-            ctx.fillText(`Z_dna = ${state.Z2.toFixed(1)} m`, x_R2 - resWidth / 2 - 85, y_Z2);
-            ctx.fillText(`H2 = ${state.H2.toFixed(2)} m`, x_R2 - 25, y_H2 - 8);
-
-            const midX = (x_R1 + x_R2) / 2;
-            const midY = (y_Z1 + y_Z2) / 2;
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(`L = ${state.L}m, Ø${state.D}mm`, midX - 40, midY + 25);
+        const wlInput = document.getElementById('insp-res-wl');
+        // Ne diraj polje ako korisnik trenutno kuca u njega
+        if (wlInput && document.activeElement !== wlInput) {
+            wlInput.value = res.waterLevel.toFixed(2);
         }
 
-        // --- MAIN LOOP ---
-        function loop(timestamp) {
-            const dt = Math.min((timestamp - lastTime) / 1000, 0.1); 
-            lastTime = timestamp;
-
-            updateHydraulics(dt);
-            render();
-
-            requestAnimationFrame(loop);
+        const vWaterSpan = document.getElementById('insp-res-vwater-val');
+        if (vWaterSpan) {
+            const Vw = res.width * res.length * res.waterLevel;
+            const Lw = Math.round(Vw * 1000).toLocaleString('bs-BA');
+            vWaterSpan.innerText = `${Vw.toFixed(1)} m³ / ${Lw} L`;
         }
+    }
+    // ═══════════════════════════════════════════════════
+}
+                }
+
+                
+            });
+        });
+
+        renderPlanView(networkHydraulics);
+        renderProfileView(networkHydraulics);
+        update3DScene();
 
         requestAnimationFrame(loop);
-    </script>
+    })();
+}
+
+/* ============================================================
+   12. MODOVI RADA
+   ============================================================ */
+function setMode(newMode) {
+    state.mode = newMode;
+    const bS = document.getElementById('tool-select');
+    const bD = document.getElementById('tool-draw');
+    const bI = document.getElementById('tool-img');
+    if (bS) bS.classList.toggle('active', newMode === 'select');
+    if (bD) bD.classList.toggle('active', newMode === 'draw');
+    if (bI) bI.classList.toggle('active', newMode === 'image');
+}
+document.getElementById('tool-select').addEventListener('click', () => setMode('select'));
+document.getElementById('tool-draw').addEventListener('click', () => setMode('draw'));
+document.getElementById('tool-img').addEventListener('click', () => setMode('image'));
+
+/* ============================================================
+   13. INTERAKCIJA NA SITUACIJI
+   ============================================================ */
+let isDraggingPlan = false, isDraggingNodePlan = false;
+
+canvasPlan.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    const rect = canvasPlan.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+    const rawWorldX = (mouseX - state.planPan.x) / state.planZoom;
+    const rawWorldY = (mouseY - state.planPan.y) / state.planZoom;
+    const finalPt = getSnappedCoordinates(rawWorldX, rawWorldY);
+    const activeAlign = getActiveAlignment();
+
+    if (state.mode === 'image' && !state.bgImgBounds.isFitted) {
+        isDraggingPlan = true;
+        state.panStart = { x: mouseX - state.bgImgBounds.x, y: mouseY - state.bgImgBounds.y };
+        return;
+    }
+
+    if (state.mode === 'draw') {
+        const isSnapped = state.activeSnapPoint !== null;
+        activeAlign.points.push({
+            x: finalPt.x, y: finalPt.y, radius: 0,
+            depth: state.pipeDepth, 
+            type: isSnapped ? 'tracva' : 'sastavni', 
+            zeta: isSnapped ? 0.5 : 0.0,
+            qFlow: 10,
+            qIn: 0.0
+        });
+        state.selectedNodeType = 'node';
+        state.selectedPlanNode = activeAlign.points.length - 1;
+        state.selectedPipeIdx = -1;
+        centerProfileOnTerrain();
+        updateInspectorUI();
+        return;
+    }
+    if (state.mode === 'select') {
+        let foundNodeIdx = activeAlign.points.findIndex(p =>
+            Math.hypot(p.x - rawWorldX, p.y - rawWorldY) < 12 / state.planZoom);
+        if (foundNodeIdx !== -1) {
+            state.selectedNodeType = 'node';
+            state.selectedPlanNode = foundNodeIdx;
+            state.selectedPipeIdx = -1;
+            isDraggingNodePlan = true;
+            updateInspectorUI();
+            return;
+        }
+        let foundPipeIdx = -1;
+        for (let i = 0; i < activeAlign.points.length - 1; i++) {
+            let p1 = activeAlign.points[i], p2 = activeAlign.points[i + 1];
+            if (distToSegment({ x: rawWorldX, y: rawWorldY }, p1, p2) < 8 / state.planZoom) { foundPipeIdx = i; break; }
+        }
+        if (foundPipeIdx !== -1) {
+            state.selectedNodeType = 'pipe';
+            state.selectedPipeIdx = foundPipeIdx;
+            state.selectedPlanNode = -1;
+            updateInspectorUI();
+            return;
+        }
+        state.selectedNodeType = null;
+        state.selectedPlanNode = -1;
+        state.selectedPipeIdx = -1;
+        isDraggingPlan = true;
+        state.panStart = { x: e.clientX - state.planPan.x, y: e.clientY - state.planPan.y };
+        updateInspectorUI();
+    }
+});
+
+canvasPlan.addEventListener('mousemove', (e) => {
+    const rect = canvasPlan.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+    const rawWorldX = (mouseX - state.planPan.x) / state.planZoom;
+    const rawWorldY = (mouseY - state.planPan.y) / state.planZoom;
+    const finalPt = getSnappedCoordinates(rawWorldX, rawWorldY);
+
+    if (isDraggingPlan && state.mode === 'image' && !state.bgImgBounds.isFitted) {
+        state.bgImgBounds.x = mouseX - state.panStart.x;
+        state.bgImgBounds.y = mouseY - state.panStart.y;
+    } else if (isDraggingPlan) {
+        state.planPan.x = e.clientX - state.panStart.x;
+        state.planPan.y = e.clientY - state.panStart.y;
+    } else if (isDraggingNodePlan && state.selectedNodeType === 'node' && state.selectedPlanNode !== -1) {
+        const activeAlign = getActiveAlignment();
+        const currNode = activeAlign.points[state.selectedPlanNode];
+        if (currNode) {
+            const oldX = currNode.x, oldY = currNode.y;
+            moveSharedNodes(oldX, oldY, finalPt.x, finalPt.y);
+            centerProfileOnTerrain();
+        }
+    }
+});
+
+canvasPlan.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (state.mode === 'image' && !state.bgImgBounds.isFitted) {
+        state.bgImgBounds.scale *= e.deltaY < 0 ? 1.05 : 0.95;
+    } else {
+        state.planZoom *= e.deltaY < 0 ? 1.15 : 0.85;
+    }
+});
+
+canvasPlan.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (state.mode === 'draw') setMode('select');
+});
+
+/* ============================================================
+   14. INTERAKCIJA NA PROFILU — DODAVANJE BEZ IZOBLIČENJA TERENA
+   ============================================================ */
+canvasProfile.addEventListener('mousedown', (e) => {
+    const rect = canvasProfile.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+    const activeAlign = getActiveAlignment();
+    const { sampledPoints } = ProcessAlignment(activeAlign);
+
+    let foundNodeIdx = -1;
+    for (let p of sampledPoints) {
+        if (p.isNode && p.nodeRef) {
+            let depth = (p.nodeRef.depth !== undefined) ? p.nodeRef.depth : state.pipeDepth;
+            let screen = worldToProfileScreen(p.station, p.z - depth);
+            if (Math.hypot(mouseX - screen.x, mouseY - screen.y) < 14) { foundNodeIdx = p.origIdx; break; }
+        }
+    }
+
+    if (foundNodeIdx !== -1) {
+        state.selectedNodeType = 'node';
+        state.selectedPlanNode = foundNodeIdx;
+        state.selectedPipeIdx = -1;
+        state.isDraggingProfileNode = true;
+        updateInspectorUI();
+    } else {
+        state.isPanningProfile = true;
+        state.profilePanStart = { x: e.clientX - state.profilePan.x, y: e.clientY - state.profilePan.y };
+    }
+});
+
+canvasProfile.addEventListener('mousemove', (e) => {
+    const rect = canvasProfile.getBoundingClientRect();
+    const mouseY = e.clientY - rect.top;
+
+    if (state.isDraggingProfileNode && state.selectedNodeType === 'node' && state.selectedPlanNode !== -1) {
+        const activeAlign = getActiveAlignment();
+        const node = activeAlign.points[state.selectedPlanNode];
+        const { sampledPoints } = ProcessAlignment(activeAlign);
+        const sampledNode = sampledPoints.find(p => p.origIdx === state.selectedPlanNode);
+        if (sampledNode) {
+            const h = canvasProfile.height, bandHeight = state.bandHeight || 120;
+            let yWorldScaled = (h - bandHeight + state.profilePan.y - mouseY) / state.profileZoom.y;
+            let zPipeNew = (yWorldScaled / state.profileVExag) + 200;
+            const newDepth = Math.max(0, sampledNode.z - zPipeNew);
+            node.depth = newDepth;
+            updateSharedNodeDepths(node.x, node.y, newDepth);
+        }
+    } else if (state.isPanningProfile) {
+        state.profilePan.x = e.clientX - state.profilePanStart.x;
+        state.profilePan.y = e.clientY - state.profilePanStart.y;
+    }
+});
+
+canvasProfile.addEventListener('dblclick', (e) => {
+    const rect = canvasProfile.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const targetStation = (mouseX - state.profilePan.x) / state.profileZoom.x;
+    const activeAlign = getActiveAlignment();
+    const { sampledPoints } = ProcessAlignment(activeAlign);
+    if (sampledPoints.length < 2) return;
+
+    for (let i = 0; i < sampledPoints.length - 1; i++) {
+        let p1 = sampledPoints[i], p2 = sampledPoints[i + 1];
+        if (targetStation >= p1.station && targetStation <= p2.station) {
+            let t = (targetStation - p1.station) / (p2.station - p1.station);
+            let newX = (1 - t) * p1.x + t * p2.x;
+            let newY = (1 - t) * p1.y + t * p2.y;
+            // EKSPLICITNO PRIDRUŽIVANJE TAČNE TAČKE TERENA SA PROFILA (bez deformacije terena)
+            let newZ = (1 - t) * p1.z + t * p2.z;
+
+            activeAlign.points.splice(p1.origIdx + 1, 0, {
+                x: newX, y: newY, z: newZ, radius: 0,
+                depth: state.pipeDepth, type: 'sastavni', zeta: 0.0, qFlow: 10.0, qIn: 0.0
+            });
+            state.selectedNodeType = 'node';
+            state.selectedPlanNode = p1.origIdx + 1;
+            updateInspectorUI();
+            break;
+        }
+    }
+});
+
+canvasProfile.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvasProfile.getBoundingClientRect();
+    const mouseY = e.clientY - rect.top;
+    const currentBandHeight = state.bandHeight || 120;
+    const bandTopY = canvasProfile.height - currentBandHeight;
+
+    if (mouseY >= bandTopY) {
+        if (e.deltaY < 0) {
+            if (state.bandHeight < 160) {
+                state.bandHeight = Math.min(160, state.bandHeight + 5);
+            } else {
+                state.bandFontSize = Math.min(10, state.bandFontSize + 0.2);
+            }
+        } else {
+            if (state.bandFontSize > 8) {
+                state.bandFontSize = Math.max(8, state.bandFontSize - 0.2);
+            } else if (state.bandHeight > 120) {
+                state.bandHeight = Math.max(120, state.bandHeight - 5);
+            }
+        }
+        return;
+    }
+
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+    if (e.shiftKey) state.profileZoom.y *= zoomFactor;
+    else state.profileZoom.x *= zoomFactor;
+});
+
+window.addEventListener('mouseup', () => {
+    isDraggingPlan = false;
+    isDraggingNodePlan = false;
+    state.isDraggingProfileNode = false;
+    state.isPanningProfile = false;
+});
+
+/* ============================================================
+   15. BRISANJE
+   ============================================================ */
+function deleteSelectedElement() {
+    const activeAlign = getActiveAlignment();
+    if (state.selectedNodeType === 'node' && state.selectedPlanNode >= 0 && state.selectedPlanNode < activeAlign.points.length) {
+        activeAlign.points.splice(state.selectedPlanNode, 1);
+        state.selectedPlanNode = -1;
+        state.selectedNodeType = null;
+        centerProfileOnTerrain();
+        updateInspectorUI();
+    }
+}
+const btnDel = document.getElementById('btn-delete-element');
+if (btnDel) btnDel.addEventListener('click', deleteSelectedElement);
+window.addEventListener('keydown', (e) => { if (e.key === 'Delete' || e.key === 'Del') deleteSelectedElement(); });
+
+/* ============================================================
+   16. UI KONTROLE
+   ============================================================ */
+const alignSelect = document.getElementById('select-alignment');
+function updateAlignmentDropdown() {
+    alignSelect.innerHTML = '';
+    state.alignments.forEach(a => {
+        let opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = `${a.name} (${a.points.length} čv.)`;
+        if (a.id === state.activeAlignId) opt.selected = true;
+        alignSelect.appendChild(opt);
+    });
+}
+alignSelect.addEventListener('change', function () {
+    state.activeAlignId = parseInt(this.value);
+    centerProfileOnTerrain();
+    updateInspectorUI();
+});
+document.getElementById('btn-add-align').addEventListener('click', function () {
+    const nextId = state.alignments.length > 0 ? Math.max(...state.alignments.map(a => a.id)) + 1 : 1;
+    let userInput = null;
+    try { userInput = window.prompt("Unesite naziv novog voda:", `Ogranak ID: ${nextId}`); } catch (e) {}
+    const finalName = (userInput && userInput.trim()) ? userInput.trim() : `Ogranak ID: ${nextId}`;
+    state.alignments.push({ id: nextId, name: finalName, points: [], airValves: [] });
+    state.activeAlignId = nextId;
+    updateAlignmentDropdown();
+    setMode('draw');
+    centerProfileOnTerrain();
+    updateInspectorUI();
+});
+
+document.getElementById('btn-demo-terrain').addEventListener('click', generateDemoTerrain);
+
+document.getElementById('input-pipe-depth').addEventListener('change', function () {
+    state.pipeDepth = parseFloat(this.value) || 0.80;
+});
+document.getElementById('input-profile-v-exag').addEventListener('input', function () {
+    state.profileVExag = parseFloat(this.value);
+    document.getElementById('label-profile-v-exag').innerText = `${state.profileVExag}x`;
+    centerProfileOnTerrain();
+});
+document.getElementById('input-z-exag').addEventListener('input', function () {
+    state.zExaggeration = parseFloat(this.value);
+    document.getElementById('label-z-exag').innerText = `${state.zExaggeration.toFixed(1)}x`;
+    center3DCameraOnTerrain();
+});
+document.getElementById('btn-auto-valves').addEventListener('click', () => {
+    const activeAlign = getActiveAlignment();
+    if (!activeAlign || activeAlign.points.length < 3) return;
+    const { sampledPoints } = ProcessAlignment(activeAlign);
+    for (let i = 1; i < sampledPoints.length - 1; i++) {
+        const prev = sampledPoints[i - 1];
+        const curr = sampledPoints[i];
+        const next = sampledPoints[i + 1];
+        if (curr.z > prev.z && curr.z > next.z) {
+            if (curr.isNode && curr.nodeRef && !['rezervoar', 'pumpRes', 'kaptaza'].includes(curr.nodeRef.type)) {
+                curr.nodeRef.type = 'prozracni';
+                curr.nodeRef.zeta = NODE_TYPES['prozracni'].zeta;
+            }
+        }
+    }
+    updateInspectorUI();
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+    const activeAlign = getActiveAlignment();
+    activeAlign.points = [];
+    activeAlign.airValves = [];
+    updateInspectorUI();
+});
+
+document.getElementById('input-extra-station').addEventListener('input', (e) => {
+    state.extraStationInterval = Math.max(0, parseFloat(e.target.value) || 0);
+    renderProfileView();
+});
+
+/* ============================================================
+   17. DXF + SLIKA + RESIZABLE LAYOUT LOGIKA
+   ============================================================ */
+document.getElementById('dxf-input').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => parseDXF(evt.target.result);
+    reader.readAsText(file);
+});
+
+function parseDXF(text) {
+    state.dxfContours = [];
+    state.dxfBgBox = null;
+    const lines = text.split(/\r?\n/);
+    let currentEntity = null, currentLayer = "", currentContour = null;
+    let bgPoints = [], currentX = null;
+    for (let i = 0; i < lines.length; i += 2) {
+        let code = lines[i] ? lines[i].trim() : "";
+        let val = lines[i + 1] ? lines[i + 1].trim() : "";
+        if (code === '0') {
+            if (currentContour && currentContour.points.length > 1) {
+                if (currentLayer.toLowerCase().includes('bg')) bgPoints.push(...currentContour.points);
+                else state.dxfContours.push(currentContour);
+            }
+            if (['LWPOLYLINE', 'POLYLINE', 'LINE', 'RECTANGLE'].includes(val)) {
+                currentEntity = val;
+                currentContour = { elevation: 250.0, points: [] };
+                currentLayer = "";
+            } else currentEntity = null;
+        }
+        if (currentEntity) {
+            if (code === '8') currentLayer = val;
+            if (code === '38') currentContour.elevation = parseFloat(val) || 250.0;
+            if (code === '10') currentX = parseFloat(val);
+            if (code === '20') {
+                let y = parseFloat(val);
+                if (currentX !== null) currentContour.points.push({ x: currentX, y });
+            }
+            if (code === '30' && parseFloat(val) !== 0) currentContour.elevation = parseFloat(val);
+        }
+    }
+    if (bgPoints.length > 0) {
+        let minX = Math.min(...bgPoints.map(p => p.x)), maxX = Math.max(...bgPoints.map(p => p.x));
+        let minY = Math.min(...bgPoints.map(p => p.y)), maxY = Math.max(...bgPoints.map(p => p.y));
+        state.dxfBgBox = { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+        fitImageToDxfBox();
+    }
+    update3DScene();
+    center3DCameraOnTerrain();
+}
+
+document.getElementById('img-input').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => {
+            state.bgImage = img;
+            if (state.dxfBgBox) fitImageToDxfBox();
+            else state.bgImgBounds = { x: 0, y: 0, w: img.width * 0.5, h: img.height * 0.5, scale: 1.0, isFitted: false };
+            setMode('image');
+        };
+        img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+function setupLayoutSplitters() {
+    const splitterVMain = document.getElementById('splitter-v-main');
+    const splitterHLeft = document.getElementById('splitter-h-left');
+    const splitterVTop = document.getElementById('splitter-v-top');
+
+    const paneInspector = document.getElementById('pane-inspector');
+    const pane3D = document.getElementById('pane-3d');
+    const paneProfile = document.getElementById('pane-profile');
+    const topZone = document.getElementById('top-zone');
+    const panePlan = document.getElementById('pane-plan');
+    const leftColumn = document.getElementById('left-column');
+    const container = document.querySelector('.app-container');
+
+    const btnToggle3D = document.getElementById('btn-toggle-3d');
+    const btnToggleProfile = document.getElementById('btn-toggle-profile');
+    const btnToggleInspector = document.getElementById('btn-toggle-inspector');
+
+    let activeSplitter = null;
+
+    function updateAllCanvases() {
+        resizeCanvases();
+        if (typeof renderPlanView === 'function') renderPlanView();
+        if (typeof renderProfileView === 'function') renderProfileView();
+    }
+
+    btnToggleInspector.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isCollapsed = paneInspector.classList.toggle('pane-collapsed');
+        btnToggleInspector.innerText = isCollapsed ? '◀' : '▶';
+        btnToggleInspector.title = isCollapsed ? 'Prikaži Inspector' : 'Sakrij Inspector';
+        updateAllCanvases();
+    });
+
+    btnToggle3D.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isCollapsed = pane3D.classList.toggle('pane-collapsed');
+        if (isCollapsed) {
+            panePlan.classList.add('pane-expanded');
+            btnToggle3D.innerText = '▶';
+            btnToggle3D.title = 'Prikaži 3D pregled';
+        } else {
+            panePlan.classList.remove('pane-expanded');
+            btnToggle3D.innerText = '◀';
+            btnToggle3D.title = 'Sakrij 3D pregled';
+        }
+        updateAllCanvases();
+    });
+
+    btnToggleProfile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isCollapsed = paneProfile.classList.toggle('pane-collapsed');
+        if (isCollapsed) {
+            topZone.classList.add('pane-expanded');
+            btnToggleProfile.innerText = '▲';
+            btnToggleProfile.title = 'Prikaži Profil';
+        } else {
+            topZone.classList.remove('pane-expanded');
+            btnToggleProfile.innerText = '▼';
+            btnToggleProfile.title = 'Sakrij Profil';
+        }
+        updateAllCanvases();
+    });
+
+    splitterVMain.addEventListener('mousedown', (e) => { if (e.target !== btnToggleInspector) activeSplitter = 'V_MAIN'; });
+    splitterHLeft.addEventListener('mousedown', (e) => { if (e.target !== btnToggleProfile) activeSplitter = 'H_LEFT'; });
+    splitterVTop.addEventListener('mousedown', (e) => { if (e.target !== btnToggle3D) activeSplitter = 'V_TOP'; });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!activeSplitter) return;
+
+        if (activeSplitter === 'V_MAIN' && !paneInspector.classList.contains('pane-collapsed')) {
+            const containerRect = container.getBoundingClientRect();
+            const newInspectorWidth = containerRect.right - e.clientX;
+            if (newInspectorWidth > 180 && newInspectorWidth < containerRect.width - 350) {
+                paneInspector.style.width = `${newInspectorWidth}px`;
+                updateAllCanvases();
+            }
+        } else if (activeSplitter === 'H_LEFT' && !paneProfile.classList.contains('pane-collapsed')) {
+            const leftRect = leftColumn.getBoundingClientRect();
+            const newTopHeight = e.clientY - leftRect.top;
+            if (newTopHeight > 120 && newTopHeight < leftRect.height - 120) {
+                topZone.style.flex = 'none';
+                topZone.style.height = `${newTopHeight}px`;
+                updateAllCanvases();
+            }
+        } else if (activeSplitter === 'V_TOP' && !pane3D.classList.contains('pane-collapsed')) {
+            const topRect = topZone.getBoundingClientRect();
+            const newPlanWidth = e.clientX - topRect.left;
+            if (newPlanWidth > 180 && newPlanWidth < topRect.width - 120) {
+                panePlan.style.flex = 'none';
+                panePlan.style.width = `${newPlanWidth}px`;
+                updateAllCanvases();
+            }
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (activeSplitter) {
+            activeSplitter = null;
+            updateAllCanvases();
+        }
+    });
+
+    window.addEventListener('resize', updateAllCanvases);
+    updateAllCanvases();
+}
+
+/* ============================================================
+   18. INICIJALIZACIJA
+   ============================================================ */
+updateAlignmentDropdown();
+init3D();
+setupLayoutSplitters();
+generateDemoTerrain();
+startMainLoop();
+</script>
 </body>
-<<<<<<< HEAD
 </html>
-=======
-</html>
->>>>>>> 1737b790b60bb5b615dcb8857bf61b9766e892ce
