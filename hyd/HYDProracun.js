@@ -10,25 +10,40 @@ class HYDProracun {
     }
 
     /**
-     * Proračun gravitacionog protoka sa dinamičkom prelivnom visinom h_pr = h_offset + D
+     * Pomoćna metoda za određivanje kote cijevi uzimajući u obzir nodeRef.depth
      */
-solveGravityFlow(sampledNodes, H_start, H_end, valveMult = 1.0, waterLevel = 1.0, h_offset = 0.05) {
+    _getZPipe(node) {
+        if (node.zPipe !== undefined) return node.zPipe;
+        const depth = node.nodeRef?.depth !== undefined ? node.nodeRef.depth : 0.80;
+        return node.z - depth;
+    }
+
+    /**
+     * Pomoćna metoda za određivanje unutrašnjeg prečnika cijevi u metrima
+     */
+    _getIntDiameter(node) {
+        if (node.D_int !== undefined) return node.D_int;
+        const pInfo = node.nodeRef?.pipeSegment || { diameter: 110, wallThickness: 6.6 };
+        const D_ext_m = (node.D || pInfo.diameter || 110) / 1000.0;
+        const t_m = (pInfo.wallThickness !== undefined ? pInfo.wallThickness : 6.6) / 1000.0;
+        return Math.max(0.01, D_ext_m - 2 * t_m);
+    }
+
+    /**
+     * Proračun gravitacionog protoka sa dinamičkom prelivnom visinom h_pr = h_offset + t_m
+     */
+    solveGravityFlow(sampledNodes, H_start, H_end, valveMult = 1.0, waterLevel = 1.0, h_offset = 0.05) {
         if (!sampledNodes || sampledNodes.length < 2) return { Q_lps: 0, isPartiallyFilled: false };
 
         const deltaH = H_start - H_end;
         if (deltaH <= 0.001 || valveMult <= 0) return { Q_lps: 0, isPartiallyFilled: false };
 
-        const pipeInfo = sampledNodes[0].nodeRef ? sampledNodes[0].nodeRef.pipeSegment : { diameter: 110, wallThickness: 6.6, roughness: 0.01 };
-        
-        const D_ext_m = (pipeInfo.diameter || 110) / 1000.0;
+        const D_int_m = this._getIntDiameter(sampledNodes[0]);
+        const pipeInfo = sampledNodes[0].nodeRef ? sampledNodes[0].nodeRef.pipeSegment : { wallThickness: 6.6 };
         const t_m = (pipeInfo.wallThickness !== undefined ? pipeInfo.wallThickness : 6.6) / 1000.0;
-        const D_int_m = Math.max(0.01, D_ext_m - 2 * t_m); // Unutrašnji prečnik cijevi
 
         // 1. Prelivna visina (donja unutrašnja ivica cijevi preko koje preliva voda)
         const h_pr = h_offset + t_m; 
-
-        // 2. Visina do ose cijevi (težište poprečnog presjeka)
-        const h_osa = h_pr + (D_int_m / 2.0);
 
         // Nivo vode mora preći prelivnu visinu da bi započelo isticanje
         const h_eff = Math.max(0.0, waterLevel - h_pr);
@@ -44,8 +59,8 @@ solveGravityFlow(sampledNodes, H_start, H_end, valveMult = 1.0, waterLevel = 1.0
             const curr = sampledNodes[i];
             const L_i = Math.max(0.1, curr.station - prev.station);
 
-            const pInfo = prev.nodeRef ? prev.nodeRef.pipeSegment : { diameter: 110, wallThickness: 6.6, roughness: 0.01 };
-            const D_i = Math.max(0.01, ((pInfo.diameter || 110) - 2 * (pInfo.wallThickness || 6.6)) / 1000.0);
+            const D_i = this._getIntDiameter(prev);
+            const pInfo = prev.nodeRef ? prev.nodeRef.pipeSegment : { roughness: 0.01 };
             const k_i = Math.max(0.00001, (pInfo.roughness || 0.01) / 1000.0);
             const A_i = (Math.PI * D_i * D_i) / 4.0;
 
@@ -72,33 +87,43 @@ solveGravityFlow(sampledNodes, H_start, H_end, valveMult = 1.0, waterLevel = 1.0
         let currentHGL = H0;
         const isClosed = Q <= 0.00001;
 
-        const d0 = (nodes[0].D || (nodes[0].nodeRef?.pipeSegment?.diameter ? nodes[0].nodeRef.pipeSegment.diameter / 1000 : 0.1));
-        const area0 = (Math.PI * Math.pow(d0, 2)) / 4;
+        const D_int0 = this._getIntDiameter(nodes[0]);
+        const area0 = (Math.PI * Math.pow(D_int0, 2)) / 4;
         const v0 = isClosed ? 0 : Q / area0;
         const hv0 = Math.pow(v0, 2) / (2 * this.g);
-        const zP0 = nodes[0].zPipe !== undefined ? nodes[0].zPipe : (nodes[0].z - 0.80);
+        const zP0 = this._getZPipe(nodes[0]);
 
         profileResults.push({
-            station: nodes[0].station, zTerrain: nodes[0].z, zPipe: zP0,
-            hgl: currentHGL, egl: currentHGL + hv0, velocity: v0,
-            pressureHead: currentHGL - zP0, pressureBar: (currentHGL - zP0) / 10.197,
-            frictionLoss: 0, minorLoss: 0, f: 0, Re: isClosed ? 0 : (v0 * d0) / this.nu
+            station: nodes[0].station, 
+            zTerrain: nodes[0].z, 
+            zPipe: zP0,
+            hgl: currentHGL, 
+            egl: currentHGL + hv0, 
+            velocity: v0,
+            pressureHead: currentHGL - zP0, 
+            pressureBar: (currentHGL - zP0) / 10.197,
+            frictionLoss: 0, 
+            minorLoss: 0, 
+            f: 0, 
+            Re: isClosed ? 0 : (v0 * D_int0) / this.nu
         });
 
         for (let i = 1; i < nodes.length; i++) {
             const prevNode = nodes[i - 1];
             const currNode = nodes[i];
             const L = currNode.station - prevNode.station;
-            const D = currNode.D || (prevNode.nodeRef?.pipeSegment?.diameter ? prevNode.nodeRef.pipeSegment.diameter / 1000 : 0.1);
+
+            const D_int = this._getIntDiameter(prevNode);
             const k = currNode.k || (prevNode.nodeRef?.pipeSegment?.roughness ? prevNode.nodeRef.pipeSegment.roughness / 1000 : this.defaultRoughness);
 
-            const area = (Math.PI * Math.pow(D, 2)) / 4;
+            const area = (Math.PI * Math.pow(D_int, 2)) / 4;
             const v = isClosed ? 0 : Q / area;
             const velocityHead = Math.pow(v, 2) / (2 * this.g);
-            const Re = isClosed ? 0 : (v * D) / this.nu;
+            const Re = isClosed ? 0 : (v * D_int) / this.nu;
 
-            const f = isClosed ? 0 : this.calculateFrictionFactor(v, D, k);
-            const hf = (f * (L / D)) * velocityHead;
+            const f = isClosed ? 0 : this.calculateFrictionFactor(v, D_int, k);
+            const hf = (f * (L / D_int)) * velocityHead;
+
             let zetaSum = currNode.nodeRef ? (currNode.nodeRef.zeta || 0) : 0;
             if (currNode.fittings && Array.isArray(currNode.fittings)) {
                 zetaSum += currNode.fittings.reduce((sum, item) => sum + (item.zeta || 0), 0);
@@ -106,21 +131,31 @@ solveGravityFlow(sampledNodes, H_start, H_end, valveMult = 1.0, waterLevel = 1.0
             const hm = zetaSum * velocityHead;
 
             currentHGL -= (hf + hm);
-            const zP = currNode.zPipe !== undefined ? currNode.zPipe : (currNode.z - 0.80);
+            const zP = this._getZPipe(currNode);
             const pHead = currentHGL - zP;
 
             profileResults.push({
-                station: currNode.station, zTerrain: currNode.z, zPipe: zP,
-                hgl: currentHGL, egl: currentHGL + velocityHead, velocity: v,
-                pressureHead: pHead, pressureBar: pHead / 10.197,
-                frictionLoss: hf, minorLoss: hm, f: f, Re: Re
+                station: currNode.station, 
+                zTerrain: currNode.z, 
+                zPipe: zP,
+                hgl: currentHGL, 
+                egl: currentHGL + velocityHead, 
+                velocity: v,
+                pressureHead: pHead, 
+                pressureBar: pHead / 10.197,
+                frictionLoss: hf, 
+                minorLoss: hm, 
+                f: f, 
+                Re: Re
             });
         }
 
         return {
             summary: {
                 totalLength: nodes[nodes.length - 1].station - nodes[0].station,
-                flowRateLps: Q * 1000, initialHGL: H0, finalHGL: currentHGL,
+                flowRateLps: Q * 1000, 
+                initialHGL: H0, 
+                finalHGL: currentHGL,
                 totalHeadLoss: H0 - currentHGL,
                 minPressureBar: Math.min(...profileResults.map(p => p.pressureBar)),
                 maxPressureBar: Math.max(...profileResults.map(p => p.pressureBar))
