@@ -133,7 +133,6 @@
         <div class="res-block">
           <div class="res-title">DUŽINA PREKLOPA (l<sub>0</sub>)</div>
           <div class="res-val" id="val-prk-donja">-</div>
-          <div id="val-mreza-extra-donja" style="font-size:0.72rem; font-weight:700; margin-top:2px;"></div>
         </div>
       </div>
 
@@ -152,7 +151,6 @@
         <div class="res-block">
           <div class="res-title">DUŽINA PREKLOPA (l<sub>0</sub>)</div>
           <div class="res-val" id="val-prk-gornja">-</div>
-          <div id="val-mreza-extra-gornja" style="font-size:0.72rem; font-weight:700; margin-top:2px;"></div>
         </div>
       </div>
     </div>
@@ -173,19 +171,25 @@
     const mrezaList = ["Q188A", "Q257A", "Q335A", "Q424A", "Q524A", "Q636A", "R188A", "R257A", "R335A", "R424A", "R524A"];
 
     window.onload = async function() {
+      // 1. Učitavanje JSON fajla
       try {
         const response = await fetch('./tabele_armature.json');
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Datoteka nije pronađena na serveru.`);
+        }
         dbData = await response.json();
       } catch (err) {
-        console.warn("Učitavanje sa fetch neuspješno. Korištenje ugrađenih podataka ako postoje.", err);
+        showError("GREŠKA PRI UČITAVANJU: " + err.message);
+        return;
       }
 
-      if (dbData) {
+      // 2. Inicijalizacija dugmadi i proračun odvojeno
+      try {
         initButtons();
         updateHLimit();
-      } else {
-        showError("GREŠKA: Datoteka 'tabele_armature.json' nije pronađena u istom folderu ili se ne može učitati.");
+      } catch (calcErr) {
+        console.error("Greška u proračunu:", calcErr);
+        showError("GREŠKA U SKRIPTI PRORAČUNA: " + calcErr.message);
       }
     };
 
@@ -193,7 +197,7 @@
       const errBox = document.getElementById("error-box");
       errBox.style.display = "block";
       errBox.textContent = msg;
-      document.getElementById("table-output").innerHTML = "<b style='color:#dc2626;'>Učitavanje neuspješno. Proračun obustavljen.</b>";
+      document.getElementById("table-output").innerHTML = "<b style='color:#dc2626;'>Greška. Proračun obustavljen.</b>";
     }
 
     function initButtons() {
@@ -298,6 +302,7 @@
     function calcRebar() {
       const fi = state.fi;
       const fiStr = fi.toString();
+      const beton = state.beton;
       const c1 = parseFloat(document.getElementById("inp-c1").value) || 0;
       const a = parseFloat(document.getElementById("inp-a").value) || 0;
 
@@ -309,18 +314,18 @@
         `Svijetli razmak: <b>${a}mm</b> (potrebno ≥${a_req}mm) | Zaštitni sloj: <b>${c1}mm</b> (potrebno ≥${c1_req}mm) &rarr; ` +
         (isGeomGood ? `<span style="color:#16a34a">Povoljna geometrija (a ≥ 8∅ i c₁ ≥ 4∅)</span>` : `<span style="color:#dc2626">Nepovoljna geometrija (a < 8∅ ili c₁ < 4∅)</span>`);
 
-      // Očitavanje dužine sidrenja iz novog JSON-a
-      const sidConcreteObj = dbData.sidrenje?.[state.beton] || {};
-      const sidVB1 = sidConcreteObj.VB1?.[fiStr] ?? "-";
-      const sidVB2 = sidConcreteObj.VB2?.[fiStr] ?? "-";
+      // 1. Sidrenje šipki
+      const sidBetonObj = dbData.sidrenje?.[beton] || {};
+      const sidVB1 = sidBetonObj.VB1?.[fiStr] ?? "-";
+      const sidVB2 = sidBetonObj.VB2?.[fiStr] ?? "-";
 
       document.getElementById("val-sid-donja").textContent = sidVB1;
       document.getElementById("val-sid-gornja").textContent = (state.visina === 'gt') ? sidVB2 : sidVB1;
 
-      // Očitavanje dužine preklopa šipki iz novog JSON-a
+      // 2. Preklop šipki
       const udioKey = (state.preklopUdio === 'le33') ? "leq33" : "gt33";
-      const prkConcreteObj = dbData.preklop_sipke?.[state.beton] || {};
-      const prkUdioObj = prkConcreteObj[udioKey] || {};
+      const prkBetonObj = dbData.preklop_sipke?.[beton] || {};
+      const prkUdioObj = prkBetonObj[udioKey] || {};
       const prkGeomObj = prkUdioObj[geomKey] || {};
 
       const prkVB1 = prkGeomObj.VB1?.[fiStr] ?? "-";
@@ -331,10 +336,8 @@
 
       document.getElementById("val-prk-donja").innerHTML = `<span>${prkDonja}</span> <span class="res-unit">cm</span>`;
       document.getElementById("val-prk-gornja").innerHTML = `<span>${prkGornja}</span> <span class="res-unit">cm</span>`;
-      document.getElementById("val-mreza-extra-donja").textContent = "";
-      document.getElementById("val-mreza-extra-gornja").textContent = "";
 
-      renderRebarTable({ vb1: sidVB1, vb2: sidVB2 }, prkConcreteObj, isGeomGood);
+      renderRebarTable({ vb1: sidVB1, vb2: sidVB2 }, prkBetonObj, isGeomGood);
     }
 
     function calcMreza() {
@@ -342,9 +345,9 @@
       const beton = state.beton;
       const isQ = mreza.startsWith("Q");
 
-      const mrzaConcreteObj = dbData.preklop_mreze?.[beton] || {};
-      const podI = mrzaConcreteObj.podrucje_I || {};
-      const podII = mrzaConcreteObj.podrucje_II || {};
+      const mrzaBetonObj = dbData.preklop_mreze?.[beton] || {};
+      const podI = mrzaBetonObj.podrucje_I || {};
+      const podII = mrzaBetonObj.podrucje_II || {};
 
       const poduzni_I = podI.nosivi_poduzni?.[mreza] ?? "-";
       const poprecni_I = podI[isQ ? "nosivi_poprecni" : "razdelni_poprecni"]?.[mreza] ?? "-";
@@ -363,28 +366,25 @@
       const poprecniLabel = isQ ? "Poprečni (nosivi)" : "Poprečni (razdelni)";
 
       document.getElementById("val-prk-donja").innerHTML = 
-        `<div style="font-size:0.92rem; font-weight:800;">Podužni (nosivi): <b>${poduzni_donja}</b> <span class="res-unit">cm</span></div>` +
+        `<div style="font-size:0.92rem; font-weight:800;">Podužni: <b>${poduzni_donja}</b> <span class="res-unit">cm</span></div>` +
         `<div class="mreza-subval">${poprecniLabel}: <b>${poprecni_donja}</b> <span class="res-unit">cm</span></div>`;
 
       document.getElementById("val-prk-gornja").innerHTML = 
-        `<div style="font-size:0.92rem; font-weight:800;">Podužni (nosivi): <b>${poduzni_gornja}</b> <span class="res-unit">cm</span></div>` +
+        `<div style="font-size:0.92rem; font-weight:800;">Podužni: <b>${poduzni_gornja}</b> <span class="res-unit">cm</span></div>` +
         `<div class="mreza-subval">${poprecniLabel}: <b>${poprecni_gornja}</b> <span class="res-unit">cm</span></div>`;
-
-      document.getElementById("val-mreza-extra-donja").textContent = "";
-      document.getElementById("val-mreza-extra-gornja").textContent = "";
 
       renderMrezaTable(poduzni_I, poprecni_I, poduzni_II, poprecni_II, isQ);
     }
 
-    function renderRebarTable(sidData, prkObj, isGeomGood) {
+    function renderRebarTable(sidData, prkBetonObj, isGeomGood) {
       const fi = state.fi; 
       const fiStr = fi.toString();
       const beton = state.beton;
 
-      const le33_ge = prkObj.leq33?.povoljno || {};
-      const le33_lt = prkObj.leq33?.nepovoljno || {};
-      const gt33_ge = prkObj.gt33?.povoljno || {};
-      const gt33_lt = prkObj.gt33?.nepovoljno || {};
+      const le33_ge = prkBetonObj.leq33?.povoljno || {};
+      const le33_lt = prkBetonObj.leq33?.nepovoljno || {};
+      const gt33_ge = prkBetonObj.gt33?.povoljno || {};
+      const gt33_lt = prkBetonObj.gt33?.nepovoljno || {};
 
       const hlSid1 = (state.visina === 'le');
       const hlSid2 = (state.visina === 'gt');
