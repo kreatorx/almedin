@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalkulator Armature - DIN EN 1992-1-1</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --red: #dc2626;
+      --red-bg: #fef2f2;
+      --border: #cbd5e1;
+      --bg: #f8fafc;
+      --text: #0f172a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 8px; max-width: 980px; margin: 0 auto; font-size: 0.78rem; line-height: 1.25; }
+
+    .lbl { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; color: #475569; margin: 6px 0 3px 0; display: block; }
+    
+    .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; }
+    .btn { padding: 3px 8px; border: 1px solid var(--border); background: #fff; border-radius: 3px; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.1s; }
+    .btn:hover { border-color: var(--primary); }
+    
+    .btn-blue.active { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+    .btn-green.active { background: var(--green) !important; color: #fff !important; border-color: var(--green) !important; }
+    .btn-red.active { background: var(--red) !important; color: #fff !important; border-color: var(--red) !important; }
+
+    .inputs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; background: #fff; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 8px; }
+    .input-field { display: flex; flex-direction: column; gap: 2px; }
+    .input-field label { font-size: 0.7rem; font-weight: 700; color: #334155; }
+    .input-field input { padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px; font-size: 0.78rem; height: 24px; outline: none; }
+    .input-field input:focus { border-color: var(--primary); }
+
+    .geom-info { font-size: 0.7rem; font-weight: 600; color: #2563eb; margin-top: 2px; grid-column: 1 / -1; }
+
+    .results-card { background: #fff; border-radius: 6px; border: 1px solid var(--border); padding: 8px; margin-bottom: 10px; }
+    .zones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+    
+    .zone-box { padding: 8px; border-radius: 4px; border: 1.5px solid var(--border); transition: all 0.2s; }
+    .zone-box.vbi-style { background: var(--green-bg); border-color: #86efac; }
+    .zone-box.vbi-style .zone-head { color: #166534; }
+    
+    .zone-box.vbii-style { background: var(--red-bg); border-color: #fca5a5; }
+    .zone-box.vbii-style .zone-head { color: #991b1b; }
+
+    .zone-head { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+
+    .res-block { margin-bottom: 6px; }
+    .res-block:last-child { margin-bottom: 0; }
+    .res-title { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; opacity: 0.85; }
+    .res-val { font-size: 1.15rem; font-weight: 900; line-height: 1.15; margin-top: 1px; }
+    .res-unit { font-size: 0.72rem; font-weight: 600; }
+    .mreza-subval { font-size: 0.78rem; font-weight: 700; margin-top: 3px; color: #1e293b; }
+
+    .table-sec { background: #fff; padding: 6px; border-radius: 4px; border: 1px solid var(--border); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.68rem; text-align: center; }
+    th, td { border: 1px solid #cbd5e1; padding: 4px 6px; white-space: nowrap; }
+    th { background: #f1f5f9; font-weight: 700; font-size: 0.65rem; }
+    .hl-cell { background: #fef08a; font-weight: 800; color: #000; }
+
+    #error-box { display: none; background: #fef2f2; border: 1.5px solid #dc2626; color: #991b1b; padding: 10px; border-radius: 6px; font-weight: 700; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <div id="error-box"></div>
+
+  <!-- MARKA BETONA -->
+  <span class="lbl">1. Marka Betona:</span>
+  <div class="btn-row" id="row-beton"></div>
+
+  <!-- DEBLJINA ŠIPKE -->
+  <span class="lbl">2. Prečnik Šipke ∅ [mm]:</span>
+  <div class="btn-row" id="row-fi"></div>
+
+  <!-- VRSTA MREŽE -->
+  <span class="lbl">3. Vrsta Mreže:</span>
+  <div class="btn-row" id="row-mreza"></div>
+
+  <!-- DEBLJINA PLOČE I GRANIČNA VRIJEDNOST -->
+  <span class="lbl">4. Debljina Elementa / Visina Ploče:</span>
+  <div class="btn-row">
+    <button class="btn btn-green active" id="btn-h-le" onclick="setVisina('le')">Ploča h ≤ 300 mm (Dobre okolnosti donja/gornja)</button>
+    <button class="btn btn-red" id="btn-h-gt" onclick="setVisina('gt')">Ploča h > 300 mm (Loše okolnosti gornja zona)</button>
+    
+    <div style="display: flex; align-items: center; gap: 4px; margin-left: 6px; background: #fff; padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px;">
+      <label for="inp-h-limit" style="font-size: 0.7rem; font-weight: 700; color: #334155;">Granična visina [mm]:</label>
+      <input type="number" id="inp-h-limit" value="300" min="50" step="10" oninput="updateHLimit()" style="padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; font-size: 0.78rem; height: 22px; width: 55px; outline: none;">
+    </div>
+  </div>
+
+  <!-- UDIO PREKLOPA -->
+  <div id="sec-preklop-udio">
+    <span class="lbl">5. Udio Preklopljenih Šipki:</span>
+    <div class="btn-row">
+      <button class="btn btn-green active" id="btn-udio-le33" onclick="setUdio('le33')">≤ 33% preklopa</button>
+      <button class="btn btn-red" id="btn-udio-gt33" onclick="setUdio('gt33')">> 33% preklopa</button>
+    </div>
+  </div>
+
+  <!-- GEOMETRIJA -->
+  <div class="inputs-grid" id="sec-inputs-geom">
+    <div class="input-field">
+      <label for="inp-c1">Zaštitni sloj c₁ [mm]:</label>
+      <input type="number" id="inp-c1" value="35" min="5" oninput="calculate()">
+    </div>
+    <div class="input-field">
+      <label for="inp-a">Svijetli razmak a [mm]:</label>
+      <input type="number" id="inp-a" value="150" min="5" oninput="calculate()">
+    </div>
+    <div class="geom-info" id="geom-status">Geometrijski uslov: -</div>
+  </div>
+
+  <!-- REZULTATI -->
+  <div class="results-card">
+    <div class="zones-grid">
+      <!-- DONJA ZONA -->
+      <div class="zone-box vbi-style" id="box-donja">
+        <div class="zone-head">
+          <span>DONJA ZONA</span>
+          <small style="font-size:0.68rem; font-weight:600;">(VB I - DOBRE)</small>
+        </div>
+        
+        <div class="res-block" id="res-sidrenje-donja-box">
+          <div class="res-title">DUŽINA SIDRENJA (l<sub>b,rqd</sub>)</div>
+          <div class="res-val"><span id="val-sid-donja">-</span> <span class="res-unit">cm</span></div>
+        </div>
+
+        <div class="res-block">
+          <div class="res-title">DUŽINA PREKLOPA (l<sub>0</sub>)</div>
+          <div class="res-val" id="val-prk-donja">-</div>
+          <div id="val-mreza-extra-donja" style="font-size:0.72rem; font-weight:700; margin-top:2px;"></div>
+        </div>
+      </div>
+
+      <!-- GORNJA ZONA -->
+      <div class="zone-box vbi-style" id="box-gornja">
+        <div class="zone-head">
+          <span>GORNJA ZONA</span>
+          <small id="tag-gornja-vb" style="font-size:0.68rem; font-weight:600;">(VB I - DOBRE)</small>
+        </div>
+
+        <div class="res-block" id="res-sidrenje-gornja-box">
+          <div class="res-title">DUŽINA SIDRENJA (l<sub>b,rqd</sub>)</div>
+          <div class="res-val"><span id="val-sid-gornja">-</span> <span class="res-unit">cm</span></div>
+        </div>
+
+        <div class="res-block">
+          <div class="res-title">DUŽINA PREKLOPA (l<sub>0</sub>)</div>
+          <div class="res-val" id="val-prk-gornja">-</div>
+          <div id="val-mreza-extra-gornja" style="font-size:0.72rem; font-weight:700; margin-top:2px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA CIJELOG REDA -->
+  <span class="lbl">Prikaz izabranih uslova iz tabele:</span>
+  <div class="table-sec">
+    <div id="table-output">Učitavanje podataka...</div>
+  </div>
+
+  <script>
+    let dbData = null;
+    let state = { beton: "C25/30", mode: "rebar", fi: 12, mreza: null, visina: "le", preklopUdio: "le33" };
+
+    const concreteList = ["C12/15", "C16/20", "C20/25", "C25/30", "C30/37", "C35/45", "C40/50", "C45/55", "C50/60", "C55/67", "C60/75", "C70/85", "C80/95", "C90/105", "C100/115"];
+    const fiList = [6, 8, 10, 12, 14, 16, 20, 25, 28, 32, 40, 50];
+    const mrezaList = ["Q188A", "Q257A", "Q335A", "Q424A", "Q524A", "Q636A", "R188A", "R257A", "R335A", "R424A", "R524A"];
+
+    window.onload = async function() {
+      try {
+        const response = await fetch('./tabele_armature.json');
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        dbData = await response.json();
+      } catch (err) {
+        console.warn("Učitavanje sa fetch neuspješno. Korištenje ugrađenih podataka ako postoje.", err);
+      }
+
+      if (dbData) {
+        initButtons();
+        updateHLimit();
+      } else {
+        showError("GREŠKA: Datoteka 'tabele_armature.json' nije pronađena u istom folderu ili se ne može učitati.");
+      }
+    };
+
+    function showError(msg) {
+      const errBox = document.getElementById("error-box");
+      errBox.style.display = "block";
+      errBox.textContent = msg;
+      document.getElementById("table-output").innerHTML = "<b style='color:#dc2626;'>Učitavanje neuspješno. Proračun obustavljen.</b>";
+    }
+
+    function initButtons() {
+      const betonRow = document.getElementById("row-beton");
+      betonRow.innerHTML = "";
+      concreteList.forEach(c => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-blue ${c === state.beton ? 'active' : ''}`;
+        btn.textContent = c;
+        btn.onclick = () => { state.beton = c; updateActiveButtons("row-beton", c); calculate(); };
+        betonRow.appendChild(btn);
+      });
+
+      const fiRow = document.getElementById("row-fi");
+      fiRow.innerHTML = "";
+      fiList.forEach(f => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-blue ${f === state.fi && state.mode === 'rebar' ? 'active' : ''}`;
+        btn.textContent = `∅ ${f}`;
+        btn.onclick = () => {
+          state.mode = 'rebar'; state.fi = f; state.mreza = null;
+          updateActiveButtons("row-fi", `∅ ${f}`); clearActiveButtons("row-mreza"); calculate();
+        };
+        fiRow.appendChild(btn);
+      });
+
+      const mrezaRow = document.getElementById("row-mreza");
+      mrezaRow.innerHTML = "";
+      mrezaList.forEach(m => {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-blue";
+        btn.textContent = m;
+        btn.onclick = () => {
+          state.mode = 'mreza'; state.mreza = m;
+          updateActiveButtons("row-mreza", m); clearActiveButtons("row-fi"); calculate();
+        };
+        mrezaRow.appendChild(btn);
+      });
+    }
+
+    function updateActiveButtons(rowId, valText) {
+      document.getElementById(rowId).querySelectorAll(".btn").forEach(b => {
+        if (b.textContent === valText) b.classList.add("active"); else b.classList.remove("active");
+      });
+    }
+
+    function clearActiveButtons(rowId) {
+      document.getElementById(rowId).querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
+    }
+
+    function updateHLimit() {
+      if (!dbData) return;
+      const limitVal = document.getElementById("inp-h-limit").value || 300;
+      document.getElementById("btn-h-le").textContent = `Ploča h ≤ ${limitVal} mm (Dobre okolnosti donja/gornja)`;
+      document.getElementById("btn-h-gt").textContent = `Ploča h > ${limitVal} mm (Loše okolnosti gornja zona)`;
+      calculate();
+    }
+
+    function setVisina(v) {
+      state.visina = v;
+      document.getElementById("btn-h-le").className = `btn btn-green ${v === 'le' ? 'active' : ''}`;
+      document.getElementById("btn-h-gt").className = `btn btn-red ${v === 'gt' ? 'active' : ''}`;
+      calculate();
+    }
+
+    function setUdio(u) {
+      state.preklopUdio = u;
+      document.getElementById("btn-udio-le33").className = `btn btn-green ${u === 'le33' ? 'active' : ''}`;
+      document.getElementById("btn-udio-gt33").className = `btn btn-red ${u === 'gt33' ? 'active' : ''}`;
+      calculate();
+    }
+
+    function calculate() {
+      if (!dbData) return;
+
+      const tagGornja = document.getElementById("tag-gornja-vb");
+      const sidDonjaBox = document.getElementById("res-sidrenje-donja-box");
+      const sidGornjaBox = document.getElementById("res-sidrenje-gornja-box");
+      const secPreklopUdio = document.getElementById("sec-preklop-udio");
+      const secInputsGeom = document.getElementById("sec-inputs-geom");
+      const boxGornja = document.getElementById("box-gornja");
+
+      if (state.visina === 'gt') {
+        boxGornja.className = "zone-box vbii-style";
+        tagGornja.textContent = "(VB II - LOŠE)";
+      } else {
+        boxGornja.className = "zone-box vbi-style";
+        tagGornja.textContent = "(VB I - DOBRE)";
+      }
+
+      if (state.mode === 'rebar') {
+        sidDonjaBox.style.display = "block"; sidGornjaBox.style.display = "block";
+        secPreklopUdio.style.display = "block"; secInputsGeom.style.display = "grid";
+        calcRebar();
+      } else {
+        sidDonjaBox.style.display = "none"; sidGornjaBox.style.display = "none";
+        secPreklopUdio.style.display = "none"; secInputsGeom.style.display = "none";
+        calcMreza();
+      }
+    }
+
+    function calcRebar() {
+      const fi = state.fi;
+      const fiStr = fi.toString();
+      const c1 = parseFloat(document.getElementById("inp-c1").value) || 0;
+      const a = parseFloat(document.getElementById("inp-a").value) || 0;
+
+      const c1_req = 4 * fi; const a_req = 8 * fi;
+      const isGeomGood = (a >= a_req && c1 >= c1_req);
+      const geomKey = isGeomGood ? "povoljno" : "nepovoljno";
+
+      document.getElementById("geom-status").innerHTML = 
+        `Svijetli razmak: <b>${a}mm</b> (potrebno ≥${a_req}mm) | Zaštitni sloj: <b>${c1}mm</b> (potrebno ≥${c1_req}mm) &rarr; ` +
+        (isGeomGood ? `<span style="color:#16a34a">Povoljna geometrija (a ≥ 8∅ i c₁ ≥ 4∅)</span>` : `<span style="color:#dc2626">Nepovoljna geometrija (a < 8∅ ili c₁ < 4∅)</span>`);
+
+      // Očitavanje dužine sidrenja iz novog JSON-a
+      const sidConcreteObj = dbData.sidrenje?.[state.beton] || {};
+      const sidVB1 = sidConcreteObj.VB1?.[fiStr] ?? "-";
+      const sidVB2 = sidConcreteObj.VB2?.[fiStr] ?? "-";
+
+      document.getElementById("val-sid-donja").textContent = sidVB1;
+      document.getElementById("val-sid-gornja").textContent = (state.visina === 'gt') ? sidVB2 : sidVB1;
+
+      // Očitavanje dužine preklopa šipki iz novog JSON-a
+      const udioKey = (state.preklopUdio === 'le33') ? "leq33" : "gt33";
+      const prkConcreteObj = dbData.preklop_sipke?.[state.beton] || {};
+      const prkUdioObj = prkConcreteObj[udioKey] || {};
+      const prkGeomObj = prkUdioObj[geomKey] || {};
+
+      const prkVB1 = prkGeomObj.VB1?.[fiStr] ?? "-";
+      const prkVB2 = prkGeomObj.VB2?.[fiStr] ?? "-";
+
+      const prkDonja = prkVB1;
+      const prkGornja = (state.visina === 'gt') ? prkVB2 : prkVB1;
+
+      document.getElementById("val-prk-donja").innerHTML = `<span>${prkDonja}</span> <span class="res-unit">cm</span>`;
+      document.getElementById("val-prk-gornja").innerHTML = `<span>${prkGornja}</span> <span class="res-unit">cm</span>`;
+      document.getElementById("val-mreza-extra-donja").textContent = "";
+      document.getElementById("val-mreza-extra-gornja").textContent = "";
+
+      renderRebarTable({ vb1: sidVB1, vb2: sidVB2 }, prkConcreteObj, isGeomGood);
+    }
+
+    function calcMreza() {
+      const mreza = state.mreza;
+      const beton = state.beton;
+      const isQ = mreza.startsWith("Q");
+
+      const mrzaConcreteObj = dbData.preklop_mreze?.[beton] || {};
+      const podI = mrzaConcreteObj.podrucje_I || {};
+      const podII = mrzaConcreteObj.podrucje_II || {};
+
+      const poduzni_I = podI.nosivi_poduzni?.[mreza] ?? "-";
+      const poprecni_I = podI[isQ ? "nosivi_poprecni" : "razdelni_poprecni"]?.[mreza] ?? "-";
+
+      const poduzni_II = podII.nosivi_poduzni?.[mreza] ?? "-";
+      const poprecni_II = podII[isQ ? "nosivi_poprecni" : "razdelni_poprecni"]?.[mreza] ?? "-";
+
+      const isVB2 = (state.visina === 'gt');
+
+      const poduzni_donja = poduzni_I;
+      const poprecni_donja = poprecni_I;
+
+      const poduzni_gornja = isVB2 ? poduzni_II : poduzni_I;
+      const poprecni_gornja = isVB2 ? poprecni_II : poprecni_I;
+
+      const poprecniLabel = isQ ? "Poprečni (nosivi)" : "Poprečni (razdelni)";
+
+      document.getElementById("val-prk-donja").innerHTML = 
+        `<div style="font-size:0.92rem; font-weight:800;">Podužni (nosivi): <b>${poduzni_donja}</b> <span class="res-unit">cm</span></div>` +
+        `<div class="mreza-subval">${poprecniLabel}: <b>${poprecni_donja}</b> <span class="res-unit">cm</span></div>`;
+
+      document.getElementById("val-prk-gornja").innerHTML = 
+        `<div style="font-size:0.92rem; font-weight:800;">Podužni (nosivi): <b>${poduzni_gornja}</b> <span class="res-unit">cm</span></div>` +
+        `<div class="mreza-subval">${poprecniLabel}: <b>${poprecni_gornja}</b> <span class="res-unit">cm</span></div>`;
+
+      document.getElementById("val-mreza-extra-donja").textContent = "";
+      document.getElementById("val-mreza-extra-gornja").textContent = "";
+
+      renderMrezaTable(poduzni_I, poprecni_I, poduzni_II, poprecni_II, isQ);
+    }
+
+    function renderRebarTable(sidData, prkObj, isGeomGood) {
+      const fi = state.fi; 
+      const fiStr = fi.toString();
+      const beton = state.beton;
+
+      const le33_ge = prkObj.leq33?.povoljno || {};
+      const le33_lt = prkObj.leq33?.nepovoljno || {};
+      const gt33_ge = prkObj.gt33?.povoljno || {};
+      const gt33_lt = prkObj.gt33?.nepovoljno || {};
+
+      const hlSid1 = (state.visina === 'le');
+      const hlSid2 = (state.visina === 'gt');
+
+      const hlP1 = (state.preklopUdio === 'le33' && isGeomGood && state.visina === 'le');
+      const hlP2 = (state.preklopUdio === 'le33' && isGeomGood && state.visina === 'gt');
+      const hlP3 = (state.preklopUdio === 'le33' && !isGeomGood && state.visina === 'le');
+      const hlP4 = (state.preklopUdio === 'le33' && !isGeomGood && state.visina === 'gt');
+      const hlP5 = (state.preklopUdio === 'gt33' && isGeomGood && state.visina === 'le');
+      const hlP6 = (state.preklopUdio === 'gt33' && isGeomGood && state.visina === 'gt');
+      const hlP7 = (state.preklopUdio === 'gt33' && !isGeomGood && state.visina === 'le');
+      const hlP8 = (state.preklopUdio === 'gt33' && !isGeomGood && state.visina === 'gt');
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="4">Marka<br>betona</th>
+              <th rowspan="4">Prečnik<br>∅ [mm]</th>
+              <th colspan="2" rowspan="3">Potrebna dužina sidrenja<br>l<sub>b,rqd</sub> [cm]</th>
+              <th colspan="8">Potrebna dužina preklopa armature l<sub>0</sub> [cm]</th>
+            </tr>
+            <tr>
+              <th colspan="4">Udio preklopljenih šipki ≤ 33%</th>
+              <th colspan="4">Udio preklopljenih šipki > 33%</th>
+            </tr>
+            <tr>
+              <th colspan="2">a ≥ 8∅ i c₁ ≥ 4∅</th>
+              <th colspan="2">a < 8∅ ili c₁ < 4∅</th>
+              <th colspan="2">a ≥ 8∅ i c₁ ≥ 4∅</th>
+              <th colspan="2">a < 8∅ ili c₁ < 4∅</th>
+            </tr>
+            <tr>
+              <th>VB I</th>
+              <th>VB II</th>
+              <th>VB I</th>
+              <th>VB II</th>
+              <th>VB I</th>
+              <th>VB II</th>
+              <th>VB I</th>
+              <th>VB II</th>
+              <th>VB I</th>
+              <th>VB II</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>${beton}</b></td>
+              <td><b>∅ ${fi}</b></td>
+              <td class="${hlSid1 ? 'hl-cell' : ''}">${sidData.vb1}</td>
+              <td class="${hlSid2 ? 'hl-cell' : ''}">${sidData.vb2}</td>
+              <td class="${hlP1 ? 'hl-cell' : ''}">${le33_ge.VB1?.[fiStr] ?? "-"}</td>
+              <td class="${hlP2 ? 'hl-cell' : ''}">${le33_ge.VB2?.[fiStr] ?? "-"}</td>
+              <td class="${hlP3 ? 'hl-cell' : ''}">${le33_lt.VB1?.[fiStr] ?? "-"}</td>
+              <td class="${hlP4 ? 'hl-cell' : ''}">${le33_lt.VB2?.[fiStr] ?? "-"}</td>
+              <td class="${hlP5 ? 'hl-cell' : ''}">${gt33_ge.VB1?.[fiStr] ?? "-"}</td>
+              <td class="${hlP6 ? 'hl-cell' : ''}">${gt33_ge.VB2?.[fiStr] ?? "-"}</td>
+              <td class="${hlP7 ? 'hl-cell' : ''}">${gt33_lt.VB1?.[fiStr] ?? "-"}</td>
+              <td class="${hlP8 ? 'hl-cell' : ''}">${gt33_lt.VB2?.[fiStr] ?? "-"}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      document.getElementById("table-output").innerHTML = html;
+    }
+
+    function renderMrezaTable(poduzni_I, poprecni_I, poduzni_II, poprecni_II, isQ) {
+      const isVB2 = (state.visina === 'gt');
+      const poprecniLabel = isQ ? "Poprečni pravac (nosivi)" : "Poprečni pravac (razdelni)";
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Mreža</th>
+              <th>Pravac armature</th>
+              <th>Marka Betona</th>
+              <th>Preklop l<sub>0</sub> [cm] (Dobre uslove - VB I)</th>
+              <th>Preklop l<sub>0</sub> [cm] (Loši uslovi - VB II)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td rowspan="2"><b>${state.mreza}</b></td>
+              <td><b>Podužni pravac (nosivi)</b></td>
+              <td><b>${state.beton}</b></td>
+              <td class="${!isVB2 ? 'hl-cell' : ''}">${poduzni_I}</td>
+              <td class="${isVB2 ? 'hl-cell' : ''}">${poduzni_II}</td>
+            </tr>
+            <tr>
+              <td><b>${poprecniLabel}</b></td>
+              <td><b>${state.beton}</b></td>
+              <td class="${!isVB2 ? 'hl-cell' : ''}">${poprecni_I}</td>
+              <td class="${isVB2 ? 'hl-cell' : ''}">${poprecni_II}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      document.getElementById("table-output").innerHTML = html;
+    }
+  </script>
+</body>
+</html>
